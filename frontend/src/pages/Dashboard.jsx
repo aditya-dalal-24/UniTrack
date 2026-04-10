@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   Users,
   CalendarCheck,
@@ -53,8 +54,17 @@ export default function Dashboard() {
   if (error) return <ErrorMessage message={error} onRetry={fetchDashboard} />;
 
   const attendance = dashboardData?.attendance;
+  const attendanceData = (dashboardData?.subjects || []).map((s) => ({
+    subject: s.name,
+    percentage: s.attendancePercentage || 0,
+  }));
   const fees = dashboardData?.fees;
   const assignments = dashboardData?.assignments;
+
+  // Month names for attendance comparison
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const currentMonthName = monthNames[new Date().getMonth()];
+  const lastMonthName = monthNames[(new Date().getMonth() - 1 + 12) % 12];
 
   // Chart data from dashboard response (fallback to empty)
   const monthlyExpensesData = [
@@ -87,20 +97,26 @@ export default function Dashboard() {
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {userData.email && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Email:</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Email:</span>
                     <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{userData.email}</span>
+                  </div>
+                )}
+                {userData.rollNumber && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Roll No:</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{userData.rollNumber}</span>
                   </div>
                 )}
                 {userData.course && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Course:</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Course:</span>
                     <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{userData.course}</span>
                   </div>
                 )}
                 {userData.semester && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Semester:</span>
-                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Semester {userData.semester}</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Semester:</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Sem {userData.semester}</span>
                   </div>
                 )}
               </div>
@@ -111,26 +127,54 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <StatsCard
-          title="My Attendance"
-          value={`${Math.round(attendance?.attendancePercentage || 0)}%`}
-          icon={CalendarCheck}
-          trend={`${attendance?.presentDays || 0}/${attendance?.totalWorkingDays || 0} days`}
-          trendUp={true}
-          color="emerald"
-        />
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+              <CalendarCheck size={20} />
+            </div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance</div>
+          </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-slate-50">
+                {Math.round(attendance?.attendancePercentage || 0)}%
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                {attendance?.presentDays || 0} / {attendance?.totalWorkingDays || 0} lectures attended
+              </div>
+            </div>
+            {attendance?.lastMonthPercentage !== undefined && (
+              <div className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                attendance.attendancePercentage >= attendance.lastMonthPercentage 
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              }`}>
+                {attendance.attendancePercentage >= attendance.lastMonthPercentage ? '↑' : '↓'} 
+                {Math.abs(Math.round(attendance.attendancePercentage - attendance.lastMonthPercentage))}%
+                <span className="ml-1 font-normal opacity-80">{currentMonthName} vs {lastMonthName}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${attendance?.attendancePercentage || 0}%` }}
+              className="h-full bg-emerald-500"
+            />
+          </div>
+        </div>
+
         <StatsCard
           title="Pending Fees"
-          value={`₹ ${((fees?.totalPending || 0) / 1000).toFixed(1)}K`}
+          value={`₹ ${((fees?.totalPending || 0) / 100).toFixed(1)}K`} // Adjusting for realistic scale if mapping is different
           icon={CreditCard}
-          description={`Total: ₹${((fees?.totalFees || 0) / 1000).toFixed(1)}K`}
+          description={`Total: ₹${((fees?.totalFees || 0) / 100).toFixed(1)}K`}
           color="red"
         />
         <StatsCard
           title="Assignments"
           value={String(assignments?.pendingAssignments || 0)}
           icon={BookOpen}
-          description={`${assignments?.totalAssignments || 0} total`}
+          description={`Pending • ${assignments?.completedAssignments || 0} completed • ${assignments?.totalAssignments || 0} total`}
           color="accent"
         />
       </div>
@@ -139,18 +183,43 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Monthly Expenses Chart */}
         <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
-          <h3 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
-            Expense Summary
-          </h3>
-          <div className="flex flex-col items-center justify-center h-64">
-            <p className="text-4xl font-bold text-slate-900 dark:text-slate-100">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+              Expense History
+            </h3>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-50">
               ₹{(dashboardData?.expenses?.totalSpentThisMonth || 0).toLocaleString()}
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Spent this month</p>
-            <p className="text-lg font-semibold text-slate-700 dark:text-slate-300 mt-4">
-              ₹{(dashboardData?.expenses?.totalSpentAllTime || 0).toLocaleString()}
-            </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Total all time</p>
+              <span className="text-xs font-normal text-slate-500 ml-2">this month</span>
+            </div>
+          </div>
+          
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dashboardData?.expenses?.monthlyHistory || []}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 12 }}
+                />
+                <YAxis hide />
+                <Tooltip 
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
+                  }}
+                />
+                <Bar 
+                  dataKey="amount" 
+                  fill="#6366f1" 
+                  radius={[6, 6, 0, 0]} 
+                  barSize={30}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

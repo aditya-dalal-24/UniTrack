@@ -7,7 +7,7 @@ import ErrorMessage from "../components/ErrorMessage";
 
 const defaultProfileData = {
   name: "",
-  rollNo: "",
+  rollNumber: "",
   privateEmail: "",
   universityEmail: "",
   phone: "",
@@ -44,7 +44,7 @@ export default function Profile() {
     } else if (data) {
       const fetched = {
         name: data.name || "",
-        rollNo: data.rollNo || "",
+        rollNumber: data.rollNumber || "",
         privateEmail: data.email || "",
         universityEmail: data.universityEmail || "",
         phone: data.phone || "",
@@ -81,7 +81,7 @@ export default function Profile() {
   const handleSave = async () => {
     const payload = {
       name: editData.name,
-      rollNo: editData.rollNo,
+      rollNumber: editData.rollNumber,
       email: editData.privateEmail,
       universityEmail: editData.universityEmail,
       phone: editData.phone,
@@ -176,14 +176,24 @@ export default function Profile() {
                 type="text"
                 value={editData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
-                className="text-4xl font-bold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1 w-full max-w-md"
+                className="text-4xl font-bold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-4 py-2 w-full max-w-md focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
               />
             ) : (
               <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100">{studentData.name}</h1>
             )}
-            <p className="text-lg text-brand dark:text-brand-300 font-medium mt-1">
-              {studentData.rollNo}
-            </p>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editData.rollNumber}
+                onChange={(e) => handleChange("rollNumber", e.target.value)}
+                className="text-lg text-brand dark:text-brand-300 font-medium mt-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-1.5 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
+                placeholder="Roll Number"
+              />
+            ) : (
+              <p className="text-lg text-brand dark:text-brand-300 font-medium mt-1">
+                {studentData.rollNumber}
+              </p>
+            )}
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
               {studentData.course} • {studentData.semester}
             </p>
@@ -199,7 +209,7 @@ export default function Profile() {
                         type="email"
                         value={editData.privateEmail}
                         onChange={(e) => handleChange("privateEmail", e.target.value)}
-                        className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm"
+                        className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                         placeholder="Private email"
                       />
                     ) : (
@@ -213,7 +223,7 @@ export default function Profile() {
                         type="email"
                         value={editData.universityEmail}
                         onChange={(e) => handleChange("universityEmail", e.target.value)}
-                        className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm"
+                        className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                         placeholder="University email"
                       />
                     ) : (
@@ -229,7 +239,7 @@ export default function Profile() {
                     type="tel"
                     value={editData.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
-                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm"
+                    className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                   />
                 ) : (
                   <span>{studentData.phone}</span>
@@ -255,6 +265,7 @@ export default function Profile() {
             editValue={editData.dateOfBirth}
             isEditing={isEditing}
             onChange={(val) => handleChange("dateOfBirth", val)}
+            type="date"
           />
           <EditableInfoCard
             icon={User}
@@ -334,7 +345,7 @@ export default function Profile() {
             isEditing={isEditing}
             onChange={(val) => handleChange("batch", val)}
           />
-          <InfoCard icon={User} label="Enrollment No." value={studentData.rollNo} />
+          <InfoCard icon={User} label="Enrollment No." value={studentData.rollNumber} />
         </div>
       </div>
 
@@ -357,7 +368,7 @@ export default function Profile() {
                     type="text"
                     value={editData.fatherName}
                     onChange={(e) => handleChange("fatherName", e.target.value)}
-                    className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1"
+                    className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                   />
                 ) : (
                   <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{studentData.fatherName}</span>
@@ -370,7 +381,7 @@ export default function Profile() {
                     type="tel"
                     value={editData.fatherPhone}
                     onChange={(e) => handleChange("fatherPhone", e.target.value)}
-                    className="flex-1 text-sm text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1"
+                    className="flex-1 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                   />
                 ) : (
                   <span className="text-sm text-slate-600 dark:text-slate-400">{studentData.fatherPhone}</span>
@@ -390,7 +401,7 @@ export default function Profile() {
                     type="text"
                     value={editData.motherName}
                     onChange={(e) => handleChange("motherName", e.target.value)}
-                    className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1"
+                    className="flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                   />
                 ) : (
                   <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{studentData.motherName}</span>
@@ -403,7 +414,7 @@ export default function Profile() {
                     type="tel"
                     value={editData.motherPhone}
                     onChange={(e) => handleChange("motherPhone", e.target.value)}
-                    className="flex-1 text-sm text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1"
+                    className="flex-1 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
                   />
                 ) : (
                   <span className="text-sm text-slate-600 dark:text-slate-400">{studentData.motherPhone}</span>
@@ -432,7 +443,7 @@ export default function Profile() {
                   type="text"
                   value={editData.emergencyContactName}
                   onChange={(e) => handleChange("emergencyContactName", e.target.value)}
-                  className="w-full font-semibold text-red-900 dark:text-red-300 bg-white dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded px-2 py-1 text-sm mt-1"
+                  className="w-full font-semibold text-red-900 dark:text-red-300 bg-white/60 dark:bg-red-900/10 border border-red-300 dark:border-red-800/50 rounded-xl px-3 py-2 text-sm mt-1 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none"
                 />
               ) : (
                 <p className="font-semibold text-red-900 dark:text-red-300">{studentData.emergencyContactName}</p>
@@ -450,7 +461,7 @@ export default function Profile() {
                   type="tel"
                   value={editData.emergencyContact}
                   onChange={(e) => handleChange("emergencyContact", e.target.value)}
-                  className="w-full font-semibold text-red-900 dark:text-red-300 bg-white dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded px-2 py-1 text-sm mt-1"
+                  className="w-full font-semibold text-red-900 dark:text-red-300 bg-white/60 dark:bg-red-900/10 border border-red-300 dark:border-red-800/50 rounded-xl px-3 py-2 text-sm mt-1 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none"
                 />
               ) : (
                 <p className="font-semibold text-red-900 dark:text-red-300">{studentData.emergencyContact}</p>
@@ -466,33 +477,33 @@ export default function Profile() {
 // Editable Info Card component
 function EditableInfoCard({ icon: Icon, label, value, editValue, isEditing, onChange, className = "", multiline = false, type = "text" }) {
   return (
-    <div className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 ${className}`}>
-      <div className="flex items-start gap-3">
+    <div className={`p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all ${className}`}>
+      <div className="flex items-start gap-4">
         {Icon && (
-          <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">
-            <Icon className="h-4 w-4" />
+          <div className="h-10 w-10 mt-0.5 rounded-xl bg-white dark:bg-slate-900 text-brand shadow-sm border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center flex-shrink-0">
+            <Icon className="h-5 w-5" />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">{label}</p>
           {isEditing ? (
             multiline ? (
               <textarea
                 value={editValue}
                 onChange={(e) => onChange(e.target.value)}
                 rows="2"
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 resize-none"
+                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white/60 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 resize-none mt-1 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none shadow-inner"
               />
             ) : (
               <input
                 type={type}
                 value={type === "number" ? editValue : editValue}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1"
+                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white/60 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 mt-1 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none shadow-inner"
               />
             )
           ) : (
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{value}</p>
+            <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100 break-words">{value || "—"}</p>
           )}
         </div>
       </div>
@@ -503,16 +514,16 @@ function EditableInfoCard({ icon: Icon, label, value, editValue, isEditing, onCh
 // Read-only Info Card component
 function InfoCard({ icon: Icon, label, value, className = "" }) {
   return (
-    <div className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 ${className}`}>
-      <div className="flex items-start gap-3">
+    <div className={`p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all ${className}`}>
+      <div className="flex items-start gap-4">
         {Icon && (
-          <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">
-            <Icon className="h-4 w-4" />
+          <div className="h-10 w-10 mt-0.5 rounded-xl bg-white dark:bg-slate-900 text-brand shadow-sm border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center flex-shrink-0">
+            <Icon className="h-5 w-5" />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</p>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 break-words">{value}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">{label}</p>
+          <p className="text-[15px] font-medium text-slate-900 dark:text-slate-100 break-words">{value || "—"}</p>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, User, Phone, Calendar, GraduationCap, BookOpen, Hash } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Lock, Mail, User, Phone, Calendar, GraduationCap, BookOpen, Hash, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "../services/api";
 
@@ -79,8 +79,9 @@ export default function SignupPage({ onLogin }) {
       }
 
       if (data && data.token) {
-        // Store via AuthContext — passes { token, name, email, userId }
-        onLogin(data, {
+        // Store via AuthContext — pass the consolidated object
+        onLogin({
+          ...data,
           phone: formData.phone,
           university: formData.university,
           course: formData.course,
@@ -88,7 +89,7 @@ export default function SignupPage({ onLogin }) {
           semester: formData.semester,
         });
         
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       } else {
         setError("Signup failed. Please try again.");
       }
@@ -233,6 +234,10 @@ export default function SignupPage({ onLogin }) {
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
         {/* Header */}
+        <Link to="/" className="absolute -top-16 left-0 flex items-center gap-2 text-sm text-slate-500 hover:text-brand transition-colors">
+          <Home size={16} /> Back to Home
+        </Link>
+
         <motion.div 
           className="mb-6 text-center"
           initial={{ opacity: 0, y: -20 }}
@@ -250,7 +255,7 @@ export default function SignupPage({ onLogin }) {
               animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            Join Trackify Today
+            Join UNITRACK Today
           </motion.div>
           <motion.h1 
             className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-50"

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginPage from "./pages/LoginPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import AppLayout from "./layout/AppLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Attendance from "./pages/Attendance.jsx";
@@ -22,7 +23,7 @@ function ProtectedRoute({ children }) {
 }
 
 function AppRoutes() {
-  const { login, logout } = useAuth();
+  const { login, logout, isAuthenticated } = useAuth();
 
   return (
     <Routes>
@@ -37,6 +38,13 @@ function AppRoutes() {
       />
 
       <Route
+        path="/"
+        element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />
+        }
+      />
+
+      <Route
         path="/*"
         element={
           <ProtectedRoute>
@@ -44,7 +52,6 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="assignments" element={<Assignments />} />

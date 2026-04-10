@@ -27,5 +27,9 @@ public class AttendanceRecord {
     @Column(nullable = false)
     private AttendanceStatus status;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private Subject subject;
+
     private String note;
 }

@@ -18,6 +18,10 @@ export default function Attendance() {
   const [showAddExam, setShowAddExam] = useState(false);
   const [newHoliday, setNewHoliday] = useState({ date: "", name: "" });
   const [newExam, setNewExam] = useState({ date: "", subject: "", startTime: "", endTime: "" });
+  const [subjects, setSubjects] = useState([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [showAddSubject, setShowAddSubject] = useState(false);
+  const [newSubject, setNewSubject] = useState({ name: "" });
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -47,26 +51,40 @@ export default function Attendance() {
   const loadData = async () => {
     setLoading(true);
     setError(null);
-    const { data, error: apiError } = await api.getAttendance();
-    if (apiError) {
-      setError(apiError);
+    const [attendanceRes, subjectsRes] = await Promise.all([
+      api.getAttendance(),
+      api.getSubjects()
+    ]);
+
+    if (attendanceRes.error) {
+      setError(attendanceRes.error);
       setLoading(false);
       return;
     }
-    if (data) {
+
+    if (attendanceRes.data) {
       const attendanceMap = {};
       const idMap = {};
-      (data.records || []).forEach(record => {
+      const subjectMap = {};
+      (attendanceRes.data.records || []).forEach(record => {
         if (!record.date) return;
         const [year, month, day] = record.date.split('-');
         const dateObj = new Date(year, month - 1, day);
         const dateString = dateObj.toDateString();
         attendanceMap[dateString] = record.status?.toLowerCase() || 'present';
         idMap[dateString] = record.id;
+        if (record.subjectId) {
+          subjectMap[dateString] = { id: record.subjectId, name: record.subjectName };
+        }
       });
       setAttendance(attendanceMap);
       setAttendanceIds(idMap);
     }
+
+    if (subjectsRes.data) {
+      setSubjects(subjectsRes.data);
+    }
+
     setLoading(false);
   };
 
@@ -107,6 +125,7 @@ export default function Attendance() {
     const { data, error: apiError } = await api.markAttendance({
       date: isoDate,
       status: enumStatus,
+      subjectId: selectedSubjectId || null,
       note: "",
     });
 
@@ -137,6 +156,19 @@ export default function Attendance() {
       const newIds = { ...attendanceIds };
       delete newIds[date];
       setAttendanceIds(newIds);
+    }
+  };
+
+  const addSubject = async () => {
+    if (!newSubject.name) return;
+    const { data, error: subError } = await api.addSubject({ name: newSubject.name, courseCode: "", professor: "" });
+    if (subError) {
+      alert(subError);
+    } else if (data) {
+      setSubjects([...subjects, data]);
+      setSelectedSubjectId(data.id);
+      setShowAddSubject(false);
+      setNewSubject({ name: "" });
     }
   };
 
@@ -250,7 +282,7 @@ export default function Attendance() {
 
     window.addEventListener('keypress', handleKeyPress);
     return () => window.removeEventListener('keypress', handleKeyPress);
-  }, [hoverDate, attendance, attendanceIds, holidays]);
+  }, [hoverDate, attendance, attendanceIds, holidays, selectedSubjectId]);
 
   // Calculate attendance percentage (excluding weekends and holidays)
   const workingDays = dates.filter(d => !d.isWeekend && !isHoliday(d.full));
@@ -307,6 +339,25 @@ export default function Attendance() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-semibold">Calendar</h2>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedSubjectId}
+                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-brand outline-none"
+              >
+                <option value="">All Subjects</option>
+                {subjects.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowAddSubject(true)}
+                className="p-1.5 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 transition-all"
+                title="Add New Subject"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
             {Object.keys(attendance).length > 0 && (
               <button
                 onClick={clearAllAttendance}
@@ -698,6 +749,50 @@ export default function Attendance() {
             ))}
         </div>
       </div>
+      {/* Subject Modal */}
+      <AnimatePresence>
+        {showAddSubject && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[60]"
+              onClick={() => setShowAddSubject(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl z-[70] p-6 border dark:border-slate-800"
+            >
+              <h3 className="text-lg font-bold mb-4">Add New Subject</h3>
+              <input
+                type="text"
+                value={newSubject.name}
+                onChange={(e) => setNewSubject({ name: e.target.value })}
+                placeholder="Subject Name"
+                className="w-full px-4 py-3 rounded-xl border dark:border-slate-700 bg-transparent mb-4 focus:ring-2 focus:ring-brand outline-none"
+                autoFocus
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowAddSubject(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addSubject}
+                  className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-xl hover:bg-brand-dark"
+                >
+                  Create Subject
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -1,8 +1,6 @@
 package com.unitrack.unitrack_backend.controller;
 
-import com.unitrack.unitrack_backend.dto.request.SubjectRequest;
 import com.unitrack.unitrack_backend.dto.request.TimetableSlotRequest;
-import com.unitrack.unitrack_backend.dto.response.SubjectResponse;
 import com.unitrack.unitrack_backend.dto.response.TimetableSlotResponse;
 import com.unitrack.unitrack_backend.service.TimetableService;
 import jakarta.validation.Valid;
@@ -19,24 +17,6 @@ import java.util.List;
 public class TimetableController {
 
     private final TimetableService timetableService;
-
-    // Subject endpoints
-    @GetMapping("/subjects")
-    public ResponseEntity<List<SubjectResponse>> getSubjects(Principal principal) {
-        return ResponseEntity.ok(timetableService.getSubjects(principal));
-    }
-
-    @PostMapping("/subjects")
-    public ResponseEntity<SubjectResponse> addSubject(Principal principal,
-                                                      @Valid @RequestBody SubjectRequest request) {
-        return ResponseEntity.ok(timetableService.addSubject(principal, request));
-    }
-
-    @DeleteMapping("/subjects/{id}")
-    public ResponseEntity<Void> deleteSubject(Principal principal, @PathVariable Long id) {
-        timetableService.deleteSubject(principal, id);
-        return ResponseEntity.noContent().build();
-    }
 
     // Slot endpoints
     @GetMapping

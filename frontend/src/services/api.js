@@ -116,6 +116,7 @@ export const api = {
     request('post', '/attendance', {
       date: data.date,
       status: data.status,
+      subjectId: data.subjectId || null,
       note: data.note || null,
     }),
 
@@ -170,19 +171,19 @@ export const api = {
   deleteTodo: (id) =>
     request('delete', `/todos/${id}`),
 
-  // ==================== TIMETABLE — SUBJECTS ====================
+  // ==================== SUBJECTS ====================
   getSubjects: () =>
-    request('get', '/timetable/subjects'),
+    request('get', '/subjects'),
 
   addSubject: (data) =>
-    request('post', '/timetable/subjects', {
+    request('post', '/subjects', {
       name: data.name,
       courseCode: data.courseCode || null,
       professor: data.professor || null,
     }),
 
   deleteSubject: (id) =>
-    request('delete', `/timetable/subjects/${id}`),
+    request('delete', `/subjects/${id}`),
 
   // ==================== TIMETABLE — SLOTS ====================
   getTimetable: () =>
@@ -197,6 +198,7 @@ export const api = {
       courseCode: data.courseCode || null,
       professor: data.professor || null,
       roomNumber: data.roomNumber || null,
+      subjectId: data.subjectId || null,
     }),
 
   updateTimetableSlot: (id, data) =>
@@ -208,6 +210,7 @@ export const api = {
       courseCode: data.courseCode || null,
       professor: data.professor || null,
       roomNumber: data.roomNumber || null,
+      subjectId: data.subjectId || null,
     }),
 
   deleteTimetableSlot: (id) =>

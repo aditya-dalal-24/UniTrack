@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Lock, Mail, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "../services/api";
 
@@ -50,7 +50,7 @@ export default function LoginPage({ onLogin }) {
 
     if (data && data.token) {
       onLogin(data); // passes { token, name, email, userId } to AuthContext
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     } else {
       setError("Invalid email or password.");
     }
@@ -190,6 +190,10 @@ export default function LoginPage({ onLogin }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
+        <Link to="/" className="absolute -top-16 left-0 flex items-center gap-2 text-sm text-slate-500 hover:text-brand transition-colors">
+          <Home size={16} /> Back to Home
+        </Link>
+
         {/* Header */}
         <motion.div 
           className="mb-6 text-center"
@@ -208,7 +212,7 @@ export default function LoginPage({ onLogin }) {
               animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            Welcome back to Trackify
+            Welcome back to UNITRACK
           </motion.div>
           <motion.h1 
             className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-50"
@@ -247,13 +251,13 @@ export default function LoginPage({ onLogin }) {
               Email
             </label>
             <motion.div 
-              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 px-3 py-2 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/30 transition-all"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 px-4 py-2.5 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/20 transition-all"
               whileFocus={{ scale: 1.01 }}
             >
-              <Mail className="h-4 w-4 text-slate-400" />
+              <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
               <input
                 type="email"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -272,13 +276,13 @@ export default function LoginPage({ onLogin }) {
               Password
             </label>
             <motion.div 
-              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 px-3 py-2 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/30 transition-all"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 px-4 py-2.5 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/20 transition-all"
               whileFocus={{ scale: 1.01 }}
             >
-              <Lock className="h-4 w-4 text-slate-400" />
+              <Lock className="h-4 w-4 text-slate-400 flex-shrink-0" />
               <input
                 type={showPassword ? "text" : "password"}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

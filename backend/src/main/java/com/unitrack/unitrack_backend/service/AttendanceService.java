@@ -8,7 +8,9 @@ import com.unitrack.unitrack_backend.entity.AttendanceStatus;
 import com.unitrack.unitrack_backend.entity.User;
 import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.AttendanceRepository;
+import com.unitrack.unitrack_backend.repository.SubjectRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
+import com.unitrack.unitrack_backend.entity.Subject;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
+    private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
 
     private User getUser(Principal principal) {
@@ -34,6 +37,8 @@ public class AttendanceService {
                 .id(record.getId())
                 .date(record.getDate())
                 .status(record.getStatus())
+                .subjectId(record.getSubject() != null ? record.getSubject().getId() : null)
+                .subjectName(record.getSubject() != null ? record.getSubject().getName() : null)
                 .note(record.getNote())
                 .build();
     }
@@ -70,6 +75,14 @@ public class AttendanceService {
         record.setDate(request.getDate());
         record.setStatus(request.getStatus());
         record.setNote(request.getNote());
+
+        if (request.getSubjectId() != null) {
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+            record.setSubject(subject);
+        } else {
+            record.setSubject(null);
+        }
 
         attendanceRepository.save(record);
         return mapToResponse(record);

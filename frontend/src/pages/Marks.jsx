@@ -150,17 +150,19 @@ export default function Marks() {
         title="Academic Performance"
         description="Track marks, calculate grades, and monitor SGPA/CGPA."
         actions={
-          <button
-            onClick={() => {
-              setEditingMark(null);
-              setNewMark({ subjectName: "", subjectCode: "", credits: 3, midSem: 0, internals: 0, endSem: 0 });
-              setShowSubjectModal(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Add Subject Marks
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setEditingMark(null);
+                setNewMark({ subjectName: "", subjectCode: "", credits: 3, midSem: 0, internals: 0, endSem: 0 });
+                setShowSubjectModal(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              Add Subject Marks
+            </button>
+          </div>
         }
       />
 
@@ -302,9 +304,23 @@ export default function Marks() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {marks.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="px-6 py-8 text-center text-slate-500">
-                        No marks recorded for this semester. Click "Add Subject Marks" to begin.
-                      </td>
+                      <td colSpan="9" className="px-6 py-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center gap-4">
+                          <BookOpen className="h-10 w-10 opacity-20" />
+                          <p>No marks recorded for this semester.</p>
+                          <button
+                            onClick={() => {
+                              setEditingMark(null);
+                              setNewMark({ subjectName: "", subjectCode: "", credits: 3, midSem: 0, internals: 0, endSem: 0 });
+                              setShowSubjectModal(true);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl bg-brand/10 text-brand px-4 py-2 text-sm font-semibold hover:bg-brand/20 transition-all"
+                          >
+                            <Plus size={16} />
+                            Add Your First Marks
+                          </button>
+                        </div>
+                       </td>
                     </tr>
                   ) : (
                     marks.map((mark) => (

@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,16 @@ public class DashboardService {
         double attendancePct = workingDays > 0
                 ? Math.round((present * 100.0 / workingDays) * 100.0) / 100.0 : 0.0;
 
+        // Last Month Attendance
+        LocalDate lastMonthDate = LocalDate.now().minusMonths(1);
+        LocalDate startOfLastMonth = lastMonthDate.withDayOfMonth(1);
+        LocalDate endOfLastMonth = lastMonthDate.withDayOfMonth(lastMonthDate.lengthOfMonth());
+        List<AttendanceRecord> lastMonthRecords = attendanceRepository.findByUserAndDateBetweenOrderByDateAsc(user, startOfLastMonth, endOfLastMonth);
+        long lmPresent = lastMonthRecords.stream().filter(r -> r.getStatus() == AttendanceStatus.PRESENT).count();
+        long lmAbsent = lastMonthRecords.stream().filter(r -> r.getStatus() == AttendanceStatus.ABSENT).count();
+        long lmWorking = lmPresent + lmAbsent;
+        double lastMonthPct = lmWorking > 0 ? Math.round((lmPresent * 100.0 / lmWorking) * 100.0) / 100.0 : 0.0;
+
         // ── Fees ────────────────────────────────────────────────
         List<Fees> allFees = feesRepository.findByUser(user);
         double totalFees = allFees.stream()
@@ -66,6 +78,20 @@ public class DashboardService {
 
         double monthTotal = monthExpenses.stream().mapToDouble(Expense::getAmount).sum();
         double allTimeTotal = allExpenses.stream().mapToDouble(Expense::getAmount).sum();
+
+        // Historical Expenses (Last 6 Months)
+        List<DashboardResponse.ExpenseMonthlyRecord> history = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth targetMonth = YearMonth.now().minusMonths(i);
+            LocalDate start = targetMonth.atDay(1);
+            LocalDate end = targetMonth.atEndOfMonth();
+            double subtotal = expenseRepository.findByUserAndDateBetweenOrderByDateDescTimeDesc(user, start, end)
+                    .stream().mapToDouble(Expense::getAmount).sum();
+            history.add(DashboardResponse.ExpenseMonthlyRecord.builder()
+                    .month(targetMonth.getMonth().name().substring(0, 3))
+                    .amount(subtotal)
+                    .build());
+        }
 
         // ── Marks ───────────────────────────────────────────────
         List<Marks> allMarks = marksRepository.findByUser(user);
@@ -106,6 +132,7 @@ public class DashboardService {
         return DashboardResponse.builder()
                 .attendance(DashboardResponse.AttendanceSummary.builder()
                         .attendancePercentage(attendancePct)
+                        .lastMonthPercentage(lastMonthPct)
                         .presentDays(present)
                         .absentDays(absent)
                         .totalWorkingDays(workingDays)
@@ -126,6 +153,7 @@ public class DashboardService {
                         .totalSpentAllTime(Math.round(allTimeTotal * 100.0) / 100.0)
                         .currentMonth(now.getMonthValue())
                         .currentYear(now.getYear())
+                        .monthlyHistory(history)
                         .build())
                 .marks(DashboardResponse.MarksSummary.builder()
                         .cgpa(cgpa)

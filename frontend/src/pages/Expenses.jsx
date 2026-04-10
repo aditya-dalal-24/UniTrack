@@ -32,11 +32,11 @@ import {
 import { api } from "../services/api";
 
 const defaultCategories = [
-  { name: "Food & Beverages", icon: Coffee, chartColor: "#f59e0b" },
-  { name: "Transportation", icon: Bus, chartColor: "#10b981" },
-  { name: "Books & Stationery", icon: BookOpen, chartColor: "#6366f1" },
-  { name: "Shopping", icon: ShoppingBag, chartColor: "#f472b6" },
-  { name: "Entertainment", icon: MoreHorizontal, chartColor: "#a855f7" },
+  { id: -1, name: "Food & Beverages", icon: Coffee, chartColor: "#f59e0b" },
+  { id: -2, name: "Transportation", icon: Bus, chartColor: "#10b981" },
+  { id: -3, name: "Books & Stationery", icon: BookOpen, chartColor: "#6366f1" },
+  { id: -4, name: "Shopping", icon: ShoppingBag, chartColor: "#f472b6" },
+  { id: -5, name: "Entertainment", icon: MoreHorizontal, chartColor: "#a855f7" },
 ];
 
 export default function Expenses() {
@@ -99,7 +99,11 @@ export default function Expenses() {
 
   // Category breakdown for filtered expenses
   const categoryBreakdown = categories.map((cat) => {
-    const catExpenses = expenses.filter((exp) => exp.categoryName === cat.name);
+    const catExpenses = expenses.filter((exp) => {
+      // Match by ID first, fallback to name
+      if (cat.id && exp.categoryId) return exp.categoryId === cat.id;
+      return exp.categoryName === cat.name;
+    });
     const total = catExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
     const percentage = totalExpenses > 0 ? (total / totalExpenses) * 100 : 0;
     return { ...cat, total, percentage, chartColor: cat.chartColor || '#64748b' };
@@ -129,8 +133,25 @@ export default function Expenses() {
       return;
     }
 
+    let categoryId = parseInt(newExpense.category);
+
+    // If the category is a default fallback category (negative ID), we must create it in the backend first
+    if (categoryId < 0) {
+      const defaultCat = defaultCategories.find(c => c.id === categoryId);
+      if (defaultCat) {
+        const { data: newCat, error: catError } = await api.addExpenseCategory(defaultCat.name);
+        if (catError) {
+          alert("Failed to auto-create category: " + catError);
+          return;
+        }
+        if (newCat && newCat.id) {
+          categoryId = newCat.id;
+        }
+      }
+    }
+
     const { error: apiError } = await api.addExpense({
-      categoryId: parseInt(newExpense.category),
+      categoryId: categoryId,
       amount: parseFloat(newExpense.amount),
       note: newExpense.note,
       date: newExpense.date,
@@ -312,13 +333,13 @@ export default function Expenses() {
                     </button>
                   </div>
                   
-                  <div className="flex gap-3 mb-6">
+                  <div className="flex gap-4 mb-6">
                     <input
                       type="text"
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                       placeholder="New category name"
-                      className="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all dark:text-white"
+                      className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-950/60 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none dark:text-white shadow-inner"
                     />
                     <button
                       onClick={handleAddCategory}
@@ -384,7 +405,7 @@ export default function Expenses() {
                       <select
                         value={newExpense.category}
                         onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
-                        className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all dark:text-white"
+                        className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-950/60 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none dark:text-white shadow-inner"
                       >
                         <option value="">Select category</option>
                         {categories.map((cat) => (
@@ -407,7 +428,7 @@ export default function Expenses() {
                           value={newExpense.amount}
                           onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
                           placeholder="0.00"
-                          className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pl-9 pr-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-950/60 px-4 py-2.5 pl-8 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none dark:text-white shadow-inner"
                         />
                       </div>
                     </div>
@@ -421,7 +442,7 @@ export default function Expenses() {
                         type="date"
                         value={newExpense.date}
                         onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                        className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-950/60 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none dark:text-white shadow-inner"
                       />
                     </div>
 
@@ -434,8 +455,8 @@ export default function Expenses() {
                         type="text"
                         value={newExpense.note}
                         onChange={(e) => setNewExpense({ ...newExpense, note: e.target.value })}
-                        placeholder="What was this for?"
-                        className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                        placeholder="Optional note"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-950/60 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none dark:text-white shadow-inner"
                       />
                     </div>
                   </div>
@@ -569,7 +590,8 @@ export default function Expenses() {
                       </Pie>
                       <Tooltip 
                         formatter={(value) => `₹${value}`}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        contentStyle={{ backgroundColor: '#1e293b', color: '#f8fafc', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.5)' }}
+                        itemStyle={{ color: '#f8fafc' }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -638,29 +660,39 @@ export default function Expenses() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {expenses.sort((a,b) => new Date(b.expenseDate) - new Date(a.expenseDate)).map((exp, index) => (
+                      {expenses.sort((a,b) => {
+                        const dateA = a.date ? new Date(`${a.date}T${a.time || "00:00:00"}`) : new Date(0);
+                        const dateB = b.date ? new Date(`${b.date}T${b.time || "00:00:00"}`) : new Date(0);
+                        return dateB - dateA;
+                      }).map((exp, index) => {
+                        // Safe date parsing
+                        const expDate = exp.date ? new Date(`${exp.date}T${exp.time || "00:00:00"}`) : null;
+                        const isValidDate = expDate && !isNaN(expDate.getTime());
+                        return (
                         <tr
                           key={exp.id}
                           className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
                           <td className="px-6 py-4">
                             <div className="text-slate-900 dark:text-slate-100 font-medium">
-                              {new Date(exp.expenseDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              {isValidDate ? expDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
                             </div>
-                            <div className="text-xs text-slate-500">{new Date(exp.expenseDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                            <div className="text-xs text-slate-500">
+                              {isValidDate ? expDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                {getCategoryIcon(exp.categoryName)}
+                                {getCategoryIcon(exp.categoryName || categories.find(c => String(c.id) === String(exp.categoryId))?.name)}
                               </div>
                               <span className="font-medium text-slate-900 dark:text-slate-100">
-                                {exp.categoryName}
+                                {exp.categoryName || categories.find(c => String(c.id) === String(exp.categoryId))?.name || "Uncategorized"}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
-                            {exp.description || "-"}
+                            {exp.note || "-"}
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-slate-900 dark:text-slate-100">
                             ₹{exp.amount.toLocaleString()}
@@ -675,7 +707,8 @@ export default function Expenses() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

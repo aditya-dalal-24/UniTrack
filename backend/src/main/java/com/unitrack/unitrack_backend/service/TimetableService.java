@@ -1,8 +1,6 @@
 package com.unitrack.unitrack_backend.service;
 
-import com.unitrack.unitrack_backend.dto.request.SubjectRequest;
 import com.unitrack.unitrack_backend.dto.request.TimetableSlotRequest;
-import com.unitrack.unitrack_backend.dto.response.SubjectResponse;
 import com.unitrack.unitrack_backend.dto.response.TimetableSlotResponse;
 import com.unitrack.unitrack_backend.entity.Subject;
 import com.unitrack.unitrack_backend.entity.TimetableSlot;
@@ -32,15 +30,6 @@ public class TimetableService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 
-    private SubjectResponse mapSubject(Subject subject) {
-        return SubjectResponse.builder()
-                .id(subject.getId())
-                .name(subject.getName())
-                .courseCode(subject.getCourseCode())
-                .professor(subject.getProfessor())
-                .build();
-    }
-
     private TimetableSlotResponse mapSlot(TimetableSlot slot) {
         return TimetableSlotResponse.builder()
                 .id(slot.getId())
@@ -51,36 +40,8 @@ public class TimetableService {
                 .courseCode(slot.getCourseCode())
                 .professor(slot.getProfessor())
                 .roomNumber(slot.getRoomNumber())
+                .subjectId(slot.getSubject() != null ? slot.getSubject().getId() : null)
                 .build();
-    }
-
-    // Subject methods
-    public List<SubjectResponse> getSubjects(Principal principal) {
-        User user = getUser(principal);
-        return subjectRepository.findByUser(user)
-                .stream().map(this::mapSubject).collect(Collectors.toList());
-    }
-
-    public SubjectResponse addSubject(Principal principal, SubjectRequest request) {
-        User user = getUser(principal);
-        Subject subject = Subject.builder()
-                .user(user)
-                .name(request.getName())
-                .courseCode(request.getCourseCode())
-                .professor(request.getProfessor())
-                .build();
-        subjectRepository.save(subject);
-        return mapSubject(subject);
-    }
-
-    public void deleteSubject(Principal principal, Long id) {
-        User user = getUser(principal);
-        Subject subject = subjectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
-        if (!subject.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
-        }
-        subjectRepository.delete(subject);
     }
 
     // Timetable slot methods
@@ -102,6 +63,13 @@ public class TimetableService {
                 .professor(request.getProfessor())
                 .roomNumber(request.getRoomNumber())
                 .build();
+
+        if (request.getSubjectId() != null) {
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+            slot.setSubject(subject);
+        }
+
         timetableRepository.save(slot);
         return mapSlot(slot);
     }
@@ -120,6 +88,15 @@ public class TimetableService {
         slot.setCourseCode(request.getCourseCode());
         slot.setProfessor(request.getProfessor());
         slot.setRoomNumber(request.getRoomNumber());
+
+        if (request.getSubjectId() != null) {
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+            slot.setSubject(subject);
+        } else {
+            slot.setSubject(null);
+        }
+
         timetableRepository.save(slot);
         return mapSlot(slot);
     }

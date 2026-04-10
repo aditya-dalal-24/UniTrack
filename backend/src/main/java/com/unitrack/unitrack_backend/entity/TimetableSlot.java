@@ -32,4 +32,8 @@ public class TimetableSlot {
     private String courseCode;
     private String professor;
     private String roomNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private Subject subject;
 }

@@ -34,3 +34,20 @@ body,
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-400 dark:bg-slate-600;
 }
+
+/* Form Styles */
+@layer base {
+  select, input[type="date"], input[type="time"], textarea {
+    @apply focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none;
+  }
+  
+  select option {
+    @apply bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100;
+  }
+
+  /* Consistent modern inputs */
+  input, select, textarea {
+    @apply text-slate-900 dark:text-slate-100;
+  }
+}
+

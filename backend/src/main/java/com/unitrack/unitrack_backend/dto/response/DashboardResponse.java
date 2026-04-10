@@ -1,6 +1,7 @@
 package com.unitrack.unitrack_backend.dto.response;
 
 import lombok.*;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,6 +21,7 @@ public class DashboardResponse {
     @NoArgsConstructor
     public static class AttendanceSummary {
         private double attendancePercentage;
+        private double lastMonthPercentage;
         private long presentDays;
         private long absentDays;
         private long totalWorkingDays;
@@ -55,6 +57,16 @@ public class DashboardResponse {
         private double totalSpentAllTime;
         private int currentMonth;
         private int currentYear;
+        private List<ExpenseMonthlyRecord> monthlyHistory;
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ExpenseMonthlyRecord {
+        private String month;
+        private double amount;
     }
 
     @Data

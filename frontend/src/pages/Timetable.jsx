@@ -15,7 +15,7 @@ import { api } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const defaultTimeSlots = [
   { id: 1, start: "09:00", end: "10:00" },
@@ -59,21 +59,38 @@ export default function Timetable() {
     if (slotError) {
       setError(slotError);
     } else if (slotData) {
+      // Sort slots by time
+      const sortedSlots = [...slotData].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      
       const timetableObj = {};
-      slotData.forEach(slot => {
-        // Match slot to time slot id by start time
-        const matchingSlot = defaultTimeSlots.find(ts => ts.start === slot.startTime);
-        const slotId = matchingSlot?.id || slot.startTime;
-        const key = `${slot.dayOfWeek}-${slotId}`;
+      sortedSlots.forEach(slot => {
+        const key = `${slot.dayOfWeek}-${slot.startTime}`;
         timetableObj[key] = {
           backendId: slot.id,
           subject: slot.subjectName,
+          subjectId: slot.subjectId,
           professor: slot.professor,
           courseCode: slot.courseCode,
           room: slot.roomNumber,
+          startTime: slot.startTime,
+          endTime: slot.endTime
         };
       });
       setTimetable(timetableObj);
+
+      // Extract unique time slots from current timetable to supplement default ones
+      const uniqueTimes = [];
+      const seen = new Set();
+      
+      [...defaultTimeSlots, ...slotData.map(s => ({ start: s.startTime, end: s.endTime }))].forEach(ts => {
+        const key = `${ts.start}-${ts.end}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueTimes.push({ id: key, start: ts.start, end: ts.end });
+        }
+      });
+      
+      setTimeSlots(uniqueTimes.sort((a, b) => a.start.localeCompare(b.start)));
     }
     setLoading(false);
   };
@@ -97,75 +114,106 @@ export default function Timetable() {
 
   const [newTimeSlot, setNewTimeSlot] = useState({ start: "", end: "" });
 
-  const addSubject = () => {
+  const addSubject = async () => {
     if (!newSubject.name) {
       alert("Please enter subject name");
       return;
     }
-    setSubjects([...subjects, { id: Date.now(), ...newSubject }]);
+    const { data, error: subError } = await api.addSubject({
+      name: newSubject.name,
+      courseCode: "",
+      professor: ""
+    });
+
+    if (subError) {
+      alert(subError);
+      return;
+    }
+
+    if (data) {
+      const colors = ["#6366f1", "#f472b6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+      setSubjects([...subjects, { 
+        ...data, 
+        color: colors[subjects.length % colors.length] 
+      }]);
+    }
     setNewSubject({ name: "", color: "#6366f1" });
     setShowAddSubject(false);
   };
 
-  const deleteSubject = (id) => {
-    // Find the subject name BEFORE removing it from the array
-    const subjectToDelete = subjects.find((s) => s.id === id);
-    const subjectName = subjectToDelete?.name;
-    
-    // Remove the subject
-    setSubjects(subjects.filter((s) => s.id !== id));
-    
-    // Remove classes with this subject
-    if (subjectName) {
-      const newTimetable = { ...timetable };
-      Object.keys(newTimetable).forEach((key) => {
-        if (newTimetable[key].subject === subjectName) {
-          delete newTimetable[key];
-        }
-      });
-      setTimetable(newTimetable);
+  const deleteSubject = async (id) => {
+    if (!confirm("Are you sure? This will delete the subject everywhere.")) return;
+    const { error: delError } = await api.deleteSubject(id);
+    if (delError) {
+      alert(delError);
+      return;
     }
+    setSubjects(subjects.filter((s) => s.id !== id));
+    fetchAll(); // Refresh to clear links
   };
 
-  const openAddClass = (day, slotId) => {
-    setSelectedSlot({ day, slotId });
-    const existing = timetable[`${day}-${slotId}`];
+  const openAddClass = (day, slot) => {
+    setSelectedSlot({ day, slot });
+    const existing = timetable[`${day}-${slot.start}`];
     if (existing) {
-      setNewClass(existing);
+      setNewClass({
+        subjectId: existing.subjectId || "",
+        subject: existing.subject || "",
+        professor: existing.professor || "",
+        courseCode: existing.courseCode || "",
+        room: existing.room || "",
+        backendId: existing.backendId
+      });
     } else {
       setNewClass({
+        subjectId: "",
         subject: "",
         professor: "",
         courseCode: "",
-        courseName: "",
         room: "",
       });
     }
     setShowAddClass(true);
   };
 
-  const saveClass = () => {
-    if (!newClass.subject || !newClass.professor || !newClass.courseCode) {
-      alert("Please fill in required fields (Subject, Professor, Course Code)");
+  const saveClass = async () => {
+    if (!newClass.subjectId) {
+      alert("Please select a subject");
       return;
     }
 
-    const key = `${selectedSlot.day}-${selectedSlot.slotId}`;
-    setTimetable({ ...timetable, [key]: { ...newClass } });
-    setShowAddClass(false);
-    setNewClass({
-      subject: "",
-      professor: "",
-      courseCode: "",
-      courseName: "",
-      room: "",
-    });
+    const payload = {
+      dayOfWeek: selectedSlot.day,
+      startTime: selectedSlot.slot.start,
+      endTime: selectedSlot.slot.end,
+      subjectId: newClass.subjectId,
+      professor: newClass.professor,
+      courseCode: newClass.courseCode,
+      roomNumber: newClass.room
+    };
+
+    let result;
+    if (newClass.backendId) {
+      result = await api.updateTimetableSlot(newClass.backendId, payload);
+    } else {
+      result = await api.addTimetableSlot(payload);
+    }
+
+    if (result.error) {
+      alert(result.error);
+    } else {
+      fetchAll();
+      setShowAddClass(false);
+    }
   };
 
-  const deleteClass = (day, slotId) => {
-    const newTimetable = { ...timetable };
-    delete newTimetable[`${day}-${slotId}`];
-    setTimetable(newTimetable);
+  const deleteClass = async (day, slotStart) => {
+    const existing = timetable[`${day}-${slotStart}`];
+    if (existing?.backendId && confirm("Delete this slot?")) {
+      const { error } = await api.deleteTimetableSlot(existing.backendId);
+      if (error) alert(error);
+      else fetchAll();
+    }
   };
 
   const addTimeSlot = () => {
@@ -173,7 +221,9 @@ export default function Timetable() {
       alert("Please enter start and end time");
       return;
     }
-    setTimeSlots([...timeSlots, { id: Date.now(), ...newTimeSlot }]);
+    const updated = [...timeSlots, { id: Date.now(), ...newTimeSlot }]
+      .sort((a, b) => a.start.localeCompare(b.start));
+    setTimeSlots(updated);
     setNewTimeSlot({ start: "", end: "" });
   };
 
@@ -409,36 +459,36 @@ export default function Timetable() {
                     {day}
                   </td>
                   {timeSlots.map((slot) => {
-                    const classData = timetable[`${day}-${slot.id}`];
+                    const classData = timetable[`${day}-${slot.start}`];
                     return (
                       <td key={slot.id} className="px-2 py-2">
                         {classData ? (
                           <div
-                            className="p-3 rounded-lg cursor-pointer group relative"
+                            className="p-3 rounded-lg cursor-pointer group relative min-h-[100px]"
                             style={{
                               backgroundColor: `${getSubjectColor(classData.subject)}20`,
                               borderLeft: `3px solid ${getSubjectColor(classData.subject)}`,
                             }}
-                            onClick={() => openAddClass(day, slot.id)}
+                            onClick={() => openAddClass(day, slot)}
                           >
-                            <div className="text-xs font-bold mb-1" style={{ color: getSubjectColor(classData.subject) }}>
+                            <div className="text-[10px] font-bold mb-1 opacity-70" style={{ color: getSubjectColor(classData.subject) }}>
                               {classData.courseCode}
                             </div>
-                            <div className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 mb-1">
                               {classData.subject}
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <div className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
                               {classData.professor}
                             </div>
                             {classData.room && (
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Room: {classData.room}
+                              <div className="text-[10px] text-slate-500 dark:text-slate-500 mt-1 italic">
+                                Rm: {classData.room}
                               </div>
                             )}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteClass(day, slot.id);
+                                deleteClass(day, slot.start);
                               }}
                               className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-all"
                             >
@@ -447,10 +497,10 @@ export default function Timetable() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => openAddClass(day, slot.id)}
-                            className="w-full h-full min-h-[80px] rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand hover:bg-brand/5 transition-all flex items-center justify-center group"
+                            onClick={() => openAddClass(day, slot)}
+                            className="w-full h-full min-h-[100px] rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-brand hover:bg-brand/5 transition-all flex items-center justify-center group"
                           >
-                            <Plus className="h-5 w-5 text-slate-400 group-hover:text-brand transition-colors" />
+                            <Plus className="h-5 w-5 text-slate-300 group-hover:text-brand transition-colors" />
                           </button>
                         )}
                       </td>
@@ -490,13 +540,22 @@ export default function Timetable() {
                       Subject *
                     </label>
                     <select
-                      value={newClass.subject}
-                      onChange={(e) => setNewClass({ ...newClass, subject: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                      value={newClass.subjectId}
+                      onChange={(e) => {
+                        const sub = subjects.find(s => String(s.id) === e.target.value);
+                        setNewClass({ 
+                          ...newClass, 
+                          subjectId: e.target.value,
+                          subject: sub ? sub.name : "",
+                          courseCode: sub ? sub.courseCode || newClass.courseCode : newClass.courseCode,
+                          professor: sub ? sub.professor || newClass.professor : newClass.professor
+                        });
+                      }}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-brand outline-none"
                     >
                       <option value="">Select Subject</option>
                       {subjects.map((subject) => (
-                        <option key={subject.id} value={subject.name}>
+                        <option key={subject.id} value={subject.id}>
                           {subject.name}
                         </option>
                       ))}
@@ -512,7 +571,7 @@ export default function Timetable() {
                       value={newClass.courseCode}
                       onChange={(e) => setNewClass({ ...newClass, courseCode: e.target.value })}
                       placeholder="e.g., CS301"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand"
                     />
                   </div>
 
@@ -525,7 +584,7 @@ export default function Timetable() {
                       value={newClass.courseName}
                       onChange={(e) => setNewClass({ ...newClass, courseName: e.target.value })}
                       placeholder="e.g., Advanced Data Structures"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand"
                     />
                   </div>
 
@@ -538,7 +597,7 @@ export default function Timetable() {
                       value={newClass.professor}
                       onChange={(e) => setNewClass({ ...newClass, professor: e.target.value })}
                       placeholder="e.g., Dr. Smith"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand"
                     />
                   </div>
 
@@ -551,7 +610,7 @@ export default function Timetable() {
                       value={newClass.room}
                       onChange={(e) => setNewClass({ ...newClass, room: e.target.value })}
                       placeholder="e.g., A-101"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand"
                     />
                   </div>
                 </div>

@@ -30,6 +30,7 @@ public class User {
     private String college;
     private String course;
     private Integer semester;
+    private String rollNumber;
     private LocalDate dob;
     @Column(name = "email_verified", nullable = false, columnDefinition = "boolean default false")
     private boolean emailVerified = false;

@@ -14,5 +14,7 @@ public class AttendanceRequest {
     @NotNull(message = "Status is required")
     private AttendanceStatus status;
 
+    private Long subjectId;
+
     private String note;
 }

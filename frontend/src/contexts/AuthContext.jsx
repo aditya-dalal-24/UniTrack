@@ -52,9 +52,7 @@ export function AuthProvider({ children }) {
   const login = useCallback((authResponse, extraData = {}) => {
     setAuthToken(authResponse.token);
     setUserData({
-      name: authResponse.name,
-      email: authResponse.email,
-      userId: authResponse.userId,
+      ...authResponse,
       ...extraData,
     });
   }, []);

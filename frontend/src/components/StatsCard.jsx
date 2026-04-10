@@ -10,6 +10,21 @@ export default function StatsCard({
   color,
   description,
 }) {
+  const getColorClasses = (color) => {
+    switch (color) {
+      case "brand": return "bg-brand-50 text-brand-600 dark:bg-brand-900/20 dark:text-brand-300";
+      case "emerald":
+      case "green": return "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400";
+      case "red":
+      case "rose": return "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400";
+      case "amber":
+      case "yellow": return "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400";
+      case "accent":
+      case "pink": return "bg-accent-50 text-accent-600 dark:bg-accent-900/20 dark:text-accent-400";
+      default: return "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+    }
+  };
+
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -34,8 +49,8 @@ export default function StatsCard({
         </div>
         <div
           className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800",
-            color && `bg-${color}-50 text-${color}-600 dark:bg-${color}-900/20 dark:text-${color}-400`
+            "flex h-12 w-12 items-center justify-center rounded-xl",
+            getColorClasses(color)
           )}
         >
           {Icon && <Icon className="h-6 w-6" />}

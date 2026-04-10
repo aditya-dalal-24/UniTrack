@@ -15,4 +15,5 @@ public class TimetableSlotResponse {
     private String courseCode;
     private String professor;
     private String roomNumber;
+    private Long subjectId;
 }

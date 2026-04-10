@@ -19,4 +19,5 @@ public class TimetableSlotRequest {
     private String courseCode;
     private String professor;
     private String roomNumber;
+    private Long subjectId;
 }
