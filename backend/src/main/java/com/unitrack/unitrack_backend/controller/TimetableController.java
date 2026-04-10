@@ -1,0 +1,65 @@
+package com.unitrack.unitrack_backend.controller;
+
+import com.unitrack.unitrack_backend.dto.request.SubjectRequest;
+import com.unitrack.unitrack_backend.dto.request.TimetableSlotRequest;
+import com.unitrack.unitrack_backend.dto.response.SubjectResponse;
+import com.unitrack.unitrack_backend.dto.response.TimetableSlotResponse;
+import com.unitrack.unitrack_backend.service.TimetableService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/timetable")
+@RequiredArgsConstructor
+public class TimetableController {
+
+    private final TimetableService timetableService;
+
+    // Subject endpoints
+    @GetMapping("/subjects")
+    public ResponseEntity<List<SubjectResponse>> getSubjects(Principal principal) {
+        return ResponseEntity.ok(timetableService.getSubjects(principal));
+    }
+
+    @PostMapping("/subjects")
+    public ResponseEntity<SubjectResponse> addSubject(Principal principal,
+                                                      @Valid @RequestBody SubjectRequest request) {
+        return ResponseEntity.ok(timetableService.addSubject(principal, request));
+    }
+
+    @DeleteMapping("/subjects/{id}")
+    public ResponseEntity<Void> deleteSubject(Principal principal, @PathVariable Long id) {
+        timetableService.deleteSubject(principal, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Slot endpoints
+    @GetMapping
+    public ResponseEntity<List<TimetableSlotResponse>> getSlots(Principal principal) {
+        return ResponseEntity.ok(timetableService.getSlots(principal));
+    }
+
+    @PostMapping
+    public ResponseEntity<TimetableSlotResponse> addSlot(Principal principal,
+                                                         @Valid @RequestBody TimetableSlotRequest request) {
+        return ResponseEntity.ok(timetableService.addSlot(principal, request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TimetableSlotResponse> updateSlot(Principal principal,
+                                                            @PathVariable Long id,
+                                                            @Valid @RequestBody TimetableSlotRequest request) {
+        return ResponseEntity.ok(timetableService.updateSlot(principal, id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSlot(Principal principal, @PathVariable Long id) {
+        timetableService.deleteSlot(principal, id);
+        return ResponseEntity.noContent().build();
+    }
+}

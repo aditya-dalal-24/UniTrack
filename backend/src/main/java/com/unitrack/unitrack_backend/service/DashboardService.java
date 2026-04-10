@@ -1,0 +1,143 @@
+package com.unitrack.unitrack_backend.service;
+
+import com.unitrack.unitrack_backend.dto.response.DashboardResponse;
+import com.unitrack.unitrack_backend.entity.*;
+import com.unitrack.unitrack_backend.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.security.Principal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class DashboardService {
+
+    private final UserRepository userRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final FeesRepository feesRepository;
+    private final AssignmentRepository assignmentRepository;
+    private final ExpenseRepository expenseRepository;
+    private final MarksRepository marksRepository;
+    private final TodoRepository todoRepository;
+
+    private User getUser(Principal principal) {
+        return userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
+    public DashboardResponse getDashboard(Principal principal) {
+        User user = getUser(principal);
+
+        // ── Attendance ──────────────────────────────────────────
+        long present = attendanceRepository.countByUserAndStatus(user, AttendanceStatus.PRESENT);
+        long absent = attendanceRepository.countByUserAndStatus(user, AttendanceStatus.ABSENT);
+        long workingDays = present + absent;
+        double attendancePct = workingDays > 0
+                ? Math.round((present * 100.0 / workingDays) * 100.0) / 100.0 : 0.0;
+
+        // ── Fees ────────────────────────────────────────────────
+        List<Fees> allFees = feesRepository.findByUser(user);
+        double totalFees = allFees.stream()
+                .mapToDouble(f -> f.getTotalAmount() != null ? f.getTotalAmount() : 0.0).sum();
+        double totalPaid = allFees.stream()
+                .mapToDouble(f -> f.getPaidAmount() != null ? f.getPaidAmount() : 0.0).sum();
+
+        // ── Assignments ─────────────────────────────────────────
+        List<Assignment> assignments = assignmentRepository.findByUserOrderByDueDateAsc(user);
+        long pending = assignments.stream()
+                .filter(a -> a.getStatus() == AssignmentStatus.PENDING).count();
+        long submitted = assignments.stream()
+                .filter(a -> a.getStatus() == AssignmentStatus.SUBMITTED).count();
+        long overdue = assignments.stream()
+                .filter(a -> a.getStatus() == AssignmentStatus.OVERDUE).count();
+
+        // ── Expenses ────────────────────────────────────────────
+        LocalDate now = LocalDate.now();
+        LocalDate startOfMonth = now.withDayOfMonth(1);
+        LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
+
+        List<Expense> monthExpenses = expenseRepository
+                .findByUserAndDateBetweenOrderByDateDescTimeDesc(user, startOfMonth, endOfMonth);
+        List<Expense> allExpenses = expenseRepository.findByUserOrderByDateDescTimeDesc(user);
+
+        double monthTotal = monthExpenses.stream().mapToDouble(Expense::getAmount).sum();
+        double allTimeTotal = allExpenses.stream().mapToDouble(Expense::getAmount).sum();
+
+        // ── Marks ───────────────────────────────────────────────
+        List<Marks> allMarks = marksRepository.findByUser(user);
+        List<Marks> validMarks = allMarks.stream()
+                .filter(m -> m.getGradePoints() != null && m.getCredits() != null)
+                .collect(Collectors.toList());
+
+        double totalPoints = validMarks.stream()
+                .mapToDouble(m -> m.getGradePoints() * m.getCredits()).sum();
+        double totalCredits = validMarks.stream()
+                .mapToDouble(Marks::getCredits).sum();
+        double cgpa = totalCredits > 0
+                ? Math.round((totalPoints / totalCredits) * 100.0) / 100.0 : 0.0;
+
+        int currentSemester = allMarks.stream()
+                .filter(m -> m.getSemester() != null)
+                .mapToInt(Marks::getSemester)
+                .max().orElse(0);
+
+        List<Marks> currentSemMarks = allMarks.stream()
+                .filter(m -> m.getSemester() != null && m.getSemester() == currentSemester)
+                .filter(m -> m.getGradePoints() != null && m.getCredits() != null)
+                .collect(Collectors.toList());
+
+        double semPoints = currentSemMarks.stream()
+                .mapToDouble(m -> m.getGradePoints() * m.getCredits()).sum();
+        double semCredits = currentSemMarks.stream()
+                .mapToDouble(Marks::getCredits).sum();
+        double sgpa = semCredits > 0
+                ? Math.round((semPoints / semCredits) * 100.0) / 100.0 : 0.0;
+
+        // ── Todos ───────────────────────────────────────────────
+        List<Todo> allTodos = todoRepository.findByUserOrderByDueDateAsc(user);
+        long completedTodos = allTodos.stream().filter(Todo::isCompleted).count();
+        long pendingTodos = allTodos.size() - completedTodos;
+
+        // ── Build Response ──────────────────────────────────────
+        return DashboardResponse.builder()
+                .attendance(DashboardResponse.AttendanceSummary.builder()
+                        .attendancePercentage(attendancePct)
+                        .presentDays(present)
+                        .absentDays(absent)
+                        .totalWorkingDays(workingDays)
+                        .build())
+                .fees(DashboardResponse.FeesSummary.builder()
+                        .totalFees(Math.round(totalFees * 100.0) / 100.0)
+                        .totalPaid(Math.round(totalPaid * 100.0) / 100.0)
+                        .totalPending(Math.round((totalFees - totalPaid) * 100.0) / 100.0)
+                        .build())
+                .assignments(DashboardResponse.AssignmentsSummary.builder()
+                        .totalAssignments(assignments.size())
+                        .pendingAssignments(pending)
+                        .submittedAssignments(submitted)
+                        .overdueAssignments(overdue)
+                        .build())
+                .expenses(DashboardResponse.ExpensesSummary.builder()
+                        .totalSpentThisMonth(Math.round(monthTotal * 100.0) / 100.0)
+                        .totalSpentAllTime(Math.round(allTimeTotal * 100.0) / 100.0)
+                        .currentMonth(now.getMonthValue())
+                        .currentYear(now.getYear())
+                        .build())
+                .marks(DashboardResponse.MarksSummary.builder()
+                        .cgpa(cgpa)
+                        .currentSgpa(sgpa)
+                        .totalSubjects(allMarks.size())
+                        .currentSemester(currentSemester)
+                        .build())
+                .todos(DashboardResponse.TodosSummary.builder()
+                        .totalTodos(allTodos.size())
+                        .pendingTodos(pendingTodos)
+                        .completedTodos(completedTodos)
+                        .build())
+                .build();
+    }
+}
