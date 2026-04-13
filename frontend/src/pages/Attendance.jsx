@@ -452,7 +452,9 @@ export default function Attendance() {
               {dates.map((d) => {
                 const calStatus = getCalendarStatus(d.iso);
                 const isHol = isHoliday(d.full);
+                const holidayName = getHolidayName(d.full);
                 const hasExam = isExam(d.full);
+                const exam = getExam(d.full);
                 const isSelectedInCal = d.iso === selectedIso;
                 const activeHoverState = isHol || d.isWeekend ? '' : 'hover:border-brand/40 hover:bg-slate-50 dark:hover:bg-slate-800/50';
                 
@@ -471,6 +473,7 @@ export default function Attendance() {
                       : calStatus === 'partial' ? 'bg-brand/10 border-brand/20 text-brand'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}
                     `}
+                    title={isHol ? `Holiday: ${holidayName}` : hasExam ? `Exam: ${exam.subject} (${exam.startTime} - ${exam.endTime})` : ""}
                   >
                     <span className="font-semibold">{d.label}</span>
                     <div className="flex gap-0.5 absolute bottom-2">
