@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/attendance")
@@ -32,6 +33,12 @@ public class AttendanceController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecord(Principal principal, @PathVariable Long id) {
         attendanceService.deleteRecord(principal, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/date/{date}")
+    public ResponseEntity<Void> deleteByDate(Principal principal, @PathVariable String date) {
+        attendanceService.deleteByDate(principal, LocalDate.parse(date));
         return ResponseEntity.noContent().build();
     }
 }

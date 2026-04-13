@@ -16,8 +16,10 @@ import org.springframework.stereotype.Service;
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class TimetableService {
 
@@ -31,12 +33,18 @@ public class TimetableService {
     }
 
     private TimetableSlotResponse mapSlot(TimetableSlot slot) {
+        // Prefer subjectName column; fall back to linked Subject entity's name
+        String resolvedName = slot.getSubjectName();
+        if ((resolvedName == null || resolvedName.isBlank()) && slot.getSubject() != null) {
+            resolvedName = slot.getSubject().getName();
+        }
+
         return TimetableSlotResponse.builder()
                 .id(slot.getId())
                 .dayOfWeek(slot.getDayOfWeek())
                 .startTime(slot.getStartTime())
                 .endTime(slot.getEndTime())
-                .subjectName(slot.getSubjectName())
+                .subjectName(resolvedName)
                 .courseCode(slot.getCourseCode())
                 .professor(slot.getProfessor())
                 .roomNumber(slot.getRoomNumber())
@@ -68,6 +76,10 @@ public class TimetableService {
             Subject subject = subjectRepository.findById(request.getSubjectId())
                     .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
             slot.setSubject(subject);
+            // Auto-populate subjectName from linked Subject if not provided
+            if (slot.getSubjectName() == null || slot.getSubjectName().isBlank()) {
+                slot.setSubjectName(subject.getName());
+            }
         }
 
         timetableRepository.save(slot);
@@ -93,6 +105,10 @@ public class TimetableService {
             Subject subject = subjectRepository.findById(request.getSubjectId())
                     .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
             slot.setSubject(subject);
+            // Auto-populate subjectName from linked Subject if not provided
+            if (slot.getSubjectName() == null || slot.getSubjectName().isBlank()) {
+                slot.setSubjectName(subject.getName());
+            }
         } else {
             slot.setSubject(null);
         }

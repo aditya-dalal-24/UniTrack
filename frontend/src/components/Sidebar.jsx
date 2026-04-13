@@ -72,8 +72,8 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               `relative flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 z-10 
               ${
                 isActive
-                  ? "text-brand dark:text-brand-300"
-                  : "text-slate-600 dark:text-slate-300 hover:text-brand dark:hover:text-brand-300"
+                  ? "text-slate-900 dark:text-white"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
               }`
             }
             title={collapsed ? label : undefined}
@@ -83,7 +83,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                 {isActive && (
                   <motion.div
                     layoutId="activeSidebarLink"
-                    className="absolute inset-0 rounded-xl bg-brand/10 dark:bg-brand/20 -z-10"
+                    className="absolute inset-0 rounded-xl bg-slate-100 dark:bg-slate-800/80 -z-10"
                     transition={{
                       type: "spring",
                       stiffness: 300,

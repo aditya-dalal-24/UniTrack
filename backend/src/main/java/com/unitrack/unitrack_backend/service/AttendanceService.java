@@ -19,8 +19,11 @@ import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
@@ -68,21 +71,25 @@ public class AttendanceService {
     public AttendanceResponse addRecord(Principal principal, AttendanceRequest request) {
         User user = getUser(principal);
 
-        // If record already exists for this date, update it
-        AttendanceRecord record = attendanceRepository.findByUserAndDate(user, request.getDate())
-                .orElse(AttendanceRecord.builder().user(user).build());
+        AttendanceRecord record;
+
+        if (request.getSubjectId() != null) {
+            // Lecture-wise: find by user + date + subject
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+            record = attendanceRepository.findByUserAndDateAndSubject(user, request.getDate(), subject)
+                    .orElse(AttendanceRecord.builder().user(user).subject(subject).build());
+            record.setSubject(subject);
+        } else {
+            // General (no subject): find by user + date + null subject
+            record = attendanceRepository.findByUserAndDateAndSubjectIsNull(user, request.getDate())
+                    .orElse(AttendanceRecord.builder().user(user).build());
+            record.setSubject(null);
+        }
 
         record.setDate(request.getDate());
         record.setStatus(request.getStatus());
         record.setNote(request.getNote());
-
-        if (request.getSubjectId() != null) {
-            Subject subject = subjectRepository.findById(request.getSubjectId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
-            record.setSubject(subject);
-        } else {
-            record.setSubject(null);
-        }
 
         attendanceRepository.save(record);
         return mapToResponse(record);
@@ -97,5 +104,10 @@ public class AttendanceService {
             throw new RuntimeException("Unauthorized");
         }
         attendanceRepository.delete(record);
+    }
+
+    public void deleteByDate(Principal principal, java.time.LocalDate date) {
+        User user = getUser(principal);
+        attendanceRepository.deleteByUserAndDate(user, date);
     }
 }

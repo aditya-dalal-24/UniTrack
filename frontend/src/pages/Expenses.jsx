@@ -32,11 +32,11 @@ import {
 import { api } from "../services/api";
 
 const defaultCategories = [
-  { id: -1, name: "Food & Beverages", icon: Coffee, chartColor: "#f59e0b" },
-  { id: -2, name: "Transportation", icon: Bus, chartColor: "#10b981" },
-  { id: -3, name: "Books & Stationery", icon: BookOpen, chartColor: "#6366f1" },
-  { id: -4, name: "Shopping", icon: ShoppingBag, chartColor: "#f472b6" },
-  { id: -5, name: "Entertainment", icon: MoreHorizontal, chartColor: "#a855f7" },
+  { id: -1, name: "Food & Beverages", icon: Coffee, chartColor: "#64748b" },
+  { id: -2, name: "Transportation", icon: Bus, chartColor: "#475569" },
+  { id: -3, name: "Books & Stationery", icon: BookOpen, chartColor: "#334155" },
+  { id: -4, name: "Shopping", icon: ShoppingBag, chartColor: "#1e293b" },
+  { id: -5, name: "Entertainment", icon: MoreHorizontal, chartColor: "#0f172a" },
 ];
 
 export default function Expenses() {
@@ -268,14 +268,14 @@ export default function Expenses() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowAddCategory(!showAddCategory)}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-slate-700 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2.5 text-sm font-semibold hover:bg-slate-300 dark:hover:bg-slate-700 transition-all active:scale-95"
             >
               <Tag className="h-4 w-4" />
               Categories
             </button>
             <button
               onClick={() => setShowAddExpense(!showAddExpense)}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-black dark:hover:bg-white transition-all active:scale-95"
             >
               <Plus className="h-4 w-4" />
               Add Expense
@@ -364,7 +364,7 @@ export default function Expenses() {
                         {cat.id && (
                           <button
                             onClick={() => handleDeleteCategory(cat.id)}
-                            className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ml-2"
+                            className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 dark:hover:text-white rounded-lg transition-colors ml-2"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -507,7 +507,7 @@ export default function Expenses() {
               className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <div>
@@ -526,7 +526,7 @@ export default function Expenses() {
               className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <div>
@@ -545,7 +545,7 @@ export default function Expenses() {
               className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <div>
@@ -590,8 +590,8 @@ export default function Expenses() {
                       </Pie>
                       <Tooltip 
                         formatter={(value) => `₹${value}`}
-                        contentStyle={{ backgroundColor: '#1e293b', color: '#f8fafc', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.5)' }}
-                        itemStyle={{ color: '#f8fafc' }}
+                        contentStyle={{ backgroundColor: '#1a1a1a', color: '#ffffff', borderRadius: '12px', border: '1px solid #333333', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.5)' }}
+                        itemStyle={{ color: '#ffffff' }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -641,7 +641,7 @@ export default function Expenses() {
                   <p className="text-slate-500 dark:text-slate-400">No expenses recorded for this month</p>
                   <button
                     onClick={() => setShowAddExpense(true)}
-                    className="mt-4 inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                    className="mt-4 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 font-medium"
                   >
                     <Plus className="h-4 w-4" />
                     Add your first expense
@@ -700,7 +700,7 @@ export default function Expenses() {
                           <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
-                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors inline-block"
+                              className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 dark:hover:text-white rounded-lg transition-colors inline-block"
                               title="Delete expense"
                             >
                               <Trash2 className="h-4 w-4" />

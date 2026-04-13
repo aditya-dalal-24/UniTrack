@@ -56,21 +56,7 @@ export default function Topbar() {
             </div>
           </div>
 
-          {/* Contact Info - Hidden on mobile */}
-          <div className="hidden lg:flex items-center gap-6">
-            {activeStudent.email && (
-              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                <Mail className="h-3.5 w-3.5 text-brand" />
-                {activeStudent.email}
-              </div>
-            )}
-            {activeStudent.phone && (
-              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                <Phone className="h-3.5 w-3.5 text-brand" />
-                {activeStudent.phone}
-              </div>
-            )}
-          </div>
+
 
           {/* Dark Mode Toggle */}
           <button

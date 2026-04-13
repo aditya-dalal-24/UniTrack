@@ -187,6 +187,7 @@ export default function Timetable() {
       startTime: selectedSlot.slot.start,
       endTime: selectedSlot.slot.end,
       subjectId: newClass.subjectId,
+      subjectName: newClass.subject,
       professor: newClass.professor,
       courseCode: newClass.courseCode,
       roomNumber: newClass.room

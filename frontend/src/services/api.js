@@ -123,6 +123,9 @@ export const api = {
   deleteAttendance: (id) =>
     request('delete', `/attendance/${id}`),
 
+  deleteAttendanceByDate: (date) =>
+    request('delete', `/attendance/date/${date}`),
+
   // ==================== ASSIGNMENTS ====================
   getAssignments: () =>
     request('get', '/assignments'),

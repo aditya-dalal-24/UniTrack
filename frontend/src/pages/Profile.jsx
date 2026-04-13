@@ -152,7 +152,7 @@ export default function Profile() {
             </button>
             <button
               onClick={handleSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-slate-900 dark:hover:bg-slate-100 transition-all active:scale-95"
             >
               <Save className="h-4 w-4" />
               Save Changes
@@ -426,45 +426,45 @@ export default function Profile() {
       </div>
 
       {/* Emergency Contact */}
-      <div className="rounded-2xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 p-6">
-        <h2 className="text-xl font-bold text-red-900 dark:text-red-400 mb-4">
+      <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/10 border border-slate-200 dark:border-slate-800 p-6">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">
           Emergency Contact
         </h2>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
-              <User className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <User className="h-5 w-5 text-slate-600 dark:text-slate-300" />
             </div>
             <div className="flex-1">
-              <p className="text-xs text-red-600 dark:text-red-400">Contact Person</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Contact Person</p>
               {isEditing ? (
                 <input
                   type="text"
                   value={editData.emergencyContactName}
                   onChange={(e) => handleChange("emergencyContactName", e.target.value)}
-                  className="w-full font-semibold text-red-900 dark:text-red-300 bg-white/60 dark:bg-red-900/10 border border-red-300 dark:border-red-800/50 rounded-xl px-3 py-2 text-sm mt-1 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none"
+                  className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-100/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/60 rounded-xl px-4 py-2.5 mt-1 focus:border-slate-500 focus:ring-2 focus:ring-slate-500/20 transition-all outline-none"
                 />
               ) : (
-                <p className="font-semibold text-red-900 dark:text-red-300">{studentData.emergencyContactName}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{studentData.emergencyContactName}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
-              <Phone className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <Phone className="h-5 w-5 text-slate-600 dark:text-slate-300" />
             </div>
             <div className="flex-1">
-              <p className="text-xs text-red-600 dark:text-red-400">Phone Number</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Phone Number</p>
               {isEditing ? (
                 <input
                   type="tel"
                   value={editData.emergencyContact}
                   onChange={(e) => handleChange("emergencyContact", e.target.value)}
-                  className="w-full font-semibold text-red-900 dark:text-red-300 bg-white/60 dark:bg-red-900/10 border border-red-300 dark:border-red-800/50 rounded-xl px-3 py-2 text-sm mt-1 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none"
+                  className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-100/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700/60 rounded-xl px-4 py-2.5 mt-1 focus:border-slate-500 focus:ring-2 focus:ring-slate-500/20 transition-all outline-none"
                 />
               ) : (
-                <p className="font-semibold text-red-900 dark:text-red-300">{studentData.emergencyContact}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{studentData.emergencyContact}</p>
               )}
             </div>
           </div>
@@ -492,14 +492,14 @@ function EditableInfoCard({ icon: Icon, label, value, editValue, isEditing, onCh
                 value={editValue}
                 onChange={(e) => onChange(e.target.value)}
                 rows="2"
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white/60 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 resize-none mt-1 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none shadow-inner"
+                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-100/50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl px-4 py-2.5 resize-none mt-1.5 focus:border-slate-500 focus:ring-2 focus:ring-slate-500/20 transition-all outline-none"
               />
             ) : (
               <input
                 type={type}
                 value={type === "number" ? editValue : editValue}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white/60 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 mt-1 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none shadow-inner"
+                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-100/50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl px-4 py-2.5 mt-1.5 focus:border-slate-500 focus:ring-2 focus:ring-slate-500/20 transition-all outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             )
           ) : (

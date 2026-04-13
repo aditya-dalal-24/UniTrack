@@ -26,7 +26,7 @@ import {
   Cell,
 } from "recharts";
 
-const COLORS = ["#6366f1", "#f472b6", "#fbbf24", "#f87171"];
+const COLORS = ["#475569", "#64748b", "#94a3b8", "#cbd5e1"];
 
 export default function Dashboard() {
   const { userData } = useAuth();
@@ -127,9 +127,15 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
+        <motion.div 
+          whileHover={{ y: -5 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
+        >
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+            <div className="p-2 rounded-xl bg-slate-100 text-slate-800 dark:bg-white dark:text-black">
               <CalendarCheck size={20} />
             </div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance</div>
@@ -146,7 +152,7 @@ export default function Dashboard() {
             {attendance?.lastMonthPercentage !== undefined && (
               <div className={`text-xs font-bold px-2 py-1 rounded-lg ${
                 attendance.attendancePercentage >= attendance.lastMonthPercentage 
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
               }`}>
                 {attendance.attendancePercentage >= attendance.lastMonthPercentage ? '↑' : '↓'} 
                 {Math.abs(Math.round(attendance.attendancePercentage - attendance.lastMonthPercentage))}%
@@ -158,24 +164,24 @@ export default function Dashboard() {
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${attendance?.attendancePercentage || 0}%` }}
-              className="h-full bg-emerald-500"
+              className="h-full bg-slate-400 dark:bg-slate-600"
             />
           </div>
-        </div>
+        </motion.div>
 
         <StatsCard
           title="Pending Fees"
           value={`₹ ${((fees?.totalPending || 0) / 100).toFixed(1)}K`} // Adjusting for realistic scale if mapping is different
           icon={CreditCard}
           description={`Total: ₹${((fees?.totalFees || 0) / 100).toFixed(1)}K`}
-          color="red"
+          color="slate"
         />
         <StatsCard
           title="Assignments"
           value={String(assignments?.pendingAssignments || 0)}
           icon={BookOpen}
           description={`Pending • ${assignments?.completedAssignments || 0} completed • ${assignments?.totalAssignments || 0} total`}
-          color="accent"
+          color="slate"
         />
       </div>
 
@@ -214,7 +220,7 @@ export default function Dashboard() {
                 />
                 <Bar 
                   dataKey="amount" 
-                  fill="#6366f1" 
+                  fill="#475569" 
                   radius={[6, 6, 0, 0]} 
                   barSize={30}
                 />
@@ -238,7 +244,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-8 text-center">
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Current SGPA</p>
-                <p className="text-2xl font-bold text-emerald-600">
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">
                   {dashboardData?.marks?.currentSgpa?.toFixed(2) || "—"}
                 </p>
               </div>
@@ -252,13 +258,13 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-8 text-center">
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Todos Pending</p>
-                <p className="text-xl font-bold text-amber-600">
+                <p className="text-xl font-bold text-slate-700 dark:text-slate-300">
                   {dashboardData?.todos?.pendingTodos || 0}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Todos Done</p>
-                <p className="text-xl font-bold text-emerald-600">
+                <p className="text-xl font-bold text-slate-800 dark:text-slate-200">
                   {dashboardData?.todos?.completedTodos || 0}
                 </p>
               </div>
