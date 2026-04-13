@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Plus, X, BookOpen, Calendar, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Plus, X, BookOpen, Calendar, Clock, BarChart2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { api } from "../services/api";
 import { ATTENDANCE_STATUS } from "../constants/enums";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -32,6 +33,7 @@ export default function Attendance() {
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubject, setNewSubject] = useState({ name: "" });
   const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
+  const [minPercentage, setMinPercentage] = useState(75);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -298,14 +300,42 @@ export default function Attendance() {
   }, [hoverDate, attendanceMap, holidays]);
 
   // ============ STATS ============
-  const workingDays = dates.filter(d => !d.isWeekend && !isHoliday(d.full));
-  const markedWorkingDays = workingDays.filter(d => attendanceMap[d.iso] && Object.keys(attendanceMap[d.iso]).length > 0);
-  const presentDays = markedWorkingDays.filter(d => {
-    const dayData = attendanceMap[d.iso];
-    return Object.values(dayData).some(e => e.status === 'present');
-  }).length;
-  const totalMarked = markedWorkingDays.length;
-  const percentage = totalMarked === 0 ? 0 : Math.round((presentDays / totalMarked) * 100);
+  let totalLectures = 0;
+  let presentLectures = 0;
+  Object.values(attendanceMap).forEach(dayObj => {
+    Object.values(dayObj).forEach(lecture => {
+      totalLectures++;
+      if (lecture.status === 'present') {
+        presentLectures++;
+      }
+    });
+  });
+
+  const percentage = totalLectures === 0 ? 0 : Math.round((presentLectures / totalLectures) * 100);
+
+  // Subject-wise Analysis
+  const subjectAnalysis = useMemo(() => {
+    return subjects.map(sub => {
+      const subIdStr = String(sub.id);
+      let present = 0;
+      let total = 0;
+      Object.keys(attendanceMap).forEach(dateStr => {
+        // Only count if it was a working day (or if it was explicitly marked despite being a holiday/weekend)
+        if (attendanceMap[dateStr][subIdStr]) {
+          total++;
+          if (attendanceMap[dateStr][subIdStr].status === 'present') present++;
+        }
+      });
+      const pct = total === 0 ? 100 : Math.round((present / total) * 100);
+      return {
+        name: sub.name,
+        shortName: sub.name.substring(0, 3).toUpperCase(),
+        percentage: pct,
+        present,
+        total,
+      };
+    });
+  }, [attendanceMap, subjects]);
 
   // Quick week view for day selector
   const weekDates = useMemo(() => {
@@ -376,7 +406,7 @@ export default function Attendance() {
               {weekDates.map((d, i) => {
                 const iso = toISODate(d);
                 const isSelected = iso === selectedIso;
-                const isToday = iso === toISODate(today);
+                const isToday = iso === toISODate(new Date());
                 const calStatus = getCalendarStatus(iso);
                 const holName = getHolidayName(d.toDateString());
                 const exam = getExam(d.toDateString());
@@ -385,16 +415,19 @@ export default function Attendance() {
                   <button
                     key={iso}
                     onClick={() => setSelectedDate(d)}
-                    className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all text-xs font-medium relative overflow-hidden
+                    className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all text-xs font-medium relative overflow-hidden flex-1
                       ${isSelected
-                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg scale-105 z-10'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-2 ring-brand ring-offset-2 dark:ring-offset-slate-900 z-10'
                         : isToday
-                        ? 'bg-brand/10 text-brand border border-brand/30'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        ? 'bg-brand/10 dark:bg-brand/20 text-brand border border-brand/40 ring-1 ring-brand/30 dark:ring-brand/40'
+                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-transparent'
                       }`}
                   >
-                    <span className="text-[10px] uppercase tracking-wider opacity-70">{DAY_LABELS[i]}</span>
-                    <span className="text-lg font-bold mt-0.5">{d.getDate()}</span>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] uppercase tracking-wider opacity-70">{DAY_LABELS[i]}</span>
+                      <span className={`text-lg font-bold mt-0.5 ${isToday ? 'text-brand dark:text-white' : ''}`}>{d.getDate()}</span>
+                      {isToday && <span className="text-[8px] font-black text-brand uppercase mt-0.5">Today</span>}
+                    </div>
                     
                     {/* Indicators */}
                     <div className="flex gap-0.5 mt-1 h-1.5">
@@ -444,43 +477,65 @@ export default function Attendance() {
               ))}
             </div>
             
-            <div className="grid grid-cols-7 gap-1.5 relative">
+            <div className="grid grid-cols-7 gap-1.5 relative [grid-auto-rows:1fr]">
               {Array.from({ length: new Date(selectedYear, selectedMonth, 1).getDay() }).map((_, i) => (
                 <div key={`empty-${i}`} className="aspect-square" />
               ))}
               
-              {dates.map((d) => {
+               {dates.map((d) => {
                 const calStatus = getCalendarStatus(d.iso);
                 const isHol = isHoliday(d.full);
                 const holidayName = getHolidayName(d.full);
                 const hasExam = isExam(d.full);
                 const exam = getExam(d.full);
                 const isSelectedInCal = d.iso === selectedIso;
+                const isToday = d.iso === toISODate(new Date());
                 const activeHoverState = isHol || d.isWeekend ? '' : 'hover:border-brand/40 hover:bg-slate-50 dark:hover:bg-slate-800/50';
                 
                 return (
-                  <button
-                    key={d.full}
-                    onClick={() => { if (!d.isWeekend && !isHol) setSelectedDate(d.date); }}
-                    disabled={d.isWeekend || isHol}
-                    className={`aspect-square rounded-xl flex flex-col items-center justify-center relative border transition-all text-sm
-                      ${isSelectedInCal ? 'ring-2 ring-brand border-transparent z-10 scale-105 shadow-md' : activeHoverState}
-                      ${d.isWeekend ? 'bg-slate-100/50 dark:bg-slate-800/30 border-transparent text-slate-400 cursor-not-allowed' 
-                      : isHol ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50 text-amber-600 cursor-not-allowed'
-                      : hasExam ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-400'
-                      : calStatus === 'present' ? 'bg-slate-900 dark:bg-slate-100 border-transparent text-white dark:text-slate-900 shadow-sm'
-                      : calStatus === 'absent' ? 'bg-slate-200 dark:bg-slate-800 border-transparent text-slate-500 opacity-80'
-                      : calStatus === 'partial' ? 'bg-brand/10 border-brand/20 text-brand'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}
-                    `}
-                    title={isHol ? `Holiday: ${holidayName}` : hasExam ? `Exam: ${exam.subject} (${exam.startTime} - ${exam.endTime})` : ""}
-                  >
-                    <span className="font-semibold">{d.label}</span>
-                    <div className="flex gap-0.5 absolute bottom-2">
-                      {isHol && <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
-                      {hasExam && <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />}
-                    </div>
-                  </button>
+                  <div key={d.full} className="relative aspect-square w-full">
+                    <button
+                      onClick={() => { if (!d.isWeekend && !isHol) setSelectedDate(d.date); }}
+                      disabled={d.isWeekend || isHol}
+                      className={`absolute inset-0 w-full h-full rounded-xl flex flex-col items-center justify-start p-1 border transition-all text-sm overflow-hidden
+                        ${isSelectedInCal ? 'ring-2 ring-brand border-transparent z-10' : activeHoverState}
+                        ${isToday ? 'ring-2 ring-brand/30 dark:ring-brand/50 border-brand/50 bg-brand/5 dark:bg-brand/20' : ''}
+                        ${d.isWeekend ? 'bg-slate-100/50 dark:bg-slate-800/30 border-transparent text-slate-400 cursor-not-allowed' 
+                        : isHol ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50 text-amber-600 cursor-not-allowed'
+                        : hasExam ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-400'
+                        : calStatus === 'present' ? 'bg-slate-900 dark:bg-slate-100 border-transparent text-white dark:text-slate-900 shadow-sm'
+                        : calStatus === 'absent' ? 'bg-slate-200 dark:bg-slate-800 border-transparent text-slate-500 opacity-80'
+                        : calStatus === 'partial' ? 'bg-brand/10 border-brand/20 text-brand'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}
+                      `}
+                      title={isHol ? `Holiday: ${holidayName}` : hasExam ? `Exam: ${exam.subject} (${exam.startTime} - ${exam.endTime})` : ""}
+                    >
+                      <div className="flex items-center justify-between w-full px-1 mb-1">
+                        <span className={`font-bold text-[11px] leading-tight ${isToday ? 'text-brand dark:text-white' : 'text-slate-900 dark:text-slate-100'}`}>{d.label}</span>
+                        {isToday && (
+                          <span className="text-[9px] font-black bg-brand text-white dark:bg-white dark:text-brand px-1 rounded uppercase tracking-tighter">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="w-full flex-1 mt-0.5 flex flex-col min-h-0 gap-0.5 overflow-hidden">
+                        {isHol && (
+                          <div className="flex-1 w-full bg-amber-100 dark:bg-amber-900/40 rounded flex items-center justify-center p-0.5 min-h-0">
+                            <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 truncate w-full text-center">
+                              {holidayName}
+                            </span>
+                          </div>
+                        )}
+                        {hasExam && (
+                          <div className="flex-1 w-full bg-purple-100 dark:bg-purple-900/40 rounded flex flex-col items-center justify-center p-0.5 min-h-0">
+                            <span className="text-[9px] font-bold text-purple-800 dark:text-purple-300 truncate w-full text-center">{exam.subject}</span>
+                            <span className="text-[8px] font-semibold text-purple-600 dark:text-purple-400 truncate w-full text-center leading-tight">{exam.startTime}</span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -618,27 +673,91 @@ export default function Attendance() {
 
       {/* ============ PERCENTAGE CARD ============ */}
       <div className="rounded-3xl bg-white/90 dark:bg-slate-900/80 shadow-soft border p-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Attendance Percentage</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Total Lectures Attendance</p>
         <p className="text-4xl font-bold mt-1">{percentage}%</p>
         <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-3 mt-4">
           <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${percentage}%` }} />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="text-slate-500 dark:text-slate-400">Working Days</p>
-            <p className="font-bold text-slate-900 dark:text-slate-100">{workingDays.length}</p>
+            <p className="text-slate-500 dark:text-slate-400">Total Lectures</p>
+            <p className="font-bold text-slate-900 dark:text-slate-100">{totalLectures}</p>
           </div>
           <div>
-            <p className="text-slate-500 dark:text-slate-400">Present</p>
-            <p className="font-bold text-green-600">{presentDays}</p>
+            <p className="text-slate-500 dark:text-slate-400">Attended</p>
+            <p className="font-bold text-green-600">{presentLectures}</p>
           </div>
           <div>
-            <p className="text-slate-500 dark:text-slate-400">Absent</p>
-            <p className="font-bold text-red-600">{totalMarked - presentDays}</p>
+            <p className="text-slate-500 dark:text-slate-400">Missed</p>
+            <p className="font-bold text-red-600">{totalLectures - presentLectures}</p>
           </div>
         </div>
       </div>
 
+      {/* ============ SUBJECT ANALYSIS GRAPH ============ */}
+      <div className="rounded-3xl bg-white/90 dark:bg-slate-900/80 shadow-soft border p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-brand/10 flex items-center justify-center flex-shrink-0">
+              <BarChart2 className="h-5 w-5 text-brand" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Subject Analysis</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Attendance distribution across your subjects</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1.5 border border-slate-200 dark:border-slate-700">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 ml-2">Min. Required:</span>
+            <input 
+              type="number" 
+              value={minPercentage} 
+              onChange={(e) => setMinPercentage(Number(e.target.value))} 
+              className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-center text-sm font-semibold py-1 focus:outline-none focus:border-brand"
+              min="0" max="100"
+            />
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">%</span>
+          </div>
+        </div>
+
+        {subjectAnalysis.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">No subject data available to analyze.</p>
+        ) : (
+          <div className="h-64 mt-4 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={subjectAnalysis} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
+                <XAxis dataKey="shortName" tick={{ fontSize: 11, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(val) => `${val}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      const isDanger = data.percentage < minPercentage;
+                      return (
+                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                          <p className="font-bold text-sm mb-1">{data.name}</p>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-lg ${isDanger ? 'text-red-500' : 'text-green-500'}`}>{data.percentage}%</span>
+                            <span className="text-xs text-slate-500">({data.present}/{data.total} days)</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <ReferenceLine y={minPercentage} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'top', value: 'Min', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }} />
+                <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                  {subjectAnalysis.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.percentage >= minPercentage ? '#10b981' : '#ef4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
 
       {/* ============ EXAMS ============ */}
       <div className="rounded-3xl bg-white/90 dark:bg-slate-900/80 shadow-soft border p-6">
