@@ -44,9 +44,17 @@ export default function Topbar() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center text-white text-lg font-bold shadow-md">
-              {activeStudent.name.charAt(0)}
-            </div>
+            {localStorage.getItem("profile_avatar") ? (
+              <img 
+                src={localStorage.getItem("profile_avatar")} 
+                alt="Avatar" 
+                className="h-10 w-10 rounded-full object-cover shadow-md border-2 border-white dark:border-slate-800" 
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center text-white text-lg font-bold shadow-md">
+                {activeStudent.name.charAt(0)}
+              </div>
+            )}
 
             {/* Student Info */}
             <div>

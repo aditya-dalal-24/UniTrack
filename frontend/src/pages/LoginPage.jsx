@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Lock, Mail, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "../services/api";
+import Particles from "../components/Particles";
 
 export default function LoginPage({ onLogin }) {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function LoginPage({ onLogin }) {
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isDark, setIsDark] = useState(false);
 
   // Initialize dark mode on mount
   useEffect(() => {
@@ -19,17 +20,17 @@ export default function LoginPage({ onLogin }) {
     if (stored === null || stored === "true") {
       document.documentElement.classList.add("dark");
       localStorage.setItem("darkMode", "true");
+      setIsDark(true);
+    } else {
+      setIsDark(false);
     }
-  }, []);
 
-  // Track mouse position for cursor-following animations
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    // Watch for dark mode changes
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
   }, []);
 
   async function handleSubmit(e) {
@@ -49,7 +50,7 @@ export default function LoginPage({ onLogin }) {
     }
 
     if (data && data.token) {
-      onLogin(data); // passes { token, name, email, userId } to AuthContext
+      onLogin(data);
       navigate("/dashboard", { replace: true });
     } else {
       setError("Invalid email or password.");
@@ -57,133 +58,23 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand/10 via-accent/10 to-slate-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 transition-colors duration-500 overflow-hidden">
-      {/* Cursor-Following Animated Background Blobs */}
-      <div className="absolute inset-0 opacity-40 pointer-events-none">
-        {/* Main cursor follower - large blob */}
-        <motion.div 
-          className="absolute h-96 w-96 rounded-full bg-gradient-to-br from-brand/40 to-accent/30 blur-3xl"
-          animate={{
-            x: mousePosition.x - 192,
-            y: mousePosition.y - 192,
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            x: { type: "spring", stiffness: 150, damping: 20 },
-            y: { type: "spring", stiffness: 150, damping: 20 },
-            scale: {
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            },
-          }}
-        />
-        
-        {/* Secondary follower - medium blob with offset */}
-        <motion.div 
-          className="absolute h-72 w-72 rounded-full bg-gradient-to-br from-purple-400/30 to-pink-400/30 blur-3xl"
-          animate={{
-            x: mousePosition.x * 0.7 - 144,
-            y: mousePosition.y * 0.7 - 144,
-            scale: [1, 1.2, 1],
-            rotate: [0, 90, 0],
-          }}
-          transition={{
-            x: { type: "spring", stiffness: 120, damping: 18 },
-            y: { type: "spring", stiffness: 120, damping: 18 },
-            scale: {
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            },
-            rotate: {
-              duration: 12,
-              repeat: Infinity,
-              ease: "linear",
-            },
-          }}
-        />
-
-        {/* Tertiary follower - smaller blob with more offset */}
-        <motion.div 
-          className="absolute h-64 w-64 rounded-full bg-gradient-to-br from-emerald-400/25 to-cyan-400/25 blur-3xl"
-          animate={{
-            x: mousePosition.x * 0.5 - 128,
-            y: mousePosition.y * 0.5 - 128,
-            scale: [1, 1.3, 1],
-          }}
-          transition={{
-            x: { type: "spring", stiffness: 100, damping: 15 },
-            y: { type: "spring", stiffness: 100, damping: 15 },
-            scale: {
-              duration: 3.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            },
-          }}
-        />
-
-        {/* Inverse follower - moves opposite to cursor */}
-        <motion.div 
-          className="absolute h-80 w-80 rounded-full bg-gradient-to-br from-orange-400/20 to-yellow-400/20 blur-3xl"
-          animate={{
-            x: window.innerWidth - mousePosition.x - 160,
-            y: window.innerHeight - mousePosition.y - 160,
-            scale: [1, 1.15, 1],
-            rotate: [0, -180, -360],
-          }}
-          transition={{
-            x: { type: "spring", stiffness: 110, damping: 17 },
-            y: { type: "spring", stiffness: 110, damping: 17 },
-            scale: {
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            },
-            rotate: {
-              duration: 15,
-              repeat: Infinity,
-              ease: "linear",
-            },
-          }}
-        />
-
-        {/* Ambient rotating blob - independent of cursor */}
-        <motion.div 
-          className="absolute top-1/4 right-1/4 h-56 w-56 rounded-full bg-gradient-to-br from-indigo-400/25 to-blue-400/25 blur-3xl"
-          animate={{
-            scale: [1, 1.4, 1],
-            rotate: [0, 360],
-            x: [0, 50, 0],
-            y: [0, -30, 0],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-
-        {/* Small accent blobs that follow cursor with delay */}
-        <motion.div 
-          className="absolute h-32 w-32 rounded-full bg-gradient-to-br from-rose-400/30 to-red-400/30 blur-2xl"
-          animate={{
-            x: mousePosition.x * 0.3 - 64,
-            y: mousePosition.y * 0.3 - 64,
-            scale: [1, 1.5, 1],
-          }}
-          transition={{
-            x: { type: "spring", stiffness: 80, damping: 12 },
-            y: { type: "spring", stiffness: 80, damping: 12 },
-            scale: {
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            },
-          }}
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
+      {/* Particles Background */}
+      <div className="absolute inset-0 z-0">
+        <Particles
+          particleColors={isDark ? ["#ffffff"] : ["#334155"]}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover
+          alphaParticles={false}
+          disableRotation={false}
+          pixelRatio={1}
         />
       </div>
 
+      {/* Content */}
       <motion.div 
         className="relative z-10 w-full max-w-md px-4"
         initial={{ opacity: 0, y: 20 }}

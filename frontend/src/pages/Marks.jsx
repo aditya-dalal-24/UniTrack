@@ -52,10 +52,10 @@ export default function Marks() {
   const [newMark, setNewMark] = useState({
     subjectName: "",
     subjectCode: "",
-    credits: 3,
-    midSem: 0,
-    internals: 0,
-    endSem: 0
+    credits: "3", // Keep as string for consistent UX
+    midSem: "",
+    internals: "",
+    endSem: ""
   });
 
   const fetchMarks = async () => {
@@ -75,22 +75,21 @@ export default function Marks() {
   }, [selectedSemester]);
 
   const saveMark = async () => {
-    if (!newMark.subjectName) {
-      alert("Please fill in subject name");
-      return;
-    }
+    const midSemVal = parseFloat(newMark.midSem) || 0;
+    const internalsVal = parseFloat(newMark.internals) || 0;
+    const endSemVal = parseFloat(newMark.endSem) || 0;
 
-    const finalScore = calculateFinalMarks(newMark.midSem, newMark.internals, newMark.endSem);
+    const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal);
     const { grade, points } = calculateGrade(finalScore);
 
     const payload = {
       subjectName: newMark.subjectName,
       subjectCode: newMark.subjectCode,
       semester: selectedSemester,
-      credits: newMark.credits,
-      midSem: newMark.midSem,
-      internals: newMark.internals,
-      endSem: newMark.endSem,
+      credits: parseInt(newMark.credits) || 0,
+      midSem: midSemVal,
+      internals: internalsVal,
+      endSem: endSemVal,
       finalScore,
       grade,
       gradePoints: points
@@ -111,7 +110,7 @@ export default function Marks() {
     }
 
     await fetchMarks();
-    setNewMark({ subjectName: "", subjectCode: "", credits: 3, midSem: 0, internals: 0, endSem: 0 });
+    setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
     setEditingMark(null);
     setShowSubjectModal(false);
   };
@@ -132,10 +131,10 @@ export default function Marks() {
     setNewMark({
       subjectName: mark.subjectName,
       subjectCode: mark.subjectCode || "",
-      credits: mark.credits || 3,
-      midSem: mark.midSem || 0,
-      internals: mark.internals || 0,
-      endSem: mark.endSem || 0,
+      credits: (mark.credits || 3).toString(),
+      midSem: (mark.midSem || "").toString(),
+      internals: (mark.internals || "").toString(),
+      endSem: (mark.endSem || "").toString(),
     });
     setShowSubjectModal(true);
   };
@@ -151,17 +150,17 @@ export default function Marks() {
         description="Track marks, calculate grades, and monitor SGPA/CGPA."
         actions={
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setEditingMark(null);
-                setNewMark({ subjectName: "", subjectCode: "", credits: 3, midSem: 0, internals: 0, endSem: 0 });
-                setShowSubjectModal(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              Add Subject Marks
-            </button>
+                <button
+                  onClick={() => {
+                    setEditingMark(null);
+                    setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
+                    setShowSubjectModal(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Subject Marks
+                </button>
           </div>
         }
       />
@@ -311,7 +310,7 @@ export default function Marks() {
                           <button
                             onClick={() => {
                               setEditingMark(null);
-                              setNewMark({ subjectName: "", subjectCode: "", credits: 3, midSem: 0, internals: 0, endSem: 0 });
+                              setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
                               setShowSubjectModal(true);
                             }}
                             className="inline-flex items-center gap-2 rounded-xl bg-brand/10 text-brand px-4 py-2 text-sm font-semibold hover:bg-brand/20 transition-all"
@@ -371,19 +370,16 @@ export default function Marks() {
       {/* Add/Edit Mark Modal */}
       <AnimatePresence>
         {showSubjectModal && (
-          <>
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm"
+            onClick={() => setShowSubjectModal(false)}
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40"
-              onClick={() => setShowSubjectModal(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl z-50 overflow-hidden border border-slate-200 dark:border-slate-800"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800"
             >
               <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -426,7 +422,7 @@ export default function Marks() {
                       min="1"
                       max="6"
                       value={newMark.credits}
-                      onChange={(e) => setNewMark({ ...newMark, credits: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setNewMark({ ...newMark, credits: e.target.value })}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
                     />
                   </div>
@@ -439,7 +435,7 @@ export default function Marks() {
                       min="0"
                       max="25"
                       value={newMark.midSem}
-                      onChange={(e) => setNewMark({ ...newMark, midSem: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => setNewMark({ ...newMark, midSem: e.target.value })}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
                     />
                   </div>
@@ -450,7 +446,7 @@ export default function Marks() {
                       min="0"
                       max="25"
                       value={newMark.internals}
-                      onChange={(e) => setNewMark({ ...newMark, internals: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => setNewMark({ ...newMark, internals: e.target.value })}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
                     />
                   </div>
@@ -461,7 +457,7 @@ export default function Marks() {
                       min="0"
                       max="100"
                       value={newMark.endSem}
-                      onChange={(e) => setNewMark({ ...newMark, endSem: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => setNewMark({ ...newMark, endSem: e.target.value })}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
                     />
                   </div>
@@ -484,7 +480,7 @@ export default function Marks() {
                 </button>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

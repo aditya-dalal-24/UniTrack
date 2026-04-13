@@ -48,7 +48,7 @@ export default function Attendance() {
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubject, setNewSubject] = useState({ name: "" });
   const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
-  const [minPercentage, setMinPercentage] = useState(75);
+  const [minPercentage, setMinPercentage] = useState("75");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -780,7 +780,7 @@ export default function Attendance() {
             <input 
               type="number" 
               value={minPercentage} 
-              onChange={(e) => setMinPercentage(Number(e.target.value))} 
+              onChange={(e) => setMinPercentage(e.target.value)} 
               className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-center text-sm font-semibold py-1 focus:outline-none focus:border-brand"
               min="0" max="100"
             />
@@ -802,7 +802,7 @@ export default function Attendance() {
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
-                      const isDanger = data.percentage < minPercentage;
+                      const isDanger = data.percentage < (parseFloat(minPercentage) || 0);
                       return (
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
                           <p className="font-bold text-sm mb-1">{data.name}</p>
@@ -816,10 +816,10 @@ export default function Attendance() {
                     return null;
                   }}
                 />
-                <ReferenceLine y={minPercentage} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'top', value: 'Min', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }} />
+                <ReferenceLine y={parseFloat(minPercentage) || 0} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'top', value: 'Min', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }} />
                 <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={60}>
                   {subjectAnalysis.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.percentage >= minPercentage ? '#10b981' : '#ef4444'} />
+                    <Cell key={`cell-${index}`} fill={entry.percentage >= (parseFloat(minPercentage) || 0) ? '#10b981' : '#ef4444'} />
                   ))}
                 </Bar>
               </BarChart>

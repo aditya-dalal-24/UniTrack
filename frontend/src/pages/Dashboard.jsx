@@ -87,9 +87,17 @@ export default function Dashboard() {
       {userData && (
         <div className="rounded-2xl bg-gradient-to-br from-brand/10 via-accent/10 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border border-slate-200/60 dark:border-slate-800/60 p-6 shadow-sm">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent shadow-md">
-              <GraduationCap className="h-7 w-7 text-white" />
-            </div>
+            {localStorage.getItem("profile_avatar") ? (
+              <img 
+                src={localStorage.getItem("profile_avatar")} 
+                alt="Avatar" 
+                className="h-14 w-14 rounded-full object-cover shadow-md border-2 border-white dark:border-slate-800" 
+              />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent shadow-md flex-shrink-0">
+                <GraduationCap className="h-7 w-7 text-white" />
+              </div>
+            )}
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
                 Welcome back, {userData.name || userData.fullName || "Student"}!
