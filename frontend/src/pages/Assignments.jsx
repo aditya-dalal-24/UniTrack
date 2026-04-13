@@ -26,7 +26,7 @@ export default function Assignments() {
         subject: a.subject,
         due: a.dueDate,
         status: a.status
-      }));
+      })).sort((a, b) => new Date(a.due) - new Date(b.due));
       setAssignments(mapped);
     }
     setLoading(false);
@@ -95,9 +95,9 @@ export default function Assignments() {
       return;
     }
 
-    setAssignments(assignments.map(a => 
-      a.id === editingId ? editData : a
-    ));
+    setAssignments(prev => 
+      [...prev.map(a => a.id === editingId ? editData : a)].sort((a, b) => new Date(a.due) - new Date(b.due))
+    );
     setEditingId(null);
     setEditData({});
   };
@@ -139,7 +139,7 @@ export default function Assignments() {
 
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 transition-all"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-400 dark:hover:bg-brand/30 ring-1 ring-inset ring-brand/10 dark:ring-brand/30 transition-all font-semibold shadow-sm"
         >
           <PlusCircle size={18} /> Add Assignment
         </button>

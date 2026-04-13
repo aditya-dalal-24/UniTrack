@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Plus, X, BookOpen, Calendar, Clock, BarChart2 } from "lucide-react";
+import { CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Plus, X, BookOpen, Calendar, Clock, BarChart2, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { api } from "../services/api";
@@ -59,6 +59,7 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState(today);
   // attendance: { "YYYY-MM-DD": { subjectId: { status, recordId }, ... } }
   const [attendanceMap, setAttendanceMap] = useState({});
+  const [expandedDays, setExpandedDays] = useState([]);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -956,35 +957,103 @@ export default function Attendance() {
               .sort((a, b) => b[0].localeCompare(a[0]))
               .slice(0, 10)
               .map(([dateKey, dayData]) => {
-                const statuses = Object.values(dayData).map(e => e.status);
-                const summary = statuses.every(s => s === 'present') ? 'PRESENT'
-                  : statuses.every(s => s === 'absent') ? 'ABSENT'
+                const dayEntries = Object.values(dayData);
+                const pCount = dayEntries.filter(e => e.status === 'present').length;
+                const aCount = dayEntries.filter(e => e.status === 'absent').length;
+                
+                const summary = pCount === dayEntries.length && dayEntries.length > 0 ? 'PRESENT'
+                  : aCount === dayEntries.length && dayEntries.length > 0 ? 'ABSENT'
                   : 'PARTIAL';
+
+                const isExpanded = expandedDays.includes(dateKey);
                 const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                
                 return (
-                  <div key={dateKey}
-                    className="flex justify-between items-center rounded-xl p-3 bg-slate-100 dark:bg-slate-800/60 border dark:border-slate-700 group hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    onClick={() => {
-                      const d = new Date(dateKey + 'T00:00:00');
-                      setSelectedDate(d);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    <div className="flex-1">
-                      <span className="font-medium text-sm">{dateLabel}</span>
-                      <span className="text-xs text-slate-400 ml-2">({Object.keys(dayData).length} lecture{Object.keys(dayData).length > 1 ? 's' : ''})</span>
+                  <div key={dateKey} className="overflow-hidden border dark:border-slate-700/50 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
+                    <div 
+                      className="flex justify-between items-center p-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
+                      onClick={() => {
+                        setExpandedDays(prev => 
+                          isExpanded ? prev.filter(d => d !== dateKey) : [...prev, dateKey]
+                        );
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          summary === 'PRESENT' ? "bg-green-100 dark:bg-green-900/20 text-green-600"
+                            : summary === 'ABSENT' ? "bg-red-100 dark:bg-red-900/20 text-red-600"
+                            : "bg-amber-100 dark:bg-amber-900/20 text-amber-600"
+                        }`}>
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{dateLabel}</p>
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                            {pCount} Present • {aCount} Absent
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <span className={`text-xs font-bold px-2 py-1 rounded-md ${
+                            summary === 'PRESENT' ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                              : summary === 'ABSENT' ? "bg-red-50 dark:bg-red-900/10 text-red-600"
+                              : "bg-amber-50 dark:bg-amber-900/10 text-amber-600"
+                          }`}>
+                            {summary}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={(e) => { 
+                              e.stopPropagation(); 
+                              const d = new Date(dateKey + 'T00:00:00');
+                              setSelectedDate(d);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-brand transition-all" title="View in Calendar">
+                            <Calendar size={16} />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteAllForDate(dateKey); }}
+                            className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-all" title="Delete record">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <span className={`font-semibold text-sm mr-2 ${
-                      summary === 'PRESENT' ? "text-slate-900 dark:text-white"
-                        : summary === 'ABSENT' ? "text-slate-400 dark:text-slate-500"
-                        : "text-amber-600 dark:text-amber-400"
-                    }`}>
-                      {summary}
-                    </span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteAllForDate(dateKey); }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-all" title="Delete attendance">
-                      <Trash2 size={16} />
-                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/20"
+                        >
+                          <div className="p-4 space-y-3">
+                            {Object.entries(dayData).map(([subId, entry]) => {
+                              const sub = subjects.find(s => String(s.id) === subId);
+                              const name = sub ? sub.name : (subId === 'general' ? 'General' : 'Unknown');
+                              return (
+                                <div key={subId} className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                      entry.status === 'present' ? 'bg-green-500' : 'bg-red-500'
+                                    }`} />
+                                    <span className="text-slate-600 dark:text-slate-300 font-medium">{name}</span>
+                                  </div>
+                                  <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                                    entry.status === 'present' ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {entry.status}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })
