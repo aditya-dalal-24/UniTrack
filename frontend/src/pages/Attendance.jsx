@@ -22,13 +22,28 @@ export default function Attendance() {
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
-  const [holidays, setHolidays] = useState([]);
-  const [exams, setExams] = useState([]);
+  const [holidays, setHolidays] = useState(() => {
+    const saved = localStorage.getItem("uniTrackHolidays");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [exams, setExams] = useState(() => {
+    const saved = localStorage.getItem("uniTrackExams");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [hoverDate, setHoverDate] = useState(null);
   const [showAddHoliday, setShowAddHoliday] = useState(false);
   const [showAddExam, setShowAddExam] = useState(false);
   const [newHoliday, setNewHoliday] = useState({ date: "", name: "" });
   const [newExam, setNewExam] = useState({ date: "", subject: "", startTime: "", endTime: "" });
+  
+  // Persist holidays/exams to localStorage
+  useEffect(() => {
+    localStorage.setItem("uniTrackHolidays", JSON.stringify(holidays));
+  }, [holidays]);
+
+  useEffect(() => {
+    localStorage.setItem("uniTrackExams", JSON.stringify(exams));
+  }, [exams]);
   const [subjects, setSubjects] = useState([]);
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubject, setNewSubject] = useState({ name: "" });
@@ -373,11 +388,29 @@ export default function Attendance() {
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-medium">
+            <button 
+              onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} 
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-700/50 transition-all font-medium"
+            >
               {isCalendarExpanded ? "Week View" : "Month View"}
             </button>
-            <button onClick={goToToday} className="text-xs px-3 py-1.5 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 transition-all font-medium">
+            <button 
+              onClick={goToToday} 
+              className="text-xs px-3 py-1.5 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-400 dark:hover:bg-brand/30 ring-1 ring-inset ring-brand/20 transition-all font-medium"
+            >
               Today
+            </button>
+            <button 
+              onClick={() => setShowAddHoliday(true)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800/50 transition-all font-medium flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Holiday
+            </button>
+            <button 
+              onClick={() => setShowAddExam(true)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800/50 transition-all font-medium flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Exam
             </button>
             {dayAttendanceData && Object.keys(dayAttendanceData).length > 0 && !isCalendarExpanded && (
               <button
@@ -424,9 +457,28 @@ export default function Attendance() {
                       }`}
                   >
                     <div className="flex flex-col items-center">
-                      <span className="text-[10px] uppercase tracking-wider opacity-70">{DAY_LABELS[i]}</span>
-                      <span className={`text-lg font-bold mt-0.5 ${isToday ? 'text-brand dark:text-white' : ''}`}>{d.getDate()}</span>
-                      {isToday && <span className="text-[8px] font-black text-brand uppercase mt-0.5">Today</span>}
+                      <span className={`text-[10px] uppercase tracking-wider font-semibold 
+                        ${isSelected 
+                          ? (isToday ? 'text-white/90 dark:text-slate-900/90' : 'text-white/70 dark:text-slate-900/70') 
+                          : (isToday ? 'text-brand dark:text-brand-400' : 'opacity-70')}`}
+                      >
+                        {DAY_LABELS[i]}
+                      </span>
+                      <span className={`text-xl font-black mt-1 
+                        ${isSelected ? 'text-white dark:text-slate-900' : (isToday ? 'text-brand dark:text-white' : '')}`}
+                      >
+                        {d.getDate()}
+                      </span>
+                      {isToday && (
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded mt-1 uppercase tracking-tighter
+                          ${isSelected 
+                            ? 'bg-white text-brand shadow-sm' 
+                            : 'bg-brand text-white dark:bg-brand dark:text-white ring-1 ring-brand/50'
+                          }`}
+                        >
+                          Today
+                        </span>
+                      )}
                     </div>
                     
                     {/* Indicators */}
@@ -498,22 +550,38 @@ export default function Attendance() {
                       onClick={() => { if (!d.isWeekend && !isHol) setSelectedDate(d.date); }}
                       disabled={d.isWeekend || isHol}
                       className={`absolute inset-0 w-full h-full rounded-xl flex flex-col items-center justify-start p-1 border transition-all text-sm overflow-hidden
-                        ${isSelectedInCal ? 'ring-2 ring-brand border-transparent z-10' : activeHoverState}
-                        ${isToday ? 'ring-2 ring-brand/30 dark:ring-brand/50 border-brand/50 bg-brand/5 dark:bg-brand/20' : ''}
+                        ${isSelectedInCal 
+                          ? 'ring-2 ring-brand z-10 bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg scale-[1.02]' 
+                          : activeHoverState}
+                        ${isToday ? 'ring-2 ring-brand/30 dark:ring-brand/50 border-brand/50' : ''}
+                        ${!isSelectedInCal && isToday ? 'bg-brand/5 dark:bg-brand/20' : ''}
                         ${d.isWeekend ? 'bg-slate-100/50 dark:bg-slate-800/30 border-transparent text-slate-400 cursor-not-allowed' 
                         : isHol ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50 text-amber-600 cursor-not-allowed'
                         : hasExam ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-400'
-                        : calStatus === 'present' ? 'bg-slate-900 dark:bg-slate-100 border-transparent text-white dark:text-slate-900 shadow-sm'
-                        : calStatus === 'absent' ? 'bg-slate-200 dark:bg-slate-800 border-transparent text-slate-500 opacity-80'
-                        : calStatus === 'partial' ? 'bg-brand/10 border-brand/20 text-brand'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}
+                        : calStatus === 'present' && !isSelectedInCal ? 'bg-slate-900 dark:bg-slate-100 border-transparent text-white dark:text-slate-900 shadow-sm'
+                        : calStatus === 'absent' && !isSelectedInCal ? 'bg-slate-200 dark:bg-slate-800 border-transparent text-slate-500 opacity-80'
+                        : calStatus === 'partial' && !isSelectedInCal ? 'bg-brand/10 border-brand/20 text-brand'
+                        : !isSelectedInCal && !isToday ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700' : ''}
                       `}
                       title={isHol ? `Holiday: ${holidayName}` : hasExam ? `Exam: ${exam.subject} (${exam.startTime} - ${exam.endTime})` : ""}
                     >
                       <div className="flex items-center justify-between w-full px-1 mb-1">
-                        <span className={`font-bold text-[11px] leading-tight ${isToday ? 'text-brand dark:text-white' : 'text-slate-900 dark:text-slate-100'}`}>{d.label}</span>
+                        <span className={`font-bold text-[11px] leading-tight 
+                          ${isSelectedInCal || (calStatus === 'present' && !isToday)
+                            ? 'text-white dark:text-slate-900' 
+                            : isToday 
+                            ? 'text-brand dark:text-white' 
+                            : 'text-slate-900 dark:text-slate-100'}`}
+                        >
+                          {d.label}
+                        </span>
                         {isToday && (
-                          <span className="text-[9px] font-black bg-brand text-white dark:bg-white dark:text-brand px-1 rounded uppercase tracking-tighter">
+                          <span className={`text-[9px] font-black px-1 rounded uppercase tracking-tighter
+                            ${isSelectedInCal || calStatus === 'present'
+                              ? 'bg-white text-brand dark:bg-brand dark:text-white'
+                              : 'bg-brand text-white dark:bg-white dark:text-brand'
+                            }`}
+                          >
                             Today
                           </span>
                         )}
@@ -830,7 +898,7 @@ export default function Attendance() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Public Holidays</h2>
           <button onClick={() => setShowAddHoliday(!showAddHoliday)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 transition-all text-sm font-medium">
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/60 border border-amber-200/50 dark:border-amber-800/50 transition-all text-sm font-medium">
             {showAddHoliday ? <X size={16} /> : <Plus size={16} />}
             {showAddHoliday ? "Cancel" : "Add Holiday"}
           </button>
@@ -851,8 +919,8 @@ export default function Attendance() {
               </div>
             </div>
             <button onClick={addHoliday}
-              className="mt-3 px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-black hover:opacity-90 transition-all text-sm font-medium">
-              Add Holiday
+              className="mt-3 w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all text-sm font-bold shadow-md">
+              Confirm & Add Holiday
             </button>
           </div>
         )}
@@ -945,6 +1013,125 @@ export default function Attendance() {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ============ HOLIDAY & EXAM MODALS ============ */}
+      <AnimatePresence>
+        {showAddHoliday && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Calendar className="text-amber-500" /> Add Public Holiday
+                </h3>
+                <button onClick={() => setShowAddHoliday(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Holiday Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Independence Day"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand outline-none transition-all"
+                    value={newHoliday.name}
+                    onChange={(e) => setNewHoliday({ ...newHoliday, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Date</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand outline-none transition-all"
+                    value={newHoliday.date}
+                    onChange={(e) => setNewHoliday({ ...newHoliday, date: e.target.value })}
+                  />
+                </div>
+                <button
+                  onClick={addHoliday}
+                  className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all mt-4"
+                >
+                  Add Holiday
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showAddExam && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <BookOpen className="text-purple-500" /> Add Exam Schedule
+                </h3>
+                <button onClick={() => setShowAddExam(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Subject</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mathematics"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand outline-none transition-all"
+                    value={newExam.subject}
+                    onChange={(e) => setNewExam({ ...newExam, subject: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Date</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand outline-none transition-all"
+                    value={newExam.date}
+                    onChange={(e) => setNewExam({ ...newExam, date: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Start Time</label>
+                    <input
+                      type="time"
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand outline-none transition-all"
+                      value={newExam.startTime}
+                      onChange={(e) => setNewExam({ ...newExam, startTime: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">End Time</label>
+                    <input
+                      type="time"
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-brand outline-none transition-all"
+                      value={newExam.endTime}
+                      onChange={(e) => setNewExam({ ...newExam, endTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={addExam}
+                  className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all mt-4"
+                >
+                  Schedule Exam
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.div>
