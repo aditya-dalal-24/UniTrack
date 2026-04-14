@@ -65,7 +65,8 @@ export default function SignupPage({ onLogin }) {
 
     if (data && data.token) {
       onLogin(data);
-      navigate("/dashboard", { replace: true });
+      const dest = data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+      navigate(dest, { replace: true });
     } else {
       setError("Google sign-up failed. Please try again.");
     }
@@ -161,7 +162,8 @@ export default function SignupPage({ onLogin }) {
           year: formData.year,
           semester: formData.semester,
         });
-        navigate("/dashboard", { replace: true });
+        const dest = data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+        navigate(dest, { replace: true });
       } else {
         setError("Signup failed. Please try again.");
       }
@@ -181,7 +183,8 @@ export default function SignupPage({ onLogin }) {
       year: formData.year,
       semester: formData.semester,
     });
-    navigate("/dashboard", { replace: true });
+    const dest = authData.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+    navigate(dest, { replace: true });
   }
 
   return (

@@ -295,6 +295,22 @@ export const api = {
 
   deleteExpense: (id) =>
     request('delete', `/expenses/${id}`),
+
+  // ==================== ADMIN ====================
+  getAdminUsers: () =>
+    request('get', '/admin/users'),
+
+  getAdminStats: () =>
+    request('get', '/admin/stats'),
+
+  activateUser: (id) =>
+    request('put', `/admin/users/${id}/activate`),
+
+  deactivateUser: (id) =>
+    request('put', `/admin/users/${id}/deactivate`),
+
+  changeUserRole: (id, role) =>
+    request('put', `/admin/users/${id}/role`, { role }),
 };
 
 export default api;

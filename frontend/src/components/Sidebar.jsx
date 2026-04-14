@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, Reorder, AnimatePresence, useDragControls } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
   LogOut,
   GripVertical,
   RotateCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -33,7 +34,8 @@ const links = [
 ];
 
 export default function Sidebar({ collapsed, setCollapsed }) {
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [orderedLinks, setOrderedLinks] = useState(() => {
     const saved = localStorage.getItem("sidebarOrder");
     if (saved) {
@@ -111,6 +113,30 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           >
             <RotateCcw className="h-3.5 w-3.5 group-hover:rotate-[-45deg] transition-transform" />
             Reset Order
+          </button>
+        )}
+
+        {/* Admin Panel Link (only for admin/both users) */}
+        {isAdmin && (
+          <button
+            onClick={() => navigate("/admin/dashboard")}
+            className={`relative flex items-center w-full ${
+              collapsed ? "justify-center" : "gap-3 px-3"
+            } py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all duration-200`}
+            title={collapsed ? "Admin Panel" : undefined}
+          >
+            <ShieldCheck className="h-5 w-5 flex-shrink-0" />
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="truncate font-semibold"
+              >
+                Admin Panel
+              </motion.span>
+            )}
           </button>
         )}
         

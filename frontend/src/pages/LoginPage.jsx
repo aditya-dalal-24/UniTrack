@@ -56,7 +56,8 @@ export default function LoginPage({ onLogin }) {
 
     if (data && data.token) {
       onLogin(data);
-      navigate("/dashboard", { replace: true });
+      const dest = data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+      navigate(dest, { replace: true });
     } else {
       setError("Google sign-in failed. Please try again.");
     }
@@ -124,7 +125,8 @@ export default function LoginPage({ onLogin }) {
 
     if (data && data.token) {
       onLogin(data);
-      navigate("/dashboard", { replace: true });
+      const dest = data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+      navigate(dest, { replace: true });
     } else {
       setError("Invalid email or password.");
     }
@@ -133,7 +135,8 @@ export default function LoginPage({ onLogin }) {
   function handleOtpVerified(authData) {
     setShowOtpModal(false);
     onLogin(authData);
-    navigate("/dashboard", { replace: true });
+    const dest = authData.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+    navigate(dest, { replace: true });
   }
 
   return (

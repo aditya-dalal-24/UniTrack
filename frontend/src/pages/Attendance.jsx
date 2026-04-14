@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Plus, X, BookO
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { api } from "../services/api";
+import useDarkMode from "../hooks/useDarkMode";
 import { ATTENDANCE_STATUS } from "../constants/enums";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
@@ -19,6 +20,7 @@ function toISODate(d) {
 }
 
 export default function Attendance() {
+  const [isDark] = useDarkMode();
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
@@ -803,9 +805,20 @@ export default function Attendance() {
           <div className="h-64 mt-4 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={subjectAnalysis} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
-                <XAxis dataKey="shortName" tick={{ fontSize: 11, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(val) => `${val}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#475569'} opacity={isDark ? 0.5 : 0.2} />
+                <XAxis 
+                  dataKey="shortName" 
+                  tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11, fontWeight: 'bold' }} 
+                  tickLine={false} 
+                  axisLine={false} 
+                />
+                <YAxis 
+                  tickFormatter={(val) => `${val}%`} 
+                  tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  domain={[0, 100]} 
+                />
                 <Tooltip 
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                   content={({ active, payload }) => {
@@ -814,10 +827,10 @@ export default function Attendance() {
                       const isDanger = data.percentage < (parseFloat(minPercentage) || 0);
                       return (
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
-                          <p className="font-bold text-sm mb-1">{data.name}</p>
+                          <p className="font-bold text-sm mb-1 text-slate-900 dark:text-slate-100">{data.name}</p>
                           <div className="flex items-center gap-2">
                             <span className={`font-bold text-lg ${isDanger ? 'text-red-500' : 'text-green-500'}`}>{data.percentage}%</span>
-                            <span className="text-xs text-slate-500">({data.present}/{data.total} days)</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">({data.present}/{data.total} days)</span>
                           </div>
                         </div>
                       );

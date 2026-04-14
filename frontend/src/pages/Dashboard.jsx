@@ -14,6 +14,7 @@ import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
 import UserAvatar from "../components/UserAvatar";
+import useDarkMode from "../hooks/useDarkMode";
 import {
   BarChart,
   Bar,
@@ -31,6 +32,7 @@ const COLORS = ["#475569", "#64748b", "#94a3b8", "#cbd5e1"];
 
 export default function Dashboard() {
   const { userData } = useAuth();
+  const [isDark] = useDarkMode();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -202,21 +204,25 @@ export default function Dashboard() {
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={attendanceData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                 <XAxis 
                   dataKey="subject" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 10 }}
+                  tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }}
                 />
                 <YAxis domain={[0, 100]} hide />
                 <Tooltip 
                   cursor={{ fill: 'transparent' }}
                   contentStyle={{ 
+                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                    color: isDark ? '#f8fafc' : '#0f172a',
                     borderRadius: '12px', 
                     border: 'none', 
                     boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
                   }}
+                  itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
+                  labelStyle={{ color: isDark ? '#94a3b8' : '#64748b' }}
                   formatter={(value) => [`${value}%`, 'Attendance']}
                 />
                 <Bar 
@@ -249,25 +255,29 @@ export default function Dashboard() {
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dashboardData?.expenses?.monthlyHistory || []}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                 <XAxis 
                   dataKey="month" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 12 }}
+                  tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }}
                 />
                 <YAxis hide />
                 <Tooltip 
                   cursor={{ fill: 'transparent' }}
                   contentStyle={{ 
+                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                    color: isDark ? '#f8fafc' : '#0f172a',
                     borderRadius: '12px', 
                     border: 'none', 
                     boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
                   }}
+                  itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
+                  labelStyle={{ color: isDark ? '#94a3b8' : '#64748b' }}
                 />
                 <Bar 
                   dataKey="amount" 
-                  fill="#475569" 
+                  fill={isDark ? '#94a3b8' : '#475569'} 
                   radius={[6, 6, 0, 0]} 
                   barSize={30}
                 />

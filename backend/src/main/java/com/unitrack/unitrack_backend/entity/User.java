@@ -40,10 +40,21 @@ public class User {
     @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'STUDENT'")
+    @Builder.Default
+    private Role role = Role.STUDENT;
+
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean isActive = true;
+
     private String verificationOtp;
     private LocalDateTime otpExpiry;
 
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
 
     @PrePersist
     public void prePersist() {
@@ -51,5 +62,13 @@ public class User {
         if (this.authProvider == null) {
             this.authProvider = AuthProvider.LOCAL;
         }
+        if (this.role == null) {
+            this.role = Role.STUDENT;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

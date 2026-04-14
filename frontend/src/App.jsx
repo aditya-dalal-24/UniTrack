@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import AppLayout from "./layout/AppLayout.jsx";
+import AdminLayout from "./layout/AdminLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Attendance from "./pages/Attendance.jsx";
 import Assignments from "./pages/Assignments.jsx";
@@ -13,12 +14,28 @@ import Expenses from "./pages/Expenses.jsx";
 import Timetable from "./pages/Timetable.jsx";
 import Profile from "./pages/Profile.jsx";
 import ToDo from "./pages/ToDo.jsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import AdminUsers from "./pages/admin/AdminUsers.jsx";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+  return children;
+}
+
+function StudentRoute({ children }) {
+  const { isAuthenticated, isStudent } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isStudent) return <Navigate to="/admin/dashboard" replace />;
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { isAuthenticated, isAdmin } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -44,12 +61,13 @@ function AppRoutes() {
         }
       />
 
+      {/* Student Routes */}
       <Route
         path="/*"
         element={
-          <ProtectedRoute>
+          <StudentRoute>
             <AppLayout onLogout={logout} />
-          </ProtectedRoute>
+          </StudentRoute>
         }
       >
         <Route path="dashboard" element={<Dashboard />} />
@@ -61,6 +79,19 @@ function AppRoutes() {
         <Route path="timetable" element={<Timetable />} />
         <Route path="todo" element={<ToDo />} />
         <Route path="profile" element={<Profile />} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin/*"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUsers />} />
       </Route>
 
       {/* Fallback */}

@@ -8,35 +8,55 @@ UniTrack is a premium, full-stack student productivity platform designed for the
 
 UniTrack consolidates every aspect of a student's journey into a single, intuitive dashboard:
 
-- 🏗️ **Unified Dashboard**: Real-time aggregation of attendance, assignments, and academic performance.
-- ⚡ **Dynamic Sidebar**: Fully rearrangeable navigation modules with local persistence.
-- 📅 **Intelligent Scheduling**: Dynamic timetable management with subject-specific tracking.
-- 📝 **Assignment Tracker**: Track deadlines with status indicators and high-fidelity empty states.
-- 📊 **Marks & GPA**: Manage exam scores and calculate performance metrics.
-- ⏰ **Attendance Monitor**: Stay on top of your presence with visual status indicators.
-- 💸 **Expense Tracker**: Keep your finances in check with categorized personal expense logging.
-- ✅ **To-Do List**: Task management with local persistence and deadline alerts.
-- 🛡️ **Secure Auth**: Traditional JWT-based registration/login paired with **Google OAuth 2.0** integration.
-- 📧 **Verification System**: Automated OTP-based email verification with professional, branded templates.
+### 💼 Core Management Suites
+- **🛡️ Hierarchical Admin System**: Comprehensive user management console with tiered permissions (Student, Admin, Super Admin).
+- **💸 Fees & Financials**: Real-time tracking of total and pending fees with high-fidelity status badges and payment history summary.
+- **📝 Assignments & Deadlines**: End-to-end task tracking for college assignments with status indicators and deadline alerts.
+- **👤 User Profiles**: Personalized academic profiles featuring **Unique Avatars**, **Roll Number tracking**, and **Course/Semester** persistence.
+
+### 📅 Academic Productivity
+- **🏗️ Unified Dashboard**: Real-time aggregation of attendance, assignments, and academic performance.
+- **📅 Intelligent Scheduling**: Dynamic timetable management with subject-specific tracking.
+- **📊 Marks & GPA**: Manage exam scores and calculate performance metrics with real-time SGPA/CGPA updates.
+- **⏰ Attendance Monitor**: Stay on top of your presence with visual status indicators, subject analysis graphs, and integrated Holiday/Exam calendars.
+
+### 🛠️ Personal Tools
+- **⚡ Dynamic Sidebar**: Fully rearrangeable navigation modules with local persistence and draggable layouts.
+- **💸 Expense Tracker**: Keep your finances in check with categorized personal expense logging and pie chart breakdowns.
+- **✅ To-Do List**: Task management with local persistence and deadline alerts.
+
+---
+
+## 👥 Role Management System
+
+UniTrack features a robust, multi-tiered role system to ensure platform security and administrative flexibility:
+
+| Role | Capabilities | Access |
+| :--- | :--- | :--- |
+| **STUDENT** | Manage personal attendance, marks, fees, and assignments. | Student Dashboard |
+| **ADMIN** | View user statistics, monitor active/inactive users, and deactivate accounts. | Admin Panel |
+| **SUPER_ADMIN** | Full administrative control, including role assignment and promoting other users to Admin/Super Admin. | Both Panels |
+
+> [!TIP]
+> **Administrative Safety**: The primary Super Admin (configured in `application.properties`) is protected by a safety layer that prevents demotion or deactivation by other admins, ensuring the platform remains controllable.
 
 ---
 
 ## 🎨 Design Philosophy: "Premium Monochrome SaaS"
 
-UniTrack isn't just a tool; it's an experience. The application features a custom-built design system focused on:
+UniTrack is built with a custom-built design system focused on a high-fidelity user experience:
 
-- **Monochrome Aesthetic**: A professional, strict black-and-white palette that minimizes distraction and looks stunning in both light and dark modes.
+- **Monochrome Aesthetic**: A professional black-and-white palette for maximum focus and a stunning dark mode experience.
 - **Glassmorphism**: Subtle `backdrop-blur` effects and semi-transparent layers for a modern, futuristic UI.
 - **Micro-Animations**: Fluid transitions powered by **Framer Motion** and **Lucide React**.
-- **Interactive Customization**: Draggable sidebar modules allow users to tailor their workspace, with smart persistence to remember layouts.
-- **Visual Effects**: Interactive custom background elements including **LightRays** and **Particle** systems for a "Pro" feel.
+- **Responsive Charts**: Theme-aware data visualizations using **Recharts** (Axes and tooltips adapt dynamically to your theme).
+- **Advanced Visuals**: Interactive background elements including **LightRays** and **Particle** systems for a high-end "Pro" feel.
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### 💻 Frontend
-
 - **Framework**: [React 19](https://reactjs.org/) (Vite)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
@@ -45,62 +65,48 @@ UniTrack isn't just a tool; it's an experience. The application features a custo
 - **State Management**: React Hooks & Context API
 
 ### ⚙️ Backend
-
-- **Core**: [Spring Boot 4.0.3](https://spring.io/projects/spring-boot) (Java 17)
-- **Security**: [Spring Security](https://spring.io/projects/spring-security) with **JWT**
+- **Core**: [Spring Boot 3.4.x](https://spring.io/projects/spring-boot) (Java 17)
+- **Security**: [Spring Security](https://spring.io/projects/spring-security) with **JWT** & RBAC
 - **Persistence**: Spring Data JPA + **PostgreSQL**
 - **Documentation**: [SpringDocs / Swagger](https://springdoc.org/)
 - **Social Auth**: Google Identity Services
-- **Mailing**: Spring Boot Mail Starter
+- **Mailing**: Spring Boot Mail Starter (SMTP)
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-- **Node.js 20+**
-- **Java 17+**
-- **PostgreSQL 14+**
-- **Maven 3.9+**
-
 ### 1. Database Setup
-
 Create a PostgreSQL database named `unitrack`:
-
 ```sql
 CREATE DATABASE unitrack;
 ```
 
 ### 2. Backend Configuration
-
-Update `backend/src/main/resources/application.properties` with your credentials:
-
+Update `backend/src/main/resources/application.properties`:
 ```properties
+# Database
+spring.datasource.url=jdbc:postgresql://localhost:5432/unitrack
 spring.datasource.username=your_username
 spring.datasource.password=your_password
+
+# Authentication
 jwt.secret=your_secure_random_base64_string
 google.client-id=your_google_client_id
+
+# Platform Roles
+app.super-admin-email=dalal.aditya.2456@gmail.com
 ```
 
 ### 3. Execution
-
 **Terminal 1 (Backend)**:
-
 ```bash
-cd backend
-mvn spring-boot:run
+cd backend && mvn spring-boot:run
 ```
-
 **Terminal 2 (Frontend)**:
-
 ```bash
-cd frontend
-npm install
-npm run dev
+cd frontend && npm install && npm run dev
 ```
-
-The application will be available at `http://localhost:5173`.
 
 ---
 
@@ -109,26 +115,19 @@ The application will be available at `http://localhost:5173`.
 ```text
 UniTrack/
 ├── frontend/             # React Client
-│   ├── src/components/   # Reusable UI Elements (Sidebar, Header, Cards)
-│   ├── src/pages/        # Feature Modules (Dashboard, Assignments, etc.)
-│   └── src/services/     # API Integration Layer (Axios)
+│   ├── src/components/   # Reusable UI (Sidebar, AdminSidebar, UserAvatar)
+│   ├── src/layout/       # Layout wrappers (AdminLayout, SidebarLayout)
+│   ├── src/pages/        # Student Modules (Dashboard, Fees, Assignments)
+│   ├── src/pages/admin/  # Admin Modules (AdminDashboard, AdminUsers)
+│   └── src/services/     # API Integration Layer
 └── backend/              # Spring Boot REST API
-    ├── src/.../controller/ # REST Endpoints
-    ├── src/.../service/    # Business Logic
-    ├── src/.../security/   # JWT & OAuth 2.0 Logic
-    └── src/.../entity/     # JPA Records
+    ├── src/.../controller/ # REST Endpoints (Auth, Admin, Fees, Assignments)
+    ├── src/.../service/    # Business Logic & Validation
+    └── src/.../entity/     # JPA Records (User, FeeRecord, Assignment)
 ```
 
 ---
 
-## 📮 API Documentation
-
-UniTrack features a built-in Swagger UI for exploring the REST API. Once the backend is running, visit:
-`http://localhost:8081/swagger-ui.html`
-
----
-
 ## 📜 License & Copyright
-
 Built for academic excellence.
 &copy; 2026 UniTrack Project Team. All Rights Reserved.

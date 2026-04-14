@@ -1,13 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 
 const AuthContext = createContext(null);
 
 /**
  * Global auth state provider.
- * Stores: authToken, userData, isAuthenticated
- * Provides: login(), logout()
- *
- * All components should use `useAuth()` instead of direct localStorage access.
+ * Stores: authToken, userData (including role), isAuthenticated
+ * Provides: login(), logout(), role helpers
  */
 export function AuthProvider({ children }) {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem("authToken"));
@@ -34,6 +32,11 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = !!authToken;
 
+  // Derive role helpers
+  const role = userData?.role || "STUDENT";
+  const isAdmin = role === "ADMIN" || role === "BOTH" || role === "SUPER_ADMIN";
+  const isStudent = role === "STUDENT" || role === "BOTH" || role === "SUPER_ADMIN";
+
   // Persist to localStorage whenever state changes
   useEffect(() => {
     if (authToken) {
@@ -58,7 +61,7 @@ export function AuthProvider({ children }) {
 
   /**
    * Called after successful login/signup.
-   * @param {object} authResponse — { token, name, email, userId }
+   * @param {object} authResponse — { token, name, email, userId, role }
    * @param {object} [extraData]  — additional user fields to store
    */
   const login = useCallback((authResponse, extraData = {}) => {
@@ -88,8 +91,14 @@ export function AuthProvider({ children }) {
     setAvatarUrl(newUrl);
   }, []);
 
+  const value = useMemo(() => ({
+    authToken, userData, avatarUrl, isAuthenticated,
+    role, isAdmin, isStudent,
+    login, logout, updateAvatar
+  }), [authToken, userData, avatarUrl, isAuthenticated, role, isAdmin, isStudent, login, logout, updateAvatar]);
+
   return (
-    <AuthContext.Provider value={{ authToken, userData, avatarUrl, isAuthenticated, login, logout, updateAvatar }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
@@ -97,7 +106,7 @@ export function AuthProvider({ children }) {
 
 /**
  * Hook to access auth state from any component.
- * Usage: const { authToken, userData, isAuthenticated, login, logout } = useAuth();
+ * Usage: const { authToken, userData, isAuthenticated, role, isAdmin, isStudent, login, logout } = useAuth();
  */
 export function useAuth() {
   const ctx = useContext(AuthContext);

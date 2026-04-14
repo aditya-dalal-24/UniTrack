@@ -29,6 +29,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import useDarkMode from "../hooks/useDarkMode";
 import { api } from "../services/api";
 
 const defaultCategories = [
@@ -40,6 +41,7 @@ const defaultCategories = [
 ];
 
 export default function Expenses() {
+  const [isDark] = useDarkMode();
   const [categories, setCategories] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -590,8 +592,14 @@ export default function Expenses() {
                       </Pie>
                       <Tooltip 
                         formatter={(value) => `₹${value}`}
-                        contentStyle={{ backgroundColor: '#1a1a1a', color: '#ffffff', borderRadius: '12px', border: '1px solid #333333', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.5)' }}
-                        itemStyle={{ color: '#ffffff' }}
+                        contentStyle={{ 
+                          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                          color: isDark ? '#f8fafc' : '#0f172a',
+                          borderRadius: '12px', 
+                          border: 'none', 
+                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
+                        }}
+                        itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
                       />
                     </PieChart>
                   </ResponsiveContainer>

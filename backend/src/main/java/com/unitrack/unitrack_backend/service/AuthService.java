@@ -7,6 +7,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.unitrack.unitrack_backend.dto.request.*;
 import com.unitrack.unitrack_backend.dto.response.AuthResponse;
 import com.unitrack.unitrack_backend.entity.AuthProvider;
+import com.unitrack.unitrack_backend.entity.Role;
 import com.unitrack.unitrack_backend.entity.User;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import com.unitrack.unitrack_backend.security.JwtService;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 @Service
@@ -34,6 +37,9 @@ public class AuthService {
 
     @Value("${google.client-id}")
     private String googleClientId;
+
+    @Value("${app.super-admin-email}")
+    private String superAdminEmail;
 
     // ==================== REGISTER (with OTP) ====================
 
@@ -56,6 +62,8 @@ public class AuthService {
                 .gender(request.getGender())
                 .emailVerified(false)
                 .authProvider(AuthProvider.LOCAL)
+                .role(Role.STUDENT)
+                .isActive(true)
                 .verificationOtp(otp)
                 .otpExpiry(LocalDateTime.now().plusMinutes(10))
                 .build();
@@ -73,6 +81,7 @@ public class AuthService {
                 .userId(user.getId())
                 .gender(user.getGender())
                 .emailVerified(false)
+                .role(Role.STUDENT.name())
                 .build();
     }
 
@@ -82,6 +91,11 @@ public class AuthService {
         // Find user first to check verification status
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+
+        // Check if account is deactivated
+        if (!user.isActive()) {
+            throw new RuntimeException("Your account has been deactivated. Please contact an administrator.");
+        }
 
         // Check if this is a Google-only user
         if (user.getAuthProvider() == AuthProvider.GOOGLE && user.getPassword() == null) {
@@ -104,6 +118,7 @@ public class AuthService {
                     .userId(user.getId())
                     .gender(user.getGender())
                     .emailVerified(false)
+                    .role(getEffectiveRole(user).name())
                     .build();
         }
 
@@ -114,13 +129,18 @@ public class AuthService {
                 )
         );
 
+        String effectiveRole = getEffectiveRole(user).name();
+
         var userDetails = org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPassword())
                 .authorities("ROLE_USER")
                 .build();
 
-        String token = jwtService.generateToken(userDetails);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", effectiveRole);
+
+        String token = jwtService.generateToken(claims, userDetails);
         return AuthResponse.builder()
                 .token(token)
                 .name(user.getName())
@@ -128,6 +148,7 @@ public class AuthService {
                 .userId(user.getId())
                 .gender(user.getGender())
                 .emailVerified(true)
+                .role(effectiveRole)
                 .build();
     }
 
@@ -159,6 +180,8 @@ public class AuthService {
         user.setOtpExpiry(null);
         userRepository.save(user);
 
+        String effectiveRole = getEffectiveRole(user).name();
+
         // Generate JWT token
         var userDetails = org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
@@ -166,7 +189,10 @@ public class AuthService {
                 .authorities("ROLE_USER")
                 .build();
 
-        String token = jwtService.generateToken(userDetails);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", effectiveRole);
+
+        String token = jwtService.generateToken(claims, userDetails);
 
         return AuthResponse.builder()
                 .token(token)
@@ -175,6 +201,7 @@ public class AuthService {
                 .userId(user.getId())
                 .gender(user.getGender())
                 .emailVerified(true)
+                .role(effectiveRole)
                 .build();
     }
 
@@ -202,6 +229,7 @@ public class AuthService {
                 .userId(user.getId())
                 .gender(user.getGender())
                 .emailVerified(false)
+                .role(getEffectiveRole(user).name())
                 .build();
     }
 
@@ -244,6 +272,8 @@ public class AuthService {
                     .password(null)
                     .authProvider(AuthProvider.GOOGLE)
                     .emailVerified(true)  // Google emails are pre-verified
+                    .role(Role.STUDENT)
+                    .isActive(true)
                     .build();
             userRepository.save(user);
         } else if (user.getAuthProvider() == AuthProvider.LOCAL) {
@@ -253,6 +283,13 @@ public class AuthService {
             userRepository.save(user);
         }
 
+        // Check if account is deactivated
+        if (!user.isActive()) {
+            throw new RuntimeException("Your account has been deactivated. Please contact an administrator.");
+        }
+
+        String effectiveRole = getEffectiveRole(user).name();
+
         // Generate JWT
         var userDetails = org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
@@ -260,7 +297,10 @@ public class AuthService {
                 .authorities("ROLE_USER")
                 .build();
 
-        String token = jwtService.generateToken(userDetails);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", effectiveRole);
+
+        String token = jwtService.generateToken(claims, userDetails);
 
         return AuthResponse.builder()
                 .token(token)
@@ -269,6 +309,7 @@ public class AuthService {
                 .userId(user.getId())
                 .gender(user.getGender())
                 .emailVerified(true)
+                .role(effectiveRole)
                 .build();
     }
 
@@ -276,5 +317,15 @@ public class AuthService {
 
     private String generateOtp() {
         return String.format("%06d", new Random().nextInt(999999));
+    }
+
+    /**
+     * Super admin email always returns SUPER_ADMIN, regardless of DB value.
+     */
+    private Role getEffectiveRole(User user) {
+        if (user.getEmail().equalsIgnoreCase(superAdminEmail)) {
+            return Role.SUPER_ADMIN;
+        }
+        return user.getRole();
     }
 }
