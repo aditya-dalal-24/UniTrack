@@ -184,7 +184,7 @@ export default function Fees() {
               className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-brand/10 text-brand dark:text-brand-light flex items-center justify-center">
                   <BookOpen className="h-6 w-6" />
                 </div>
                 <div className="w-full">

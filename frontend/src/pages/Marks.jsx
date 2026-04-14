@@ -212,7 +212,7 @@ export default function Marks() {
               className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-accent/10 text-accent dark:text-accent-light flex items-center justify-center">
                   <BookOpen className="h-6 w-6" />
                 </div>
                 <div>
@@ -305,7 +305,7 @@ export default function Marks() {
                     <tr>
                       <td colSpan="9" className="px-6 py-12 text-center text-slate-500">
                         <div className="flex flex-col items-center gap-4">
-                          <BookOpen className="h-10 w-10 opacity-20" />
+                          <BookOpen className="h-12 w-12 text-slate-300 dark:text-slate-700" />
                           <p>No marks recorded for this semester.</p>
                           <button
                             onClick={() => {
