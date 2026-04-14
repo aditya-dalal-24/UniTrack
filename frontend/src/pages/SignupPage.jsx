@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Lock, Mail, User, Phone, Calendar, GraduationCap, BookOpen, Hash, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "../services/api";
 import Particles from "../components/Particles";
+import OtpVerificationModal from "../components/OtpVerificationModal";
+
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "53211343073-ram5u537teqgbdqt7sln5274fqa98ele.apps.googleusercontent.com";
 
 export default function SignupPage({ onLogin }) {
   const navigate = useNavigate();
@@ -18,11 +22,15 @@ export default function SignupPage({ onLogin }) {
     semester: "",
     password: "",
     confirmPassword: "",
+    gender: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [isDark, setIsDark] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
 
   // Initialize dark mode on mount
   useEffect(() => {
@@ -42,6 +50,64 @@ export default function SignupPage({ onLogin }) {
     return () => observer.disconnect();
   }, []);
 
+  // Google Identity Services callback
+  const handleGoogleResponse = useCallback(async (response) => {
+    setGoogleLoading(true);
+    setError("");
+
+    const { data, error: apiError } = await api.googleLogin(response.credential);
+
+    if (apiError) {
+      setError(apiError);
+      setGoogleLoading(false);
+      return;
+    }
+
+    if (data && data.token) {
+      onLogin(data);
+      navigate("/dashboard", { replace: true });
+    } else {
+      setError("Google sign-up failed. Please try again.");
+    }
+    setGoogleLoading(false);
+  }, [onLogin, navigate]);
+
+  // Load Google Identity Services script
+  useEffect(() => {
+    if (GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID") return;
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+          itp_support: true,
+          ux_mode: "popup",
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-signup-btn"),
+          {
+            theme: isDark ? "filled_black" : "outline",
+            size: "large",
+            width: "100%",
+            text: "signup_with",
+            shape: "pill",
+          }
+        );
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) existingScript.remove();
+    };
+  }, [isDark, handleGoogleResponse]);
+
   function handleChange(e) {
     setFormData({
       ...formData,
@@ -54,7 +120,7 @@ export default function SignupPage({ onLogin }) {
     setError("");
 
     // Validation
-    if (!formData.fullName || !formData.email || !formData.university || !formData.course || !formData.year || !formData.semester || !formData.password || !formData.confirmPassword) {
+    if (!formData.fullName || !formData.email || !formData.university || !formData.course || !formData.year || !formData.semester || !formData.password || !formData.confirmPassword || !formData.gender) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -78,8 +144,15 @@ export default function SignupPage({ onLogin }) {
         return;
       }
 
+      if (data && data.emailVerified === false) {
+        // Show OTP modal for email verification
+        setPendingEmail(data.email);
+        setShowOtpModal(true);
+        return;
+      }
+
       if (data && data.token) {
-        // Store via AuthContext — pass the consolidated object
+        // If somehow already verified (shouldn't happen for new signups)
         onLogin({
           ...data,
           phone: formData.phone,
@@ -88,7 +161,6 @@ export default function SignupPage({ onLogin }) {
           year: formData.year,
           semester: formData.semester,
         });
-        
         navigate("/dashboard", { replace: true });
       } else {
         setError("Signup failed. Please try again.");
@@ -99,14 +171,27 @@ export default function SignupPage({ onLogin }) {
     }
   }
 
+  function handleOtpVerified(authData) {
+    setShowOtpModal(false);
+    onLogin({
+      ...authData,
+      phone: formData.phone,
+      university: formData.university,
+      course: formData.course,
+      year: formData.year,
+      semester: formData.semester,
+    });
+    navigate("/dashboard", { replace: true });
+  }
+
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-500 py-8">
       {/* Particles Background */}
       <div className="absolute inset-0 z-0">
         <Particles
           particleColors={isDark ? ["#ffffff"] : ["#334155"]}
-          particleCount={400}
-          particleSpread={10}
+          particleCount={800}
+          particleSpread={16}
           speed={0.1}
           particleBaseSize={100}
           moveParticlesOnHover
@@ -183,6 +268,43 @@ export default function SignupPage({ onLogin }) {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
+          {/* Google Sign-Up Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.65 }}
+          >
+            {GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_CLIENT_ID" ? (
+              <div id="google-signup-btn" className="flex justify-center" />
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="w-full flex items-center justify-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-500 cursor-not-allowed"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Google Sign-Up (Client ID required)
+              </button>
+            )}
+          </motion.div>
+
+          {/* Divider */}
+          <motion.div
+            className="flex items-center gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.68 }}
+          >
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">or sign up with email</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          </motion.div>
+
           {/* Full Name Field */}
           <motion.div 
             className="space-y-1"
@@ -202,7 +324,7 @@ export default function SignupPage({ onLogin }) {
                 type="text"
                 name="fullName"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                placeholder="John Doe"
+                placeholder="Mark Jason"
                 value={formData.fullName}
                 onChange={handleChange}
               />
@@ -305,7 +427,7 @@ export default function SignupPage({ onLogin }) {
                 type="text"
                 name="university"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                placeholder="Harvard University"
+                placeholder="Your University"
                 value={formData.university}
                 onChange={handleChange}
               />
@@ -338,6 +460,37 @@ export default function SignupPage({ onLogin }) {
             </motion.div>
           </motion.div>
 
+          {/* Gender Field */}
+          <motion.div 
+            className="space-y-1"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.88 }}
+          >
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              Gender <span className="text-red-500">*</span>
+            </label>
+            <motion.div 
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 px-3 py-2 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/30 transition-all"
+              whileFocus={{ scale: 1.01 }}
+            >
+              <User className="h-4 w-4 text-slate-400" />
+              <select
+                name="gender"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 cursor-pointer"
+                value={formData.gender}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </motion.div>
+          </motion.div>
+
           {/* Year and Semester Row */}
           <div className="grid grid-cols-2 gap-3">
             {/* Year Field */}
@@ -366,6 +519,8 @@ export default function SignupPage({ onLogin }) {
                   <option value="2">2nd Year</option>
                   <option value="3">3rd Year</option>
                   <option value="4">4th Year</option>
+                  <option value="5">5th Year</option>
+                  <option value="6">6th Year</option>
                 </select>
               </motion.div>
             </motion.div>
@@ -543,6 +698,15 @@ export default function SignupPage({ onLogin }) {
           </p>
         </motion.div>
       </motion.div>
+
+      {/* OTP Verification Modal */}
+      {showOtpModal && (
+        <OtpVerificationModal
+          email={pendingEmail}
+          onVerified={handleOtpVerified}
+          onClose={() => setShowOtpModal(false)}
+        />
+      )}
     </div>
   );
 }

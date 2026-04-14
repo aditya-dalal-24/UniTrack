@@ -43,6 +43,7 @@ public class ProfileService {
                 .profilePicUrl(profile.getProfilePicUrl())
                 .dob(profile.getDob())
                 .age(age)
+                .gender(user.getGender())
                 .bloodGroup(profile.getBloodGroup())
                 .address(profile.getAddress())
                 .college(profile.getCollege())
@@ -79,6 +80,8 @@ public class ProfileService {
         profile.setProfilePicUrl(request.getProfilePicUrl());
         profile.setDob(request.getDob());
         profile.setBloodGroup(request.getBloodGroup());
+        user.setGender(request.getGender()); // Update gender on User entity
+        userRepository.save(user);
         profile.setAddress(request.getAddress());
         profile.setCollege(request.getCollege());
         profile.setBranch(request.getBranch());

@@ -25,6 +25,7 @@ public class DashboardService {
     private final ExpenseRepository expenseRepository;
     private final MarksRepository marksRepository;
     private final TodoRepository todoRepository;
+    private final SubjectRepository subjectRepository;
 
     private User getUser(Principal principal) {
         return userRepository.findByEmail(principal.getName())
@@ -50,6 +51,19 @@ public class DashboardService {
         long lmAbsent = lastMonthRecords.stream().filter(r -> r.getStatus() == AttendanceStatus.ABSENT).count();
         long lmWorking = lmPresent + lmAbsent;
         double lastMonthPct = lmWorking > 0 ? Math.round((lmPresent * 100.0 / lmWorking) * 100.0) / 100.0 : 0.0;
+
+        List<Subject> allSubjects = subjectRepository.findByUser(user);
+        List<DashboardResponse.SubjectSummary> subjectSummaries = new ArrayList<>();
+        for (Subject sub : allSubjects) {
+            long p = attendanceRepository.countByUserAndStatusAndSubject(user, AttendanceStatus.PRESENT, sub);
+            long a = attendanceRepository.countByUserAndStatusAndSubject(user, AttendanceStatus.ABSENT, sub);
+            long t = p + a;
+            double pct = t > 0 ? Math.round((p * 100.0 / t) * 100.0) / 100.0 : 0.0;
+            subjectSummaries.add(DashboardResponse.SubjectSummary.builder()
+                    .name(sub.getName())
+                    .attendancePercentage(pct)
+                    .build());
+        }
 
         // ── Fees ────────────────────────────────────────────────
         List<Fees> allFees = feesRepository.findByUser(user);
@@ -166,6 +180,7 @@ public class DashboardService {
                         .pendingTodos(pendingTodos)
                         .completedTodos(completedTodos)
                         .build())
+                .subjects(subjectSummaries)
                 .build();
     }
 }

@@ -25,4 +25,5 @@ public class RegisterRequest {
     private String course;
     private Integer semester;
     private LocalDate dob;
+    private String gender;
 }

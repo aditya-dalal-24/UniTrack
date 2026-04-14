@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { Mail, Phone, MapPin, Calendar, User, Users, GraduationCap, Building2, Heart, Edit2, Save, X, Shield, BookOpen, Camera, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import PageHeader from "../components/PageHeader";
+import UserAvatar from "../components/UserAvatar";
 
 const defaultProfileData = {
   name: "",
@@ -27,9 +29,13 @@ const defaultProfileData = {
   motherPhone: "",
   emergencyContact: "",
   emergencyContactName: "",
+  gender: "",
 };
 
 export default function Profile() {
+  const { userData, updateAvatar } = useAuth();
+  const userId = userData?.userId || "default";
+
   const [isEditing, setIsEditing] = useState(false);
   const [studentData, setStudentData] = useState(defaultProfileData);
   const [editData, setEditData] = useState(defaultProfileData);
@@ -65,12 +71,23 @@ export default function Profile() {
     setLoading(true);
     setError(null);
     
+    const avatarKey = `profile_avatar_${userId}`;
+    const coverKey = `profile_cover_${userId}`;
+
     // Retrieve visually persisted images to maintain UX
-    const savedAvatar = localStorage.getItem("profile_avatar");
-    if (savedAvatar) setAvatarUrl(savedAvatar);
+    const savedAvatar = localStorage.getItem(avatarKey);
+    if (savedAvatar) {
+      setAvatarUrl(savedAvatar);
+    } else {
+      setAvatarUrl(null); 
+    }
     
-    const savedCover = localStorage.getItem("profile_cover");
-    if (savedCover) setCoverUrl(savedCover);
+    const savedCover = localStorage.getItem(coverKey);
+    if (savedCover) {
+      setCoverUrl(savedCover);
+    } else {
+      setCoverUrl(null);
+    }
 
     const { data, error: apiError } = await api.getProfile();
     if (apiError) {
@@ -97,6 +114,7 @@ export default function Profile() {
         motherPhone: data.motherPhone || "",
         emergencyContact: data.emergencyContact || "",
         emergencyContactName: data.emergencyContactName || "",
+        gender: data.gender || "",
       };
       setStudentData(fetched);
     }
@@ -111,6 +129,12 @@ export default function Profile() {
     setEditData(studentData);
     setIsEditing(true);
   };
+
+  useEffect(() => {
+    if (isEditing) {
+      // Do nothing, we let the user manually change it via Upload
+    }
+  }, [editData.gender, isEditing]);
 
   const handleSave = async () => {
     const payload = {
@@ -128,6 +152,7 @@ export default function Profile() {
       semester: editData.semester,
       batch: editData.batch,
       college: editData.college,
+      gender: editData.gender,
       fatherName: editData.fatherName,
       fatherPhone: editData.fatherPhone,
       motherName: editData.motherName,
@@ -136,12 +161,21 @@ export default function Profile() {
       emergencyContactName: editData.emergencyContactName,
     };
 
-    // Persist images locally to survive page refreshes
-    if (avatarUrl !== "https://api.dicebear.com/7.x/avataaars/svg?seed=student") {
-      localStorage.setItem("profile_avatar", avatarUrl);
+    const avatarKey = `profile_avatar_${userId}`;
+    const coverKey = `profile_cover_${userId}`;
+
+    if (avatarUrl && avatarUrl.startsWith('data:image')) {
+      localStorage.setItem(avatarKey, avatarUrl);
+      updateAvatar(avatarUrl);
+    } else if (!avatarUrl) {
+      localStorage.removeItem(avatarKey);
+      updateAvatar(null);
     }
+
     if (coverUrl) {
-      localStorage.setItem("profile_cover", coverUrl);
+      localStorage.setItem(coverKey, coverUrl);
+    } else {
+      localStorage.removeItem(coverKey);
     }
 
     const { error: apiError } = await api.updateProfile(payload);
@@ -241,10 +275,11 @@ export default function Profile() {
             {/* Avatar */}
             <div className="relative group flex-shrink-0 z-30">
               <div className="absolute inset-0 rounded-[2rem] bg-brand/30 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100 duration-500"></div>
-              <img
+              <UserAvatar 
+                name={studentData.name} 
+                userId={userId} 
                 src={avatarUrl}
-                alt="Profile Avatar"
-                className="w-40 h-40 md:w-48 md:h-48 shadow-2xl border-4 border-white dark:border-slate-900 relative bg-white dark:bg-slate-800 object-cover rounded-[2rem] transition-transform duration-500"
+                className="w-40 h-40 md:w-48 md:h-48 text-5xl md:text-6xl rounded-[2rem] border-4 border-white dark:border-slate-900 shadow-2xl transition-transform duration-500"
               />
               {isEditing && (
                 <label className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 backdrop-blur-sm rounded-[2rem] transition-all duration-300 cursor-pointer">
@@ -373,7 +408,7 @@ export default function Profile() {
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 blur-3xl rounded-full pointer-events-none"></div>
         <div className="flex items-center gap-3 mb-6 relative z-10">
-          <div className="p-2.5 bg-brand/10 text-brand rounded-xl">
+          <div className="p-2.5 bg-brand/10 text-brand dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
             <User className="h-5 w-5" />
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -381,7 +416,7 @@ export default function Profile() {
           </h2>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
           <EditableInfoCard
             icon={Calendar}
             label="Date of Birth"
@@ -409,13 +444,28 @@ export default function Profile() {
             onChange={(val) => handleChange("bloodGroup", val)}
           />
           <EditableInfoCard
+            icon={User}
+            label="Gender"
+            value={studentData.gender}
+            editValue={editData.gender}
+            isEditing={isEditing}
+            onChange={(val) => handleChange("gender", val)}
+            type="select"
+            options={[
+              { value: "Male", label: "Male" },
+              { value: "Female", label: "Female" },
+              { value: "Other", label: "Other" },
+              { value: "Prefer not to say", label: "Prefer not to say" }
+            ]}
+          />
+          <EditableInfoCard
             icon={MapPin}
             label="Address"
             value={studentData.address}
             editValue={editData.address}
             isEditing={isEditing}
             onChange={(val) => handleChange("address", val)}
-            className="md:col-span-2 lg:col-span-3"
+            className="md:col-span-2"
             multiline
           />
         </div>
@@ -430,7 +480,7 @@ export default function Profile() {
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none"></div>
         <div className="flex items-center gap-3 mb-6 relative z-10">
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl">
+          <div className="p-2.5 bg-indigo-50 text-indigo-600 dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(99,102,241,0.2)]">
             <Building2 className="h-5 w-5" />
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -438,7 +488,7 @@ export default function Profile() {
           </h2>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
           <EditableInfoCard
             icon={Building2}
             label="College"
@@ -501,7 +551,7 @@ export default function Profile() {
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 blur-3xl rounded-full pointer-events-none"></div>
           <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="p-2.5 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 rounded-xl">
+            <div className="p-2.5 bg-rose-50 text-rose-600 dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(244,63,94,0.2)]">
               <Users className="h-5 w-5" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -509,7 +559,7 @@ export default function Profile() {
             </h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
             <EditableInfoCard
               icon={User}
               label="Father's Name"
@@ -556,7 +606,7 @@ export default function Profile() {
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-3xl rounded-full pointer-events-none"></div>
           <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="p-2.5 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 rounded-xl">
+            <div className="p-2.5 bg-amber-50 text-amber-600 dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(245,158,11,0.2)]">
               <Shield className="h-5 w-5" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -590,7 +640,18 @@ export default function Profile() {
 }
 
 // Editable Info Card component
-function EditableInfoCard({ icon: Icon, label, value, editValue, isEditing, onChange, className = "", multiline = false, type = "text" }) {
+function EditableInfoCard({ 
+  icon: Icon, 
+  label, 
+  value, 
+  editValue, 
+  isEditing, 
+  onChange, 
+  className = "", 
+  type = "text", 
+  multiline = false,
+  options = []
+}) {
   return (
     <div className={`group relative p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 hover:border-brand/40 dark:hover:border-brand/40 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)] overflow-hidden ${className}`}>
       
@@ -643,6 +704,17 @@ function EditableInfoCard({ icon: Icon, label, value, editValue, isEditing, onCh
                   placeholder="Phone number"
                 />
               </div>
+            ) : type === "select" ? (
+              <select
+                value={editValue}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-4 py-2.5 mt-1.5 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none cursor-pointer appearance-none"
+              >
+                <option value="" disabled>Select {label}</option>
+                {options && options.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             ) : (
               <input
                 type={type}

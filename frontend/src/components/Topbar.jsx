@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import useDarkMode from "../hooks/useDarkMode.js";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
+import UserAvatar from "./UserAvatar";
 
 export default function Topbar() {
   const [isDark, setIsDark] = useDarkMode();
@@ -31,6 +32,7 @@ export default function Topbar() {
     branch: p.branch || userData?.branch || "",
     semester: p.semester || userData?.semester || "",
     batch: p.batch || userData?.batch || "",
+    gender: p.gender || userData?.gender || "",
   };
 
   return (
@@ -44,17 +46,11 @@ export default function Topbar() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            {localStorage.getItem("profile_avatar") ? (
-              <img 
-                src={localStorage.getItem("profile_avatar")} 
-                alt="Avatar" 
-                className="h-10 w-10 rounded-full object-cover shadow-md border-2 border-white dark:border-slate-800" 
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center text-white text-lg font-bold shadow-md">
-                {activeStudent.name.charAt(0)}
-              </div>
-            )}
+            <UserAvatar 
+              name={activeStudent.name} 
+              userId={userData?.userId} 
+              className="h-10 w-10 text-sm" 
+            />
 
             {/* Student Info */}
             <div>

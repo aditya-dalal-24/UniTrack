@@ -95,7 +95,17 @@ export const api = {
       course: formData.course || null,
       semester: formData.semester ? parseInt(formData.semester) : null,
       dob: formData.dateOfBirth || null,
+      gender: formData.gender || null,
     }),
+
+  googleLogin: (idToken) =>
+    request('post', '/auth/google', { idToken }),
+
+  verifyEmail: (email, otp) =>
+    request('post', '/auth/verify-email', { email, otp }),
+
+  resendOtp: (email) =>
+    request('post', '/auth/resend-otp', { email }),
 
   // ==================== DASHBOARD ====================
   getDashboard: () =>
@@ -106,7 +116,10 @@ export const api = {
     request('get', '/profile'),
 
   updateProfile: (profileData) =>
-    request('put', '/profile', profileData),
+    request('put', '/profile', {
+      ...profileData,
+      gender: profileData.gender || null,
+    }),
 
   // ==================== ATTENDANCE ====================
   getAttendance: () =>

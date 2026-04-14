@@ -23,7 +23,6 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
     private String password;
 
     private String phone;
@@ -32,13 +31,25 @@ public class User {
     private Integer semester;
     private String rollNumber;
     private LocalDate dob;
+    private String gender;
     @Column(name = "email_verified", nullable = false, columnDefinition = "boolean default false")
     private boolean emailVerified = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, columnDefinition = "varchar(255) default 'LOCAL'")
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    private String verificationOtp;
+    private LocalDateTime otpExpiry;
 
     private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+        if (this.authProvider == null) {
+            this.authProvider = AuthProvider.LOCAL;
+        }
     }
 }

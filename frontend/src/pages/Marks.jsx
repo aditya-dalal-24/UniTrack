@@ -183,7 +183,7 @@ export default function Marks() {
                 </div>
                 <div>
                   <p className="text-sm text-white/80">Overall CGPA</p>
-                  <p className="text-3xl font-bold">{cgpa.toFixed(2)}</p>
+                  <p className="text-3xl font-bold">{(cgpa || 0).toFixed(2)}</p>
                 </div>
               </div>
             </motion.div>
@@ -200,7 +200,7 @@ export default function Marks() {
                 </div>
                 <div>
                   <p className="text-sm text-white/80">Current SGPA</p>
-                  <p className="text-3xl font-bold">{currentSgpa.toFixed(2)}</p>
+                  <p className="text-3xl font-bold">{(currentSgpa || 0).toFixed(2)}</p>
                 </div>
               </div>
             </motion.div>
@@ -340,7 +340,7 @@ export default function Marks() {
                         {(selectedExamType === "All" || selectedExamType === "End-Sem") && (
                           <td className="px-6 py-4">{mark.endSem}</td>
                         )}
-                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{parseFloat(mark.finalScore).toFixed(2)}</td>
+                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{parseFloat(mark.finalScore || 0).toFixed(2)}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
                             {mark.grade}

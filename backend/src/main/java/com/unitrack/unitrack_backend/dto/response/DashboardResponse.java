@@ -14,6 +14,7 @@ public class DashboardResponse {
     private ExpensesSummary expenses;
     private MarksSummary marks;
     private TodosSummary todos;
+    private List<SubjectSummary> subjects;
 
     @Data
     @Builder
@@ -88,5 +89,14 @@ public class DashboardResponse {
         private long totalTodos;
         private long pendingTodos;
         private long completedTodos;
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class SubjectSummary {
+        private String name;
+        private double attendancePercentage;
     }
 }

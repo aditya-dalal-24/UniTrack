@@ -19,6 +19,7 @@ public class ProfileResponse {
     private String profilePicUrl;
     private LocalDate dob;
     private Integer age;
+    private String gender;
     private String bloodGroup;
     private String address;
     private String college;

@@ -13,6 +13,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
+import UserAvatar from "../components/UserAvatar";
 import {
   BarChart,
   Bar,
@@ -87,17 +88,11 @@ export default function Dashboard() {
       {userData && (
         <div className="rounded-2xl bg-gradient-to-br from-brand/10 via-accent/10 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border border-slate-200/60 dark:border-slate-800/60 p-6 shadow-sm">
           <div className="flex items-start gap-4">
-            {localStorage.getItem("profile_avatar") ? (
-              <img 
-                src={localStorage.getItem("profile_avatar")} 
-                alt="Avatar" 
-                className="h-14 w-14 rounded-full object-cover shadow-md border-2 border-white dark:border-slate-800" 
-              />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent shadow-md flex-shrink-0">
-                <GraduationCap className="h-7 w-7 text-white" />
-              </div>
-            )}
+            <UserAvatar 
+              name={userData.name || userData.fullName} 
+              userId={userData.userId} 
+              className="h-14 w-14 text-sm" 
+            />
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
                 Welcome back, {userData.name || userData.fullName || "Student"}!
@@ -195,6 +190,50 @@ export default function Dashboard() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Subject-wise Attendance Chart */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+              Subject Attendance
+            </h3>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Analysis</div>
+          </div>
+          
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={attendanceData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis 
+                  dataKey="subject" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 10 }}
+                />
+                <YAxis domain={[0, 100]} hide />
+                <Tooltip 
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
+                  }}
+                  formatter={(value) => [`${value}%`, 'Attendance']}
+                />
+                <Bar 
+                  dataKey="percentage" 
+                  fill="#0ea5e9"
+                  radius={[6, 6, 0, 0]} 
+                  barSize={40}
+                >
+                  {attendanceData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.percentage >= 75 ? '#10b981' : '#f43f5e'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Monthly Expenses Chart */}
         <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
           <div className="flex items-center justify-between mb-6">
@@ -238,22 +277,22 @@ export default function Dashboard() {
         </div>
 
         {/* Performance Summary */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
+        <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60">
           <h3 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
             Academic Performance
           </h3>
           <div className="flex flex-col items-center justify-center h-64 gap-6">
             <div className="text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">CGPA</p>
-              <p className="text-5xl font-bold text-brand">
-                {dashboardData?.marks?.cgpa?.toFixed(2) || "—"}
+              <p className="text-5xl font-bold text-brand dark:text-white">
+                {((dashboardData?.marks?.cgpa) || 0).toFixed(2)}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-8 text-center">
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Current SGPA</p>
-                <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">
-                  {dashboardData?.marks?.currentSgpa?.toFixed(2) || "—"}
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                  {((dashboardData?.marks?.currentSgpa) || 0).toFixed(2)}
                 </p>
               </div>
               <div>

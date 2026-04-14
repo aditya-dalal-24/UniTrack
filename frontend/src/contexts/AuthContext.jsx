@@ -20,6 +20,18 @@ export function AuthProvider({ children }) {
     }
   });
 
+  const [avatarUrl, setAvatarUrl] = useState(null);
+
+  // Initialize/Update avatar when user changes
+  useEffect(() => {
+    if (userData?.userId) {
+      const saved = localStorage.getItem(`profile_avatar_${userData.userId}`);
+      setAvatarUrl(saved);
+    } else {
+      setAvatarUrl(null);
+    }
+  }, [userData?.userId]);
+
   const isAuthenticated = !!authToken;
 
   // Persist to localStorage whenever state changes
@@ -63,13 +75,21 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     setAuthToken(null);
     setUserData(null);
+    setAvatarUrl(null);
     localStorage.removeItem("authToken");
     localStorage.removeItem("userData");
     localStorage.setItem("isAuthenticated", "false");
   }, []);
 
+  /**
+   * Updates the global avatar state for reactive UI updates across Topbar/Dashboard.
+   */
+  const updateAvatar = useCallback((newUrl) => {
+    setAvatarUrl(newUrl);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ authToken, userData, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ authToken, userData, avatarUrl, isAuthenticated, login, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );
