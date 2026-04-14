@@ -240,12 +240,16 @@ export default function Assignments() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleStatus(a.id)}
-                      title={`Mark as ${a.status === "Pending" ? "Submitted" : "Pending"}`}
+                      title={`Mark as ${a.status === ASSIGNMENT_STATUS.PENDING ? "Submitted" : "Pending"}`}
                     >
-                      {a.status === "Submitted" ? (
-                        <CheckCircle className="text-green-500" size={20} />
+                      {a.status === ASSIGNMENT_STATUS.SUBMITTED ? (
+                        <CheckCircle className="text-emerald-500" size={20} />
+                      ) : a.status === ASSIGNMENT_STATUS.OVERDUE ? (
+                        <div className="text-rose-500 flex items-center gap-1">
+                          <Clock size={20} />
+                        </div>
                       ) : (
-                        <Clock className="text-yellow-500" size={20} />
+                        <Clock className="text-indigo-500" size={20} />
                       )}
                     </button>
                     <button
@@ -276,12 +280,14 @@ export default function Assignments() {
                 <span
                   className={`inline-block mt-3 px-3 py-1 text-xs rounded-full font-semibold
                     ${
-                      a.status === "Submitted"
-                        ? "bg-green-500/20 text-green-700 dark:text-green-300"
-                        : "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"
+                      a.status === ASSIGNMENT_STATUS.SUBMITTED
+                        ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                        : a.status === ASSIGNMENT_STATUS.OVERDUE
+                        ? "bg-rose-500/10 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400"
+                        : "bg-indigo-500/10 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400"
                     }`}
                 >
-                  {a.status}
+                  {a.status ? a.status.charAt(0) + a.status.slice(1).toLowerCase() : 'Pending'}
                 </span>
               </>
             )}

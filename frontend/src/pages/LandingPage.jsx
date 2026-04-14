@@ -9,7 +9,7 @@ function WordCycle({ isDark }) {
     const lightModeCategories = [
         { text: "attendance", color: "from-emerald-700 to-teal-900" },
         { text: "assignments", color: "from-indigo-700 to-blue-900" },
-        { text: "fees", color: "from-amber-700 to-orange-900" },
+        { text: "college fees", color: "from-amber-700 to-orange-900" },
         { text: "marks", color: "from-rose-700 to-pink-900" },
         { text: "expenses", color: "from-cyan-700 to-blue-900" },
         { text: "timetables", color: "from-violet-700 to-purple-900" },
@@ -19,7 +19,7 @@ function WordCycle({ isDark }) {
     const darkModeCategories = [
         { text: "attendance", color: "from-emerald-400 to-teal-300" },
         { text: "assignments", color: "from-blue-400 to-indigo-300" },
-        { text: "fees", color: "from-amber-400 to-orange-300" },
+        { text: "college fees", color: "from-amber-400 to-orange-300" },
         { text: "marks", color: "from-rose-400 to-pink-300" },
         { text: "expenses", color: "from-cyan-400 to-blue-300" },
         { text: "timetables", color: "from-violet-400 to-purple-300" },
@@ -101,9 +101,9 @@ export default function LandingPage() {
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <LightRays
                     raysOrigin="top-center"
-                    raysColor={isDark ? "#ffffff" : "#1e293b"}
+                    raysColor={isDark ? "#ffffff" : "#e2e8f0"}
                     raysSpeed={0.8}
-                    lightSpread={0.6}
+                    lightSpread={isDark ? 0.6 : 0.8}
                     rayLength={3}
                     followMouse={true}
                     mouseInfluence={0.1}
