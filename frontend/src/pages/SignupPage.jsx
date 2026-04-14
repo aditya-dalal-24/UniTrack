@@ -105,7 +105,7 @@ export default function SignupPage({ onLogin }) {
       <div className="absolute inset-0 z-0">
         <Particles
           particleColors={isDark ? ["#ffffff"] : ["#334155"]}
-          particleCount={200}
+          particleCount={400}
           particleSpread={10}
           speed={0.1}
           particleBaseSize={100}
