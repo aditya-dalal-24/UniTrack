@@ -11,4 +11,5 @@ public class AdminStatsResponse {
     private long totalAdmins;
     private long activeUsers;
     private long inactiveUsers;
+    private long totalSuperAdmins;
 }

@@ -33,13 +33,24 @@ public class AdminService {
 
     public AdminStatsResponse getStats() {
         long total = userRepository.count();
-        long admins = userRepository.countByRole(Role.ADMIN) + userRepository.countByRole(Role.BOTH) + userRepository.countByRole(Role.SUPER_ADMIN);
+        long admins = userRepository.countByRole(Role.ADMIN) + userRepository.countByRole(Role.BOTH);
+        long superAdmins = userRepository.countByRole(Role.SUPER_ADMIN);
+        
+        // FIX: The user instruction requires combining the counts or ensuring all admins are tracked properly
+        // "count users where role = ADMIN OR BOTH ALSO include super admin email"
+        long superAdminAggregate = userRepository.countByRole(Role.SUPER_ADMIN) + userRepository.countByRole(Role.ADMIN) + userRepository.countByRole(Role.BOTH);
+        
+        if (userRepository.findByEmail(superAdminEmail).map(u -> u.getRole() != Role.SUPER_ADMIN && u.getRole() != Role.ADMIN && u.getRole() != Role.BOTH).orElse(false)) {
+            superAdminAggregate++;
+        }
+
         long active = userRepository.countByIsActive(true);
         long inactive = userRepository.countByIsActive(false);
 
         return AdminStatsResponse.builder()
                 .totalUsers(total)
                 .totalAdmins(admins)
+                .totalSuperAdmins(superAdminAggregate)
                 .activeUsers(active)
                 .inactiveUsers(inactive)
                 .build();
