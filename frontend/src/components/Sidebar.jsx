@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, Reorder, AnimatePresence, useDragControls } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
@@ -15,6 +15,8 @@ import {
   Calendar,
   CheckSquare,
   LogOut,
+  GripVertical,
+  RotateCcw,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -32,6 +34,33 @@ const links = [
 
 export default function Sidebar({ collapsed, setCollapsed }) {
   const { logout } = useAuth();
+  const [orderedLinks, setOrderedLinks] = useState(() => {
+    const saved = localStorage.getItem("sidebarOrder");
+    if (saved) {
+      try {
+        const paths = JSON.parse(saved);
+        // Only include paths that exist in the master links safely
+        return paths
+          .map((to) => links.find((l) => l.to === to))
+          .filter(Boolean);
+      } catch (e) {
+        return links;
+      }
+    }
+    return links;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "sidebarOrder",
+      JSON.stringify(orderedLinks.map((l) => l.to))
+    );
+  }, [orderedLinks]);
+
+  const resetOrder = () => {
+    localStorage.removeItem("sidebarOrder");
+    setOrderedLinks(links);
+  };
 
   return (
     <aside
@@ -62,55 +91,29 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         </button>
       </div>
 
-      <nav className="mt-4 space-y-2 px-3">
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            className={({ isActive }) =>
-              `relative flex items-center ${collapsed ? "justify-center" : "gap-3"} rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 z-10 
-              ${
-                isActive
-                  ? "text-slate-900 dark:text-white"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              }`
-            }
-            title={collapsed ? label : undefined}
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.div
-                    layoutId="activeSidebarLink"
-                    className="absolute inset-0 rounded-xl bg-slate-100 dark:bg-slate-800/80 -z-10"
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 30,
-                    }}
-                  />
-                )}
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="truncate"
-                  >
-                    {label}
-                  </motion.span>
-                )}
-              </>
-            )}
-          </NavLink>
+      <Reorder.Group
+        axis="y"
+        values={orderedLinks}
+        onReorder={setOrderedLinks}
+        className="mt-4 space-y-2 list-none"
+      >
+        {orderedLinks.map((link) => (
+          <SidebarItem key={link.to} link={link} collapsed={collapsed} />
         ))}
-      </nav>
+      </Reorder.Group>
 
-      {/* Logout Button */}
-      <div className="mt-auto p-4 border-t border-slate-200/60 dark:border-slate-800/60">
+      {/* Reset & Logout */}
+      <div className="mt-auto p-4 space-y-2 border-t border-slate-200/60 dark:border-slate-800/60">
+        {!collapsed && (
+          <button
+            onClick={resetOrder}
+            className="flex items-center gap-3 w-full px-3 py-2 text-xs font-semibold text-slate-400 hover:text-brand dark:hover:text-white transition-colors group"
+          >
+            <RotateCcw className="h-3.5 w-3.5 group-hover:rotate-[-45deg] transition-transform" />
+            Reset Order
+          </button>
+        )}
+        
         <button
           onClick={logout}
           className={`relative flex items-center w-full ${
@@ -133,5 +136,80 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         </button>
       </div>
     </aside>
+  );
+}
+
+function SidebarItem({ link, collapsed }) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={link}
+      dragListener={false}
+      dragControls={dragControls}
+      whileDrag={{
+        scale: 1.01,
+        zIndex: 50,
+      }}
+      className="relative list-none px-3 select-none outline-none"
+    >
+      <div className="flex items-center group outline-none">
+        {!collapsed && (
+          <div
+            onPointerDown={(e) => dragControls.start(e)}
+            className="p-2 -ml-2 cursor-grab active:cursor-grabbing text-slate-300 dark:text-slate-600 hover:text-brand dark:hover:text-white transition-colors flex-shrink-0"
+            style={{ touchAction: "none" }}
+          >
+            <GripVertical size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
+
+        <NavLink
+          to={link.to}
+          end={link.to === "/"}
+          className={({ isActive }) =>
+            `relative flex items-center flex-1 ${
+              collapsed ? "justify-center" : "gap-3"
+            } rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 outline-none focus:outline-none focus:ring-0
+            ${
+              isActive
+                ? "text-slate-900 dark:text-white"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            }`
+          }
+          title={collapsed ? link.label : undefined}
+        >
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.div
+                  layoutId="activeSidebarLink"
+                  className="absolute inset-0 rounded-xl bg-slate-100 dark:bg-slate-800/80 -z-10"
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 30,
+                  }}
+                />
+              )}
+
+              <link.icon className="h-5 w-5 flex-shrink-0" />
+
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="truncate"
+                >
+                  {link.label}
+                </motion.span>
+              )}
+            </>
+          )}
+        </NavLink>
+      </div>
+    </Reorder.Item>
   );
 }

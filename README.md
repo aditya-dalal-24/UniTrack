@@ -34,6 +34,7 @@ UniTrack isn't just a tool; it's an experience. The application features a custo
 ## 🛠️ Tech Stack
 
 ### 💻 Frontend
+
 - **Framework**: [React 19](https://reactjs.org/) (Vite)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
@@ -42,6 +43,7 @@ UniTrack isn't just a tool; it's an experience. The application features a custo
 - **State Management**: React Hooks & Context API
 
 ### ⚙️ Backend
+
 - **Core**: [Spring Boot 4.0.3](https://spring.io/projects/spring-boot) (Java 17)
 - **Security**: [Spring Security](https://spring.io/projects/spring-security) with **JWT**
 - **Persistence**: Spring Data JPA + **PostgreSQL**
@@ -54,19 +56,24 @@ UniTrack isn't just a tool; it's an experience. The application features a custo
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - **Node.js 20+**
 - **Java 17+**
 - **PostgreSQL 14+**
 - **Maven 3.9+**
 
 ### 1. Database Setup
+
 Create a PostgreSQL database named `unitrack`:
+
 ```sql
 CREATE DATABASE unitrack;
 ```
 
 ### 2. Backend Configuration
+
 Update `backend/src/main/resources/application.properties` with your credentials:
+
 ```properties
 spring.datasource.username=your_username
 spring.datasource.password=your_password
@@ -75,13 +82,16 @@ google.client-id=your_google_client_id
 ```
 
 ### 3. Execution
+
 **Terminal 1 (Backend)**:
+
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
 **Terminal 2 (Frontend)**:
+
 ```bash
 cd frontend
 npm install
@@ -118,5 +128,5 @@ UniTrack features a built-in Swagger UI for exploring the REST API. Once the bac
 
 ## 📜 License & Copyright
 
-Built for academic excellence. 
+Built for academic excellence.
 &copy; 2026 UniTrack Project Team. All Rights Reserved.
