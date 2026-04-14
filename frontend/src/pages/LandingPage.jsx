@@ -91,8 +91,8 @@ export default function LandingPage() {
                         to="/signup"
                         className="hidden sm:flex group relative px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black rounded-full text-xs font-bold tracking-widest overflow-hidden transition-all hover:scale-105 active:scale-95"
                     >
-                        <span className="relative z-10">SIGN UP FREE</span>
-                        <div className="absolute inset-0 bg-brand scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+                        <span className="relative z-10">Sign up for Free</span>
+                        <div className="absolute inset-0 bg-brand dark:bg-slate-100 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </Link>
                 </div>
             </nav>
@@ -155,13 +155,13 @@ export default function LandingPage() {
                         transition={{ delay: 0.6, duration: 0.8 }}
                         className="flex flex-col sm:flex-row items-center justify-center gap-4"
                     >
-                        <div className="group relative p-px rounded-2xl bg-gradient-to-b from-brand/50 to-purple-600/50 hover:shadow-[0_0_40px_rgba(37,99,235,0.2)] transition-shadow duration-500">
+                        <div className="group relative p-px rounded-2xl bg-gradient-to-b from-slate-200 to-slate-400 dark:from-white/30 dark:to-white/10 hover:shadow-[0_0_40px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all duration-500">
                             <button
                                 onClick={() => navigate("/signup")}
                                 className="relative px-10 py-5 bg-white dark:bg-neutral-950 rounded-[0.9rem] flex items-center gap-3 transition-colors group-hover:bg-slate-50 dark:group-hover:bg-neutral-900"
                             >
-                                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Discover Excellence</span>
-                                <ArrowRight className="h-5 w-5 text-brand group-hover:translate-x-1 transition-transform duration-300" />
+                                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Start Managing</span>
+                                <ArrowRight className="h-5 w-5 text-brand dark:text-white group-hover:translate-x-1 transition-transform duration-300" />
                             </button>
                         </div>
                         

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PlusCircle, CheckCircle, Clock, Trash2, Edit2, Save, X } from "lucide-react";
+import { PlusCircle, CheckCircle, Clock, Trash2, Edit2, Save, X, ClipboardList } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../services/api";
 import { ASSIGNMENT_STATUS } from "../constants/enums";
@@ -132,6 +132,9 @@ export default function Assignments() {
   };
 
 
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} />;
+
   return (
     <div className="animate-fadeInUp space-y-8">
       <div className="flex justify-between items-center">
@@ -148,6 +151,38 @@ export default function Assignments() {
       {/* Assignment Cards */}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <AnimatePresence mode="popLayout">
+          {assignments.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="col-span-full flex flex-col items-center justify-center py-24 px-4 text-center rounded-3xl bg-white/50 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 backdrop-blur-sm"
+            >
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-brand/20 dark:bg-brand/30 blur-3xl rounded-full" />
+                <div className="relative bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border shadow-2xl shadow-brand/10 dark:shadow-none">
+                  <ClipboardList size={64} className="text-brand dark:text-brand-light" strokeWidth={1.5} />
+                </div>
+              </div>
+              
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">
+                All Captured!
+              </h3>
+              <p className="text-lg text-slate-500 dark:text-slate-400 max-w-sm mb-10 leading-relaxed font-medium">
+                No assignments found. Add your first one to start your journey towards academic excellence.
+              </p>
+              
+              <button
+                onClick={() => setShowModal(true)}
+                className="group relative flex items-center gap-3 px-10 py-4 rounded-[1.25rem] bg-brand text-white font-bold hover:scale-105 active:scale-95 transition-all shadow-xl shadow-brand/25 dark:shadow-none overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <PlusCircle size={22} className="relative z-10" />
+                <span className="relative z-10 text-lg">Create Assignment</span>
+              </button>
+            </motion.div>
+          )}
+
           {assignments.map((a, index) => (
             <motion.div
               key={a.id}

@@ -24,26 +24,60 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(toEmail);
-            helper.setSubject("UniTrack — Verify Your Email");
+            helper.setSubject("UniTrack - Verify Your Email");
             helper.setFrom("alter.aura.24@gmail.com");
 
             String html = """
-                <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f8fafc; border-radius: 16px;">
-                    <div style="text-align: center; margin-bottom: 24px;">
-                        <h1 style="font-size: 24px; font-weight: 700; color: #0f172a; margin: 0;">UniTrack</h1>
-                        <p style="font-size: 14px; color: #64748b; margin-top: 4px;">Student Management Portal</p>
-                    </div>
-                    <div style="background: #ffffff; border-radius: 12px; padding: 32px; border: 1px solid #e2e8f0;">
-                        <p style="font-size: 16px; color: #1e293b; margin: 0 0 8px 0;">Hi %s,</p>
-                        <p style="font-size: 14px; color: #475569; margin: 0 0 24px 0;">Use the verification code below to complete your signup:</p>
-                        <div style="text-align: center; margin: 24px 0;">
-                            <div style="display: inline-block; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 16px 32px; letter-spacing: 8px; font-size: 32px; font-weight: 700; color: #0f172a;">%s</div>
+                    <div style="font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 60px 20px; color: #1a1a1a;">
+                        <div style="max-width: 520px; margin: 0 auto; border: 2px solid #1a1a1a; padding: 48px; background: #ffffff; border-radius: 0;">
+                            <!-- Header -->
+                            <div style="text-align: center; margin-bottom: 48px;">
+                                <div style="letter-spacing: -0.04em; font-size: 32px; font-weight: 900; color: #1a1a1a; text-transform: uppercase;">
+                                    UniTrack
+                                </div>
+                                <div style="height: 1px; width: 40px; background: #e5e7eb; margin: 16px auto;"></div>
+                            </div>
+
+                            <!-- Greeting & Context -->
+                            <div style="margin-bottom: 40px;">
+                                <p style="font-size: 18px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.01em;">Hi %s,</p>
+                                <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0;">
+                                    Welcome to UniTrack. Use the following security code to verify your account and get started with your dashboard.
+                                </p>
+                            </div>
+
+                            <!-- OTP Section -->
+                            <div style="background: #1a1a1a; padding: 40px; text-align: center; margin-bottom: 40px;">
+                                <p style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em; margin: 0 0 20px 0;">
+                                    Verification Code
+                                </p>
+                                <div style="font-size: 48px; font-weight: 950; color: #ffffff; letter-spacing: 12px; margin-left: 12px; line-height: 1;">
+                                    %s
+                                </div>
+                            </div>
+
+                            <!-- Expiry Info -->
+                            <div style="text-align: center;">
+                                <p style="font-size: 13px; color: #9ca3af; margin: 0;">
+                                    This code is valid for <strong>10 minutes</strong>.<br>
+                                    For your security, do not share this code with anyone.
+                                </p>
+                            </div>
                         </div>
-                        <p style="font-size: 13px; color: #94a3b8; text-align: center; margin: 24px 0 0 0;">This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
+
+                        <!-- Footer -->
+                        <div style="max-width: 520px; margin: 32px auto 0; text-align: center;">
+                            <p style="font-size: 11px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.15em; text-transform: uppercase; margin: 0 0 8px 0;">
+                                UniTrack
+                            </p>
+                            <p style="font-size: 10px; color: #9ca3af; letter-spacing: 0.05em; margin: 0;">
+                                Built for the next generation of students.<br>
+                                &copy; 2026 UniTrack. All rights reserved.
+                            </p>
+                        </div>
                     </div>
-                    <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 24px;">&copy; UniTrack. All rights reserved.</p>
-                </div>
-                """.formatted(userName, otp);
+                    """
+                    .formatted(userName, otp);
 
             helper.setText(html, true);
             mailSender.send(message);
