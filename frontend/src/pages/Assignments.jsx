@@ -351,7 +351,7 @@ export default function Assignments() {
 
               <button
                 onClick={addAssignment}
-                className="px-4 py-2 rounded-xl bg-brand/20 text-brand hover:bg-brand/30 transition-all active:scale-95"
+                className="px-6 py-2 rounded-xl bg-brand text-white hover:bg-brand-dark transition-all active:scale-95 font-semibold"
               >
                 Add
               </button>

@@ -590,16 +590,25 @@ export default function Attendance() {
                       
                       <div className="w-full flex-1 mt-0.5 flex flex-col min-h-0 gap-0.5 overflow-hidden">
                         {isHol && (
-                          <div className="flex-1 w-full bg-amber-100 dark:bg-amber-900/40 rounded flex items-center justify-center p-0.5 min-h-0">
-                            <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 truncate w-full text-center">
+                          <div className={`flex-1 w-full rounded flex items-center justify-center p-0.5 min-h-0
+                            ${isSelectedInCal ? 'bg-amber-100 dark:bg-amber-100' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                            <span className={`text-[9px] font-bold truncate w-full text-center
+                              ${isSelectedInCal ? 'text-amber-900 dark:text-amber-900' : 'text-amber-700 dark:text-amber-400'}`}>
                               {holidayName}
                             </span>
                           </div>
                         )}
                         {hasExam && (
-                          <div className="flex-1 w-full bg-purple-100 dark:bg-purple-900/40 rounded flex flex-col items-center justify-center p-0.5 min-h-0">
-                            <span className="text-[9px] font-bold text-purple-800 dark:text-purple-300 truncate w-full text-center">{exam.subject}</span>
-                            <span className="text-[8px] font-semibold text-purple-600 dark:text-purple-400 truncate w-full text-center leading-tight">{exam.startTime}</span>
+                          <div className={`flex-1 w-full rounded flex flex-col items-center justify-center p-0.5 min-h-0
+                            ${isSelectedInCal ? 'bg-purple-100 dark:bg-purple-100' : 'bg-purple-100 dark:bg-purple-900/40'}`}>
+                            <span className={`text-[9px] font-bold truncate w-full text-center
+                              ${isSelectedInCal ? 'text-purple-900 dark:text-purple-900' : 'text-purple-800 dark:text-purple-300'}`}>
+                              {exam.subject}
+                            </span>
+                            <span className={`text-[8px] font-semibold truncate w-full text-center leading-tight
+                              ${isSelectedInCal ? 'text-purple-700 dark:text-purple-700' : 'text-purple-600 dark:text-purple-400'}`}>
+                              {exam.startTime}
+                            </span>
                           </div>
                         )}
                       </div>

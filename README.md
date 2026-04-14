@@ -9,6 +9,7 @@ UniTrack is a premium, full-stack student productivity platform designed for the
 UniTrack consolidates every aspect of a student's journey into a single, intuitive dashboard:
 
 - 🏗️ **Unified Dashboard**: Real-time aggregation of attendance, assignments, and academic performance.
+- ⚡ **Dynamic Sidebar**: Fully rearrangeable navigation modules with local persistence.
 - 📅 **Intelligent Scheduling**: Dynamic timetable management with subject-specific tracking.
 - 📝 **Assignment Tracker**: Track deadlines with status indicators and high-fidelity empty states.
 - 📊 **Marks & GPA**: Manage exam scores and calculate performance metrics.
@@ -27,6 +28,7 @@ UniTrack isn't just a tool; it's an experience. The application features a custo
 - **Monochrome Aesthetic**: A professional, strict black-and-white palette that minimizes distraction and looks stunning in both light and dark modes.
 - **Glassmorphism**: Subtle `backdrop-blur` effects and semi-transparent layers for a modern, futuristic UI.
 - **Micro-Animations**: Fluid transitions powered by **Framer Motion** and **Lucide React**.
+- **Interactive Customization**: Draggable sidebar modules allow users to tailor their workspace, with smart persistence to remember layouts.
 - **Visual Effects**: Interactive custom background elements including **LightRays** and **Particle** systems for a "Pro" feel.
 
 ---

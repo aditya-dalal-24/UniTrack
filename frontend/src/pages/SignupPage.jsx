@@ -210,7 +210,7 @@ export default function SignupPage({ onLogin }) {
       >
         <Link 
           to="/" 
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand dark:hover:text-brand transition-all hover:shadow-lg group"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand dark:hover:text-white transition-all hover:shadow-lg group"
         >
           <Home className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
           <span className="text-sm font-semibold tracking-wide">Back to Home</span>
