@@ -46,4 +46,10 @@ public class AdminController {
             Authentication auth) {
         return ResponseEntity.ok(adminService.changeUserRole(id, request.getRole(), auth.getName()));
     }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication auth) {
+        adminService.deleteUser(id, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, ShieldCheck, UserCheck, UserX, ChevronDown } from "lucide-react";
+import { Search, ShieldCheck, UserCheck, UserX, ChevronDown, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -65,6 +65,16 @@ export default function AdminUsers() {
     const { data, error } = await api.changeUserRole(id, newRole);
     if (error) alert(error);
     else setUsers((prev) => prev.map((u) => (u.id === id ? data : u)));
+    setActionLoading(null);
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!confirm(`⚠️ PERMANENTLY DELETE "${name}" and ALL their data?\n\nThis action cannot be undone!`)) return;
+    if (!confirm(`Are you absolutely sure? This will delete:\n- All attendance records\n- All assignments\n- All marks\n- All expenses\n- All timetable data\n- Their profile\n\nType OK to confirm.`)) return;
+    setActionLoading(id);
+    const { error } = await api.deleteUser(id);
+    if (error) alert(error);
+    else setUsers((prev) => prev.filter((u) => u.id !== id));
     setActionLoading(null);
   };
 
@@ -212,6 +222,16 @@ export default function AdminUsers() {
                                   className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-all disabled:opacity-50"
                                 >
                                   Activate
+                                </button>
+                              )}
+                              {isSuperAdmin && (
+                                <button
+                                  onClick={() => handleDelete(user.id, user.name)}
+                                  disabled={actionLoading === user.id}
+                                  title="Permanently delete user and all data"
+                                  className="px-2 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-all disabled:opacity-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               )}
                             </div>

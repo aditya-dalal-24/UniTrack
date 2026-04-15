@@ -20,4 +20,5 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, Lo
     long countByUserAndStatusAndSubject(User user, AttendanceStatus status, Subject subject);
     long countByUserAndSubject(User user, Subject subject);
     void deleteByUserAndDate(User user, LocalDate date);
+    void deleteAllByUser(User user);
 }

@@ -8,4 +8,5 @@ import java.util.List;
 public interface TodoRepository extends JpaRepository<Todo, Long> {
     List<Todo> findByUserOrderByDueDateAsc(User user);
     List<Todo> findByUserAndCompletedOrderByDueDateAsc(User user, boolean completed);
+    void deleteAllByUser(User user);
 }

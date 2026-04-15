@@ -8,4 +8,5 @@ import java.util.List;
 public interface FeesRepository extends JpaRepository<Fees, Long> {
     List<Fees> findByUser(User user);
     List<Fees> findByUserAndSemester(User user, Integer semester);
+    void deleteAllByUser(User user);
 }

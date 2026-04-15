@@ -319,6 +319,9 @@ export const api = {
 
   changeUserRole: (id, role) =>
     request('put', `/admin/users/${id}/role`, { role }),
+
+  deleteUser: (id) =>
+    request('delete', `/admin/users/${id}`),
 };
 
 export default api;

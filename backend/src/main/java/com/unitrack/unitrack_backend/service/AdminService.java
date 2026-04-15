@@ -4,19 +4,32 @@ import com.unitrack.unitrack_backend.dto.response.AdminStatsResponse;
 import com.unitrack.unitrack_backend.dto.response.AdminUserResponse;
 import com.unitrack.unitrack_backend.entity.Role;
 import com.unitrack.unitrack_backend.entity.User;
-import com.unitrack.unitrack_backend.repository.UserRepository;
+import com.unitrack.unitrack_backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminService {
 
     private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
+    private final TodoRepository todoRepository;
+    private final SubjectRepository subjectRepository;
+    private final TimetableRepository timetableRepository;
+    private final MarksRepository marksRepository;
+    private final FeesRepository feesRepository;
+    private final ExpenseRepository expenseRepository;
+    private final ExpenseCategoryRepository expenseCategoryRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final AssignmentRepository assignmentRepository;
 
     @Value("${app.super-admin-email}")
     private String superAdminEmail;
@@ -131,6 +144,46 @@ public class AdminService {
         user.setUpdatedBy(requestorEmail);
         userRepository.save(user);
         return toResponse(user);
+    }
+
+    // ==================== PERMANENT DELETE ====================
+
+    @Transactional
+    public void deleteUser(Long userId, String requestorEmail) {
+        User requestor = userRepository.findByEmail(requestorEmail).orElseThrow();
+        Role requestorRole = requestor.getEmail().equalsIgnoreCase(superAdminEmail) ? Role.SUPER_ADMIN : requestor.getRole();
+
+        // Only SUPER_ADMIN can permanently delete users
+        if (requestorRole != Role.SUPER_ADMIN) {
+            throw new RuntimeException("Only a super admin can permanently delete user accounts.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Prevent deleting the super admin
+        if (user.getEmail().equalsIgnoreCase(superAdminEmail)) {
+            throw new RuntimeException("Cannot delete the primary super admin account.");
+        }
+
+        log.warn("PERMANENT DELETE initiated by {} for user {} ({})", requestorEmail, user.getId(), user.getEmail());
+
+        // Delete all related data in dependency order
+        attendanceRepository.deleteAllByUser(user);
+        timetableRepository.deleteAllByUser(user);
+        assignmentRepository.deleteAllByUser(user);
+        todoRepository.deleteAllByUser(user);
+        marksRepository.deleteAllByUser(user);
+        feesRepository.deleteAllByUser(user);
+        expenseRepository.deleteAllByUser(user);
+        expenseCategoryRepository.deleteAllByUser(user);
+        subjectRepository.deleteAllByUser(user);
+        profileRepository.deleteByUser(user);
+
+        // Finally, delete the user
+        userRepository.delete(user);
+
+        log.info("User {} ({}) permanently deleted by {}", user.getId(), user.getEmail(), requestorEmail);
     }
 
     // ==================== HELPER ====================
