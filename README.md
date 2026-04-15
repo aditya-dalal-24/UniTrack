@@ -71,10 +71,36 @@ UniTrack is built with a custom-built design system focused on a high-fidelity u
 - **Documentation**: [SpringDocs / Swagger](https://springdoc.org/)
 - **Social Auth**: Google Identity Services
 - **Mailing**: Spring Boot Mail Starter (SMTP)
+- **Containerization**: [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/)
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start (Docker)
+
+The fastest way to get UniTrack up and running is using Docker. Ensure you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
+
+### 1. Configure Environment
+Copy the example environment file and update your Google Client ID and Mail credentials:
+```bash
+cp .env.example .env
+```
+
+### 2. Launch Stack
+Run the following command to boot the database, backend, and frontend:
+```bash
+docker compose up --build
+```
+
+### 3. Access the App
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8081/api](http://localhost:8081/api)
+- **Database**: localhost:5432
+
+---
+
+## 🛠️ Manual Local Setup
+
+If you prefer to run the services individually without Docker:
 
 ### 1. Database Setup
 Create a PostgreSQL database named `unitrack`:
