@@ -79,6 +79,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         // Parse comma-separated origins from environment variable
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
         // Use origin patterns to handle wildcards and multiple domains correctly with credentials
         config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
