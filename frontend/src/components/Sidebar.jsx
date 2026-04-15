@@ -11,7 +11,6 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
-  GraduationCap,
   Calendar,
   CheckSquare,
   LogOut,
@@ -71,27 +70,51 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       }`}
     >
       <div className="flex items-center justify-between px-4 py-4">
-        {!collapsed && (
-          <div>
-            <div className="text-xs font-semibold tracking-[0.25em] text-slate-400 border-l-2 border-brand pl-2 uppercase">
-              UNITRACK
-            </div>
-            <div className="mt-1 text-lg font-bold text-slate-800 dark:text-slate-100">
-              Student Hub
+        {collapsed ? (
+          <img 
+            src="/unitrack-logo.png" 
+            alt="Logo" 
+            className="h-8 w-8 mx-auto cursor-pointer" 
+            onClick={() => navigate("/")}
+          />
+        ) : (
+          <div className="flex items-center gap-3">
+            <img 
+              src="/unitrack-logo.png" 
+              alt="Logo" 
+              className="h-9 w-9" 
+              onClick={() => navigate("/")}
+            />
+            <div>
+              <div className="text-xs font-semibold tracking-[0.25em] text-slate-400 border-l-2 border-brand pl-2 uppercase">
+                UNITRACK
+              </div>
+              <div className="mt-1 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                Student Hub
+              </div>
             </div>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand hover:bg-slate-200 dark:hover:bg-slate-700 transition-all ${collapsed ? "mx-auto" : "ml-auto"}`}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand hover:bg-slate-200 dark:hover:bg-slate-700 transition-all ml-auto"
+          >
             <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
+          </button>
+        )}
       </div>
+
+      {collapsed && (
+        <div className="px-4 pb-2">
+          <button
+            onClick={() => setCollapsed(false)}
+            className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand transition-all"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Reorder.Group
         axis="y"

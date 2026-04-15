@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, ArrowRight, Sun, Moon } from "lucide-react";
+import { ArrowRight, Sun, Moon } from "lucide-react";
 import useDarkMode from "../hooks/useDarkMode.js";
 import LightRays from "../components/LightRays";
 
@@ -69,8 +69,8 @@ export default function LandingPage() {
             <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6 lg:px-12 mx-auto max-w-screen-2xl">
                 <div className="flex lg:flex-1">
                     <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-2 group">
-                        <div className="bg-brand/10 dark:bg-brand/20 p-2 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                            <GraduationCap className="h-7 w-7 text-brand dark:text-brand-light" />
+                        <div className="p-1 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                            <img src="/unitrack-logo.png" alt="UniTrack Logo" className="h-9 w-9 object-contain" />
                         </div>
                         <span className="font-black text-2xl tracking-tighter text-slate-900 dark:text-white">UNITRACK</span>
                     </Link>
