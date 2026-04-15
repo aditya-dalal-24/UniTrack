@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 
-const SUPER_ADMIN_EMAIL = "dalal.aditya.2456@gmail.com";
 
 const ROLE_BADGE = {
   STUDENT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -15,7 +14,7 @@ const ROLE_BADGE = {
 
 export default function AdminUsers() {
   const { userData } = useAuth();
-  const isSuperAdmin = userData?.role === "SUPER_ADMIN" || userData?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  const isSuperAdmin = userData?.role === "SUPER_ADMIN";
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +118,7 @@ export default function AdminUsers() {
                 <AnimatePresence>
                   {filteredUsers.map((user) => {
                     const isSelf = user.email?.toLowerCase() === userData?.email?.toLowerCase();
-                    const isSuper = user.role === "SUPER_ADMIN" || user.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+                    const isSuper = user.role === "SUPER_ADMIN";
 
                     return (
                       <motion.tr
@@ -170,7 +169,7 @@ export default function AdminUsers() {
 
                         {/* Status */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {user.active ? (
+                          {(user.active ?? user.isActive) ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
                               <UserCheck className="h-3 w-3" /> Active
                             </span>
@@ -198,7 +197,7 @@ export default function AdminUsers() {
                             <span className="text-xs text-slate-400 italic">Protected</span>
                           ) : (
                             <div className="flex items-center justify-end gap-2">
-                              {user.active ? (
+                              {(user.active ?? user.isActive) ? (
                                 <button
                                   onClick={() => handleDeactivate(user.id)}
                                   disabled={actionLoading === user.id}

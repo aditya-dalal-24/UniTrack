@@ -7,7 +7,7 @@ import Particles from "../components/Particles";
 import OtpVerificationModal from "../components/OtpVerificationModal";
 
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "53211343073-ram5u537teqgbdqt7sln5274fqa98ele.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 
 export default function LoginPage({ onLogin }) {

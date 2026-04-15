@@ -46,7 +46,10 @@ export default function Assignments() {
   const [editData, setEditData] = useState({});
 
   const addAssignment = async () => {
-    if (!newAssignment.title || !newAssignment.subject || !newAssignment.due) return;
+    if (!newAssignment.title.trim() || !newAssignment.subject.trim() || !newAssignment.due) {
+      alert("Please fill in all required fields.");
+      return;
+    }
 
     const { error: apiError } = await api.addAssignment({
       title: newAssignment.title,

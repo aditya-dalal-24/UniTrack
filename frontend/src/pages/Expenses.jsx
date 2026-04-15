@@ -130,8 +130,8 @@ export default function Expenses() {
   };
 
   const handleAddExpense = async () => {
-    if (!newExpense.category || !newExpense.amount) {
-      alert("Please fill in required fields (Category and Amount)");
+    if (!String(newExpense.category).trim() || !newExpense.amount || parseFloat(newExpense.amount) <= 0) {
+      alert("Please fill in a valid Category and Amount greater than 0");
       return;
     }
 

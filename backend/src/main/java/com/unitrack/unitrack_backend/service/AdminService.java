@@ -33,15 +33,27 @@ public class AdminService {
 
     public AdminStatsResponse getStats() {
         long total = userRepository.count();
+
+        // Total Admins: users with ADMIN or BOTH role
         long admins = userRepository.countByRole(Role.ADMIN) + userRepository.countByRole(Role.BOTH);
-        long superAdmins = userRepository.countByRole(Role.SUPER_ADMIN);
-        
-        // FIX: The user instruction requires combining the counts or ensuring all admins are tracked properly
-        // "count users where role = ADMIN OR BOTH ALSO include super admin email"
-        long superAdminAggregate = userRepository.countByRole(Role.SUPER_ADMIN) + userRepository.countByRole(Role.ADMIN) + userRepository.countByRole(Role.BOTH);
-        
-        if (userRepository.findByEmail(superAdminEmail).map(u -> u.getRole() != Role.SUPER_ADMIN && u.getRole() != Role.ADMIN && u.getRole() != Role.BOTH).orElse(false)) {
-            superAdminAggregate++;
+
+        // Total Super Admins: users with SUPER_ADMIN role
+        long totalSuperAdmins = userRepository.countByRole(Role.SUPER_ADMIN);
+
+        // Also include the primary super admin if their DB role is not SUPER_ADMIN
+        boolean primarySuperAdminCounted = userRepository.findByEmail(superAdminEmail)
+                .map(u -> u.getRole() == Role.SUPER_ADMIN)
+                .orElse(true); // if not found, don't add extra count
+        if (!primarySuperAdminCounted) {
+            totalSuperAdmins++;
+        }
+
+        // The primary super admin is always an admin, so include in admins count too if not already
+        boolean primaryInAdminPool = userRepository.findByEmail(superAdminEmail)
+                .map(u -> u.getRole() == Role.ADMIN || u.getRole() == Role.BOTH || u.getRole() == Role.SUPER_ADMIN)
+                .orElse(true);
+        if (!primaryInAdminPool) {
+            admins++;
         }
 
         long active = userRepository.countByIsActive(true);
@@ -49,8 +61,8 @@ public class AdminService {
 
         return AdminStatsResponse.builder()
                 .totalUsers(total)
-                .totalAdmins(admins)
-                .totalSuperAdmins(superAdminAggregate)
+                .totalAdmins(admins + totalSuperAdmins)
+                .totalSuperAdmins(totalSuperAdmins)
                 .activeUsers(active)
                 .inactiveUsers(inactive)
                 .build();
@@ -61,6 +73,11 @@ public class AdminService {
     public AdminUserResponse activateUser(Long userId, String adminEmail) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Prevent modifying the super admin's active status
+        if (user.getEmail().equalsIgnoreCase(superAdminEmail)) {
+            throw new RuntimeException("Cannot modify the super admin account.");
+        }
 
         user.setActive(true);
         user.setUpdatedBy(adminEmail);
@@ -97,7 +114,7 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with this ID."));
 
-        // Prevent super admin from removing their own admin rights
+        // Prevent super admin from changing their own role
         if (user.getEmail().equalsIgnoreCase(superAdminEmail)) {
             throw new RuntimeException("Cannot change the primary super admin's role.");
         }

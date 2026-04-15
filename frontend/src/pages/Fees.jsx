@@ -58,8 +58,8 @@ export default function Fees() {
   }, [selectedSemester]);
 
   const handleAddFee = async () => {
-    if (!newFee.amount || !newFee.dueDate) {
-      alert("Please fill in required fields (Amount and Due Date)");
+    if (!newFee.amount || parseFloat(newFee.amount) <= 0 || !newFee.dueDate) {
+      alert("Please enter a valid Amount greater than 0 and a Due Date.");
       return;
     }
 

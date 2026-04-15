@@ -24,10 +24,6 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  const getAggregatedSuperAdmins = () => {
-    return users.filter(u => u.role === "SUPER_ADMIN" || u.role === "ADMIN" || u.role === "BOTH").length;
-  };
-
   const getActiveUsers = () => users.filter(u => u.active ?? u.isActive).length;
   const getInactiveUsers = () => users.filter(u => !(u.active ?? u.isActive)).length;
 
@@ -43,18 +39,18 @@ export default function AdminDashboard() {
     {
       id: "superAdmins",
       label: "Super Admins",
-      value: stats?.totalSuperAdmins ?? getAggregatedSuperAdmins(),
+      value: stats?.totalSuperAdmins ?? users.filter(u => u.role === "SUPER_ADMIN").length,
       icon: ShieldCheck,
       accent: "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
-      filterFn: (u) => u.role === "SUPER_ADMIN" || u.role === "ADMIN" || u.role === "BOTH"
+      filterFn: (u) => u.role === "SUPER_ADMIN"
     },
     {
       id: "admins",
       label: "Total Admins",
-      value: stats?.totalAdmins ?? users.filter(u => u.role === "ADMIN" || u.role === "BOTH").length,
+      value: stats?.totalAdmins ?? users.filter(u => u.role === "ADMIN" || u.role === "BOTH" || u.role === "SUPER_ADMIN").length,
       icon: ShieldCheck,
       accent: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
-      filterFn: (u) => u.role === "ADMIN" || u.role === "BOTH"
+      filterFn: (u) => u.role === "ADMIN" || u.role === "BOTH" || u.role === "SUPER_ADMIN"
     },
     {
       id: "active",
@@ -111,9 +107,9 @@ export default function AdminDashboard() {
       )}
 
       {/* Full Screen Modal Overlay via Portal */}
-      {expandedCard && createPortal(
+      {createPortal(
         <AnimatePresence>
-          {(() => {
+          {expandedCard && (() => {
           const filteredUsers = users.filter(expandedCard.filterFn);
           return (
             <motion.div
@@ -185,9 +181,9 @@ export default function AdminDashboard() {
             </motion.div>
           );
         })()}
-      </AnimatePresence>,
-      document.body
-    )}
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 }
