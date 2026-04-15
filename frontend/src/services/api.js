@@ -6,7 +6,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+  timeout: 60000, // Increased to 60s to handle Render cold starts
+});
+
+// Diagnostic log to verify Vercel environment variables are working
+console.table({
+  "UniTrack Connectivity": "Diagnostic",
+  "Target Backend": API_BASE_URL,
+  "Environment": import.meta.env.MODE,
+  "Status": "Attempting connection..."
 });
 
 // ==================== INTERCEPTORS ====================
