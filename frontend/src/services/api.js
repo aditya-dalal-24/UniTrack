@@ -17,6 +17,20 @@ console.table({
   "Status": "Attempting connection..."
 });
 
+// ==================== WAKE-UP PING ====================
+// Render free tier sleeps after 15 min inactivity. This fires a lightweight
+// HEAD request the moment the frontend JS loads (even before login), so
+// the backend starts booting while the user is still reading the page.
+(function wakeUpBackend() {
+  fetch(API_BASE_URL.replace('/api', '') + '/actuator/health', { method: 'HEAD', mode: 'no-cors' })
+    .then(() => console.log('☀️ Backend wake-up ping sent'))
+    .catch(() => {
+      // Fallback: try the base URL itself
+      fetch(API_BASE_URL + '/auth/login', { method: 'OPTIONS', mode: 'no-cors' })
+        .catch(() => {}); // Silently ignore — this is just a warm-up
+    });
+})();
+
 // ==================== INTERCEPTORS ====================
 
 // Request: attach JWT Bearer token

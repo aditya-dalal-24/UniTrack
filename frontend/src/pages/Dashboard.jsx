@@ -53,7 +53,7 @@ export default function Dashboard() {
     fetchDashboard();
   }, []);
 
-  if (loading) return <LoadingSpinner message="Loading dashboard..." fullPage />;
+  if (loading) return <LoadingSpinner message="Loading dashboard..." fullPage showColdStartMsg />;
   if (error) return <ErrorMessage message={error} onRetry={fetchDashboard} />;
 
   const attendance = dashboardData?.attendance;
