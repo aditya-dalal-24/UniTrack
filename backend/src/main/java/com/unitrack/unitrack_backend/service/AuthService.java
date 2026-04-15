@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -43,9 +44,34 @@ public class AuthService {
 
     // ==================== REGISTER (with OTP) ====================
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+        // Check if user already exists
+        var existingUser = userRepository.findByEmail(request.getEmail());
+        
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            if (user.isEmailVerified()) {
+                throw new RuntimeException("Email already registered and verified");
+            }
+            // If exists but NOT verified, we allow "re-registration" (update the existing record)
+            log.info("Updating existing unverified user for {}", request.getEmail());
+            user.setName(request.getName());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setPhone(request.getPhone());
+            user.setCollege(request.getCollege());
+            user.setCourse(request.getCourse());
+            user.setSemester(request.getSemester());
+            user.setDob(request.getDob());
+            user.setGender(request.getGender());
+            String otp = generateOtp();
+            user.setVerificationOtp(otp);
+            user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
+            
+            userRepository.save(user);
+            emailService.sendOtpEmail(user.getEmail(), otp, user.getName());
+            
+            return buildAuthResponse(user);
         }
 
         String otp = generateOtp();
@@ -70,10 +96,13 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Send OTP email
+        // Send OTP email (Now synchronous — if this fails, the whole registration rolls back)
         emailService.sendOtpEmail(user.getEmail(), otp, user.getName());
 
-        // Return response WITHOUT token — user must verify email first
+        return buildAuthResponse(user);
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
         return AuthResponse.builder()
                 .token(null)
                 .name(user.getName())
