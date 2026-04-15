@@ -19,7 +19,7 @@ public class EmailService {
     @org.springframework.beans.factory.annotation.Value("${spring.mail.username}")
     private String fromEmail;
 
-    @Async
+    // @Async - Temporarily disabled for real-time error reporting during signup
     public void sendOtpEmail(String toEmail, String otp, String userName) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
