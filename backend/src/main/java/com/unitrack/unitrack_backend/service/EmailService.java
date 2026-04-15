@@ -16,6 +16,8 @@ import org.springframework.scheduling.annotation.Async;
 public class EmailService {
 
     private final JavaMailSender mailSender;
+    @org.springframework.beans.factory.annotation.Value("${spring.mail.username}")
+    private String fromEmail;
 
     @Async
     public void sendOtpEmail(String toEmail, String otp, String userName) {
@@ -25,7 +27,7 @@ public class EmailService {
 
             helper.setTo(toEmail);
             helper.setSubject("UniTrack - Verify Your Email");
-            helper.setFrom("alter.aura.24@gmail.com");
+            helper.setFrom(fromEmail);
 
             String html = """
                     <div style="font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 60px 20px; color: #1a1a1a;">
