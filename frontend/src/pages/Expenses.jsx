@@ -29,7 +29,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import useDarkMode from "../hooks/useDarkMode";
+import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
 
 const defaultCategories = [
@@ -41,7 +41,7 @@ const defaultCategories = [
 ];
 
 export default function Expenses() {
-  const [isDark] = useDarkMode();
+  const { isDark } = useAuth();
   const [categories, setCategories] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [showAddExpense, setShowAddExpense] = useState(false);

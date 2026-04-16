@@ -3,7 +3,7 @@ import { CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Plus, X, BookO
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { api } from "../services/api";
-import useDarkMode from "../hooks/useDarkMode";
+import { useAuth } from "../contexts/AuthContext";
 import { ATTENDANCE_STATUS } from "../constants/enums";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
@@ -20,7 +20,7 @@ function toISODate(d) {
 }
 
 export default function Attendance() {
-  const [isDark] = useDarkMode();
+  const { isDark } = useAuth();
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Sun, Moon } from "lucide-react";
-import useDarkMode from "../hooks/useDarkMode.js";
+import { useAuth } from "../contexts/AuthContext";
 import LightRays from "../components/LightRays";
 
 function WordCycle({ isDark }) {
@@ -61,7 +61,7 @@ function WordCycle({ isDark }) {
 
 export default function LandingPage() {
     const navigate = useNavigate();
-    const [isDark, setIsDark] = useDarkMode();
+    const { isDark, toggleDarkMode } = useAuth();
 
     return (
         <div className="relative min-h-screen w-full flex flex-col overflow-hidden bg-white dark:bg-neutral-950 transition-colors duration-500">
@@ -78,7 +78,7 @@ export default function LandingPage() {
                 <div className="flex flex-1 justify-end items-center gap-4 md:gap-8">
                     {/* Theme Toggle */}
                     <button
-                        onClick={() => setIsDark((d) => !d)}
+                        onClick={toggleDarkMode}
                         className="p-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 transition-all hover:shadow-sm"
                     >
                         {isDark ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-slate-600" />}
