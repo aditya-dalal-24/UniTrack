@@ -9,27 +9,44 @@ const axiosInstance = axios.create({
   timeout: 60000, // Increased to 60s to handle Render cold starts
 });
 
-// Diagnostic log to verify Vercel environment variables are working
+// Diagnostic log to verify connection details
 console.table({
   "UniTrack Connectivity": "Diagnostic",
   "Target Backend": API_BASE_URL,
   "Environment": import.meta.env.MODE,
-  "Status": "Attempting connection..."
+  "Retry Config": "3 attempts on Network Error",
+  "Status": "Initializing..."
 });
 
-// ==================== WAKE-UP PING ====================
-// Render free tier sleeps after 15 min inactivity. This fires a lightweight
-// HEAD request the moment the frontend JS loads (even before login), so
-// the backend starts booting while the user is still reading the page.
-(function wakeUpBackend() {
-  fetch(API_BASE_URL.replace('/api', '') + '/actuator/health', { method: 'HEAD', mode: 'no-cors' })
-    .then(() => console.log('☀️ Backend wake-up ping sent'))
-    .catch(() => {
-      // Fallback: try the base URL itself
-      fetch(API_BASE_URL + '/auth/login', { method: 'OPTIONS', mode: 'no-cors' })
-        .catch(() => {}); // Silently ignore — this is just a warm-up
+/**
+ * Enhanced Wake-up logic: Polls the health endpoint rather than just firing once.
+ */
+async function wakeUpBackend(attempts = 0) {
+  if (attempts > 5) return; // Stop after 5 pings (approx 25s) if still failing
+  
+  try {
+    const start = Date.now();
+    // Use XHR/fetch to avoid axios interceptor logic for the ping itself
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/actuator/health`, { 
+      method: 'GET', 
+      mode: 'cors',
+      cache: 'no-cache'
     });
-})();
+    
+    if (response.ok) {
+      console.log(`☀️ Backend is AWAKE (responded in ${Date.now() - start}ms)`);
+    } else {
+      throw new Error(`Status ${response.status}`);
+    }
+  } catch (err) {
+    console.log(`😴 Backend sleeping or booting (Attempt ${attempts + 1})...`);
+    // Wait 5 seconds and try again
+    setTimeout(() => wakeUpBackend(attempts + 1), 5000);
+  }
+}
+
+// Start wake-up process immediately
+wakeUpBackend();
 
 // ==================== INTERCEPTORS ====================
 
@@ -45,20 +62,41 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response: handle 401 (expired token) globally
+// Response: handle 401 (expired token) AND perform retries on Network Errors
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const { config, message } = error;
+
+    // 1. Handle Token Expiry
     if (error.response?.status === 401) {
-      // Token expired or invalid — force logout
       localStorage.removeItem('authToken');
       localStorage.removeItem('userData');
       localStorage.setItem('isAuthenticated', 'false');
-      // Only redirect if not already on auth pages
       if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
+
+    // 2. Handle Network Errors / Timeouts with Automatic Retry
+    // This specifically targets the "Network Error" often seen during Render cold starts
+    const isNetworkError = !error.response && (message === 'Network Error' || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK');
+    
+    if (isNetworkError && !config._retryCount) {
+      config._retryCount = 0;
+    }
+
+    if (isNetworkError && config._retryCount < 3) {
+      config._retryCount += 1;
+      const delay = config._retryCount * 2000; // Exponential backoff: 2s, 4s, 6s
+      
+      console.warn(`🔄 Network error detected. Retrying request (${config._retryCount}/3) in ${delay}ms...`, config.url);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return axiosInstance(config);
+    }
+
     return Promise.reject(error);
   }
 );

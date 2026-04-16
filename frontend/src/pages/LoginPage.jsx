@@ -16,11 +16,9 @@ export default function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [isDark, setIsDark] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [showOtpModal, setShowOtpModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
 
   // Initialize dark mode on mount
   useEffect(() => {
@@ -103,32 +101,57 @@ export default function LoginPage({ onLogin }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    setLoading(true);
+    setIsWakingUp(false);
 
     if (!email || !password) {
       setError("Please enter both email and password.");
+      setLoading(false);
       return;
     }
 
-    const { data, error: apiError } = await api.login(email, password);
+    // Timer to show "Waking up" message if request takes > 3s
+    const wakingTimer = setTimeout(() => {
+      setIsWakingUp(true);
+    }, 3000);
 
-    if (apiError) {
-      setError(apiError);
-      return;
-    }
+    try {
+      const { data, error: apiError } = await api.login(email, password);
+      clearTimeout(wakingTimer);
 
-    if (data && data.emailVerified === false) {
-      // User needs to verify email first
-      setPendingEmail(data.email);
-      setShowOtpModal(true);
-      return;
-    }
+      if (apiError) {
+        if (apiError.toLowerCase().includes("network error") || apiError.toLowerCase().includes("check your connection")) {
+          setError("Still waking up the server... This can take up to 50 seconds on first load. Please try again in a moment.");
+        } else {
+          setError(apiError);
+        }
+        setLoading(false);
+        setIsWakingUp(false);
+        return;
+      }
 
-    if (data && data.token) {
-      onLogin(data);
-      const dest = data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
-      navigate(dest, { replace: true });
-    } else {
-      setError("Invalid email or password.");
+      if (data && data.emailVerified === false) {
+        setPendingEmail(data.email);
+        setShowOtpModal(true);
+        setLoading(false);
+        setIsWakingUp(false);
+        return;
+      }
+
+      if (data && data.token) {
+        onLogin(data);
+        const dest = data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+        navigate(dest, { replace: true });
+      } else {
+        setError("Invalid email or password.");
+        setLoading(false);
+        setIsWakingUp(false);
+      }
+    } catch (err) {
+      clearTimeout(wakingTimer);
+      setError("An unexpected error occurred. Please try again.");
+      setLoading(false);
+      setIsWakingUp(false);
     }
   }
 
@@ -369,14 +392,26 @@ export default function LoginPage({ onLogin }) {
           {/* Submit Button */}
           <motion.button
             type="submit"
-            className="mt-1 w-full rounded-xl bg-gradient-to-r from-brand to-accent text-white text-sm font-semibold py-2.5 shadow-md hover:shadow-xl transition-shadow duration-300"
+            disabled={loading}
+            className={`mt-1 w-full rounded-xl bg-gradient-to-r from-brand to-accent text-white text-sm font-semibold py-2.5 shadow-md hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 1.0 }}
-            whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={!loading ? { scale: 1.02, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" } : {}}
+            whileTap={!loading ? { scale: 0.98 } : {}}
           >
-            Sign in
+            {loading ? (
+              <>
+                <motion.div
+                  className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+                <span>{isWakingUp ? "Waking up server..." : "Signing in..."}</span>
+              </>
+            ) : (
+              "Sign in"
+            )}
           </motion.button>
 
           {/* Terms */}
