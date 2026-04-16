@@ -51,9 +51,6 @@ export default function Dashboard() {
     fetchDashboard();
   }, []);
 
-  if (loading) return <LoadingSpinner message="Loading dashboard..." fullPage showColdStartMsg />;
-  if (error) return <ErrorMessage message={error} onRetry={fetchDashboard} />;
-
   const attendance = dashboardData?.attendance;
   const attendanceData = useMemo(() => 
     (dashboardData?.subjects || []).map((s) => ({
@@ -62,8 +59,6 @@ export default function Dashboard() {
     })),
     [dashboardData?.subjects]
   );
-  const fees = dashboardData?.fees;
-  const assignments = dashboardData?.assignments;
 
   // Month names for attendance comparison
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -79,6 +74,12 @@ export default function Dashboard() {
     { name: "CGPA", value: dashboardData.marks.cgpa || 0 },
     { name: "Current SGPA", value: dashboardData.marks.currentSgpa || 0 },
   ] : [], [dashboardData?.marks]);
+
+  if (loading) return <LoadingSpinner message="Loading dashboard..." fullPage showColdStartMsg />;
+  if (error) return <ErrorMessage message={error} onRetry={fetchDashboard} />;
+
+  const fees = dashboardData?.fees;
+  const assignments = dashboardData?.assignments;
 
   return (
     <div className="space-y-6">
