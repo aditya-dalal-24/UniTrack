@@ -222,6 +222,9 @@ export const api = {
   deleteAssignment: (id) =>
     request('delete', `/assignments/${id}`),
 
+  deleteAllAssignments: () =>
+    request('delete', '/assignments'),
+
   // ==================== TODOS ====================
   getTodos: (completed = null) =>
     request('get', '/todos', null, completed !== null ? { completed } : null),
@@ -246,6 +249,9 @@ export const api = {
 
   deleteTodo: (id) =>
     request('delete', `/todos/${id}`),
+
+  deleteAllTodos: () =>
+    request('delete', '/todos'),
 
   // ==================== SUBJECTS ====================
   getSubjects: () =>
@@ -291,6 +297,9 @@ export const api = {
 
   deleteTimetableSlot: (id) =>
     request('delete', `/timetable/${id}`),
+
+  deleteAllTimetableSlots: () =>
+    request('delete', '/timetable'),
 
   // ==================== MARKS ====================
   getMarks: (semester = null) =>

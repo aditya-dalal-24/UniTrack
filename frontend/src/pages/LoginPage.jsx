@@ -16,6 +16,10 @@ export default function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [isDark, setIsDark] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [isWakingUp, setIsWakingUp] = useState(false);
@@ -393,7 +397,7 @@ export default function LoginPage({ onLogin }) {
           <motion.button
             type="submit"
             disabled={loading}
-            className={`mt-1 w-full rounded-xl bg-gradient-to-r from-brand to-accent text-white text-sm font-semibold py-2.5 shadow-md hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}
+            className={`mt-1 w-full rounded-xl bg-gradient-to-r from-brand to-accent dark:from-brand-light dark:to-accent text-white dark:text-white text-sm font-semibold py-2.5 shadow-md shadow-brand/25 dark:shadow-brand/40 hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 1.0 }}

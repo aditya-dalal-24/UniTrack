@@ -41,4 +41,10 @@ public class AssignmentController {
         assignmentService.delete(principal, id);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAll(Principal principal) {
+        assignmentService.deleteAll(principal);
+        return ResponseEntity.noContent().build();
+    }
 }

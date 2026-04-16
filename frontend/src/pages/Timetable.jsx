@@ -261,6 +261,19 @@ export default function Timetable() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={async () => {
+              if (!confirm("Are you sure you want to reset the entire timetable? This will delete ALL subjects and time slots.")) return;
+              const { error } = await api.deleteAllTimetableSlots();
+              if (error) { alert(error); return; }
+              setTimetable({});
+              fetchAll();
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-all text-sm font-semibold shadow-lg active:scale-95"
+          >
+            <Trash2 className="h-4 w-4" />
+            Reset
+          </button>
+          <button
             onClick={() => setShowEditTimeSlots(!showEditTimeSlots)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-600 text-white hover:bg-slate-700 transition-all text-sm font-semibold shadow-lg active:scale-95"
           >

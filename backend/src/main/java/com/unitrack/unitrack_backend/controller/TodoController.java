@@ -43,4 +43,10 @@ public class TodoController {
         todoService.delete(principal, id);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAll(Principal principal) {
+        todoService.deleteAll(principal);
+        return ResponseEntity.noContent().build();
+    }
 }

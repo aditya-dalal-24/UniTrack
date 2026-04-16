@@ -42,4 +42,10 @@ public class TimetableController {
         timetableService.deleteSlot(principal, id);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAllSlots(Principal principal) {
+        timetableService.deleteAllSlots(principal);
+        return ResponseEntity.noContent().build();
+    }
 }

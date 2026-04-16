@@ -69,8 +69,15 @@ export default function ToDo() {
 
   // Check if task is overdue
   const isOverdue = (dueDate, dueTime) => {
-    const taskDateTime = new Date(`${dueDate}T${dueTime}`);
-    return taskDateTime < new Date();
+    if (!dueDate) return false;
+    const now = new Date();
+    // If no due time provided, compare dates only (end of day)
+    if (!dueTime || dueTime === "00:00") {
+      const due = new Date(dueDate + "T23:59:59");
+      return due < now;
+    }
+    const taskDateTime = new Date(`${dueDate}T${dueTime}:00`);
+    return taskDateTime < now;
   };
 
   // Add new task
@@ -182,13 +189,29 @@ export default function ToDo() {
         title="To-Do List"
         description="Manage your tasks and stay organized"
         actions={
-          <button
-            onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark transition-all active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Add Task
-          </button>
+          <div className="flex gap-2">
+            {tasks.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to delete ALL tasks? This cannot be undone.")) return;
+                  const { error: apiError } = await api.deleteAllTodos();
+                  if (apiError) { alert(apiError); return; }
+                  setTasks([]);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2.5 text-sm font-semibold hover:bg-red-500/20 transition-all active:scale-95"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear All
+              </button>
+            )}
+            <button
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark transition-all active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              Add Task
+            </button>
+          </div>
         }
       />
 

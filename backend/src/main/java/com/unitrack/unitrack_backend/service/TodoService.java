@@ -10,12 +10,14 @@ import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class TodoService {
 
@@ -87,5 +89,10 @@ public class TodoService {
             throw new RuntimeException("Unauthorized");
         }
         todoRepository.delete(todo);
+    }
+
+    public void deleteAll(Principal principal) {
+        User user = getUser(principal);
+        todoRepository.deleteAllByUser(user);
     }
 }

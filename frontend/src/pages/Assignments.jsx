@@ -143,12 +143,27 @@ export default function Assignments() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Assignments</h1>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-400 dark:hover:bg-brand/30 ring-1 ring-inset ring-brand/10 dark:ring-brand/30 transition-all font-semibold shadow-sm"
-        >
-          <PlusCircle size={18} /> Add Assignment
-        </button>
+        <div className="flex gap-2">
+          {assignments.length > 0 && (
+            <button
+              onClick={async () => {
+                if (!confirm("Are you sure you want to delete ALL assignments? This cannot be undone.")) return;
+                const { error: apiError } = await api.deleteAllAssignments();
+                if (apiError) { alert(apiError); return; }
+                setAssignments([]);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30 ring-1 ring-inset ring-red-500/20 dark:ring-red-500/30 transition-all font-semibold shadow-sm"
+            >
+              <Trash2 size={18} /> Clear All
+            </button>
+          )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-400 dark:hover:bg-brand/30 ring-1 ring-inset ring-brand/10 dark:ring-brand/30 transition-all font-semibold shadow-sm"
+          >
+            <PlusCircle size={18} /> Add Assignment
+          </button>
+        </div>
       </div>
 
       {/* Assignment Cards */}

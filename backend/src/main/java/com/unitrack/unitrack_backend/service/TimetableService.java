@@ -126,4 +126,9 @@ public class TimetableService {
         }
         timetableRepository.delete(slot);
     }
+
+    public void deleteAllSlots(Principal principal) {
+        User user = getUser(principal);
+        timetableRepository.deleteAllByUser(user);
+    }
 }

@@ -82,6 +82,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userData");
     localStorage.setItem("isAuthenticated", "false");
+    window.location.href = "/login"; // Force complete app recreation and clear history
   }, []);
 
   /**
@@ -91,11 +92,21 @@ export function AuthProvider({ children }) {
     setAvatarUrl(newUrl);
   }, []);
 
+  /**
+   * Updates specific fields in the global user state.
+   */
+  const updateUserData = useCallback((newFields) => {
+    setUserData((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ...newFields };
+    });
+  }, []);
+
   const value = useMemo(() => ({
     authToken, userData, avatarUrl, isAuthenticated,
     role, isAdmin, isStudent,
-    login, logout, updateAvatar
-  }), [authToken, userData, avatarUrl, isAuthenticated, role, isAdmin, isStudent, login, logout, updateAvatar]);
+    login, logout, updateAvatar, updateUserData
+  }), [authToken, userData, avatarUrl, isAuthenticated, role, isAdmin, isStudent, login, logout, updateAvatar, updateUserData]);
 
   return (
     <AuthContext.Provider value={value}>

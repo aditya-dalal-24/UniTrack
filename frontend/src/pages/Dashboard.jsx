@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -57,10 +57,13 @@ export default function Dashboard() {
   if (error) return <ErrorMessage message={error} onRetry={fetchDashboard} />;
 
   const attendance = dashboardData?.attendance;
-  const attendanceData = (dashboardData?.subjects || []).map((s) => ({
-    subject: s.name,
-    percentage: s.attendancePercentage || 0,
-  }));
+  const attendanceData = useMemo(() => 
+    (dashboardData?.subjects || []).map((s) => ({
+      subject: s.name,
+      percentage: s.attendancePercentage || 0,
+    })),
+    [dashboardData?.subjects]
+  );
   const fees = dashboardData?.fees;
   const assignments = dashboardData?.assignments;
 
@@ -70,14 +73,14 @@ export default function Dashboard() {
   const lastMonthName = monthNames[(new Date().getMonth() - 1 + 12) % 12];
 
   // Chart data from dashboard response (fallback to empty)
-  const monthlyExpensesData = [
+  const monthlyExpensesData = useMemo(() => [
     { name: "This Month", amount: dashboardData?.expenses?.totalSpentThisMonth || 0 },
-  ];
+  ], [dashboardData?.expenses?.totalSpentThisMonth]);
 
-  const marksData = dashboardData?.marks ? [
+  const marksData = useMemo(() => dashboardData?.marks ? [
     { name: "CGPA", value: dashboardData.marks.cgpa || 0 },
     { name: "Current SGPA", value: dashboardData.marks.currentSgpa || 0 },
-  ] : [];
+  ] : [], [dashboardData?.marks]);
 
   return (
     <div className="space-y-6">

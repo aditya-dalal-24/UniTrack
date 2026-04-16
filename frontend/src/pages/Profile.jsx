@@ -14,7 +14,7 @@ const defaultProfileData = {
   privateEmail: "",
   universityEmail: "",
   phone: "",
-  dateOfBirth: "",
+  dob: "",
   age: "",
   bloodGroup: "",
   address: "",
@@ -27,13 +27,15 @@ const defaultProfileData = {
   fatherPhone: "",
   motherName: "",
   motherPhone: "",
-  emergencyContact: "",
   emergencyContactName: "",
+  emergencyContactPhone: "",
+  emergencyContactRelation: "",
   gender: "",
+  enrolmentNumber: "",
 };
 
 export default function Profile() {
-  const { userData, updateAvatar } = useAuth();
+  const { userData, updateAvatar, updateUserData } = useAuth();
   const userId = userData?.userId || "default";
 
   const [isEditing, setIsEditing] = useState(false);
@@ -95,11 +97,11 @@ export default function Profile() {
     } else if (data) {
       const fetched = {
         name: data.name || "",
-        rollNumber: data.rollNumber || "",
+        rollNumber: data.rollNumber || data.enrolmentNumber || "",
         privateEmail: data.email || "",
         universityEmail: data.universityEmail || "",
         phone: data.phone || "",
-        dateOfBirth: data.dateOfBirth || "",
+        dob: data.dob || "",
         age: data.age?.toString() || "",
         bloodGroup: data.bloodGroup || "",
         address: data.address || "",
@@ -112,9 +114,11 @@ export default function Profile() {
         fatherPhone: data.fatherPhone || "",
         motherName: data.motherName || "",
         motherPhone: data.motherPhone || "",
-        emergencyContact: data.emergencyContact || "",
         emergencyContactName: data.emergencyContactName || "",
+        emergencyContactPhone: data.emergencyContactPhone || "",
+        emergencyContactRelation: data.emergencyContactRelation || "",
         gender: data.gender || "",
+        enrolmentNumber: data.enrolmentNumber || "",
       };
       setStudentData(fetched);
     }
@@ -138,27 +142,26 @@ export default function Profile() {
 
   const handleSave = async () => {
     const payload = {
-      name: editData.name,
-      rollNumber: editData.rollNumber,
-      email: editData.privateEmail,
-      universityEmail: editData.universityEmail,
       phone: editData.phone,
-      dateOfBirth: editData.dateOfBirth,
-      age: parseInt(editData.age) || 0,
+      universityEmail: editData.universityEmail,
+      rollNumber: editData.rollNumber || editData.enrolmentNumber,
+      course: editData.course,
+      semester: editData.semester,
+      dob: editData.dob || null,
+      gender: editData.gender || null,
       bloodGroup: editData.bloodGroup,
       address: editData.address,
-      course: editData.course,
-      branch: editData.branch,
-      semester: editData.semester,
-      batch: editData.batch,
       college: editData.college,
-      gender: editData.gender,
+      branch: editData.branch,
+      batch: editData.batch,
+      enrolmentNumber: editData.enrolmentNumber || editData.rollNumber,
       fatherName: editData.fatherName,
       fatherPhone: editData.fatherPhone,
       motherName: editData.motherName,
       motherPhone: editData.motherPhone,
-      emergencyContact: editData.emergencyContact,
       emergencyContactName: editData.emergencyContactName,
+      emergencyContactPhone: editData.emergencyContactPhone,
+      emergencyContactRelation: editData.emergencyContactRelation,
     };
 
     const avatarKey = `profile_avatar_${userId}`;
@@ -182,6 +185,20 @@ export default function Profile() {
     if (apiError) {
       alert(apiError);
       return;
+    }
+
+    if (updateUserData) {
+      updateUserData({ 
+        name: editData.name, 
+        phone: editData.phone,
+        rollNumber: editData.rollNumber,
+        college: editData.college,
+        course: editData.course,
+        branch: editData.branch,
+        semester: editData.semester,
+        batch: editData.batch,
+        gender: editData.gender,
+      });
     }
 
     setStudentData(editData);
@@ -420,10 +437,10 @@ export default function Profile() {
           <EditableInfoCard
             icon={Calendar}
             label="Date of Birth"
-            value={studentData.dateOfBirth}
-            editValue={editData.dateOfBirth}
+            value={studentData.dob}
+            editValue={editData.dob}
             isEditing={isEditing}
-            onChange={(val) => handleChange("dateOfBirth", val)}
+            onChange={(val) => handleChange("dob", val)}
             type="date"
           />
           <EditableInfoCard
@@ -614,7 +631,7 @@ export default function Profile() {
             </h2>
           </div>
 
-          <div className="grid gap-5 grid-cols-1 relative z-10">
+          <div className="grid gap-5 grid-cols-1 md:grid-cols-2 relative z-10">
             <EditableInfoCard
               icon={User}
               label="Contact Person Name"
@@ -626,11 +643,20 @@ export default function Profile() {
             <EditableInfoCard
               icon={Phone}
               label="Emergency Number"
-              value={studentData.emergencyContact}
-              editValue={editData.emergencyContact}
+              value={studentData.emergencyContactPhone}
+              editValue={editData.emergencyContactPhone}
               isEditing={isEditing}
-              onChange={(val) => handleChange("emergencyContact", val)}
+              onChange={(val) => handleChange("emergencyContactPhone", val)}
               type="tel"
+            />
+            <EditableInfoCard
+              icon={User}
+              label="Relation"
+              value={studentData.emergencyContactRelation}
+              editValue={editData.emergencyContactRelation}
+              isEditing={isEditing}
+              onChange={(val) => handleChange("emergencyContactRelation", val)}
+              className="md:col-span-2"
             />
           </div>
         </motion.div>
