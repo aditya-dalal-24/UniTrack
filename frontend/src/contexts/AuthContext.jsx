@@ -19,6 +19,21 @@ export function AuthProvider({ children }) {
   });
 
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [isDark, setIsDark] = useState(() => {
+    const stored = localStorage.getItem("darkMode");
+    return stored === null ? true : stored === "true";
+  });
+
+  // Sync theme with document class immediately
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("darkMode", "true");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("darkMode", "false");
+    }
+  }, [isDark]);
 
   // Initialize/Update avatar when user changes
   useEffect(() => {
@@ -92,6 +107,10 @@ export function AuthProvider({ children }) {
     setAvatarUrl(newUrl);
   }, []);
 
+  const toggleDarkMode = useCallback(() => {
+    setIsDark((prev) => !prev);
+  }, []);
+
   /**
    * Updates specific fields in the global user state.
    */
@@ -104,9 +123,9 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({
     authToken, userData, avatarUrl, isAuthenticated,
-    role, isAdmin, isStudent,
-    login, logout, updateAvatar, updateUserData
-  }), [authToken, userData, avatarUrl, isAuthenticated, role, isAdmin, isStudent, login, logout, updateAvatar, updateUserData]);
+    role, isAdmin, isStudent, isDark,
+    login, logout, updateAvatar, updateUserData, toggleDarkMode
+  }), [authToken, userData, avatarUrl, isAuthenticated, role, isAdmin, isStudent, isDark, login, logout, updateAvatar, updateUserData, toggleDarkMode]);
 
   return (
     <AuthContext.Provider value={value}>

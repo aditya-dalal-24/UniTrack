@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
-import { Moon, Sun, Mail, Phone } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { motion } from "framer-motion";
-import useDarkMode from "../hooks/useDarkMode.js";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
 import UserAvatar from "./UserAvatar";
 
 export default function Topbar() {
-  const [isDark, setIsDark] = useDarkMode();
-  const { userData } = useAuth();
+  const { userData, isDark, toggleDarkMode } = useAuth();
   const [profileData, setProfileData] = useState(null);
 
   // Fetch full profile from backend on mount
@@ -64,7 +62,7 @@ export default function Topbar() {
 
           {/* Dark Mode Toggle */}
           <button
-            onClick={() => setIsDark((d) => !d)}
+            onClick={toggleDarkMode}
             className="inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 h-9 w-9 hover:shadow-md hover:border-brand/60 transition-all"
           >
             {isDark ? (

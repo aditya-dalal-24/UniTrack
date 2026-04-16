@@ -14,7 +14,6 @@ import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
 import UserAvatar from "../components/UserAvatar";
-import useDarkMode from "../hooks/useDarkMode";
 import {
   BarChart,
   Bar,
@@ -31,8 +30,7 @@ import {
 const COLORS = ["#475569", "#64748b", "#94a3b8", "#cbd5e1"];
 
 export default function Dashboard() {
-  const { userData } = useAuth();
-  const [isDark] = useDarkMode();
+  const { userData, isDark } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

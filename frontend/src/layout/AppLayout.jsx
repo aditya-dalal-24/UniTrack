@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
 
 export default function AppLayout() {
-  const location = useLocation();
+  const { isDark } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (

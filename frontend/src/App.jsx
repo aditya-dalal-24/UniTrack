@@ -51,16 +51,12 @@ function AppRoutes() {
       <Routes>
         <Route
           path="/login"
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage onLogin={login} />
-          }
+          element={<LoginPage onLogin={login} />}
         />
 
         <Route
           path="/signup"
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <SignupPage onLogin={login} />
-          }
+          element={<SignupPage onLogin={login} />}
         />
 
         <Route
