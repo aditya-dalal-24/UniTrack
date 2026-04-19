@@ -274,10 +274,10 @@ export default function Tasks() {
                           </button>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => { setEditingId(task.id); setEditData(task); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400">
-                              <Edit2 size={14} />
+                              <Edit2 size={20} />
                             </button>
                             <button onClick={() => handleDeleteTask(task.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-slate-400 hover:text-red-500">
-                              <Trash2 size={14} />
+                              <Trash2 size={20} />
                             </button>
                           </div>
                         </div>
@@ -288,7 +288,7 @@ export default function Tasks() {
                         
                         {task.type === TASK_TYPE.ASSIGNMENT && task.subject && (
                           <div className="flex items-center gap-1.5 text-xs font-bold text-brand dark:text-slate-200 bg-brand/5 dark:bg-brand/20 w-fit px-2 py-1 rounded-lg mb-3">
-                            <BookOpen size={12} /> {task.subject}
+                            <BookOpen size={22} /> {task.subject}
                           </div>
                         )}
 
@@ -298,7 +298,7 @@ export default function Tasks() {
 
                         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                           <div className={`flex items-center gap-1.5 text-xs font-medium ${isOverdue(task.dueDate, task.dueTime, task.status) ? 'text-red-500' : 'text-slate-400'}`}>
-                            <Calendar size={12} />
+                            <Calendar size={25} />
                             {new Date(task.dueDate).toLocaleDateString()}
                           </div>
                           {isOverdue(task.dueDate, task.dueTime, task.status) && (

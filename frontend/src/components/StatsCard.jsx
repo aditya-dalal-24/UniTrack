@@ -40,19 +40,11 @@ export default function StatsCard({
         className
       )}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {title}
           </p>
-          <h3 className="mt-2 text-2xl font-bold text-slate-800 dark:text-slate-100">
-            {value}
-          </h3>
-          {description && (
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line">
-              {description}
-            </p>
-          )}
         </div>
         <div
           className={cn(
@@ -62,6 +54,17 @@ export default function StatsCard({
         >
           {Icon && <Icon className="h-6 w-6" />}
         </div>
+      </div>
+
+      <div>
+        <h3 className="text-4xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+          {value}
+        </h3>
+        {description && (
+          <p className="mt-1 text-base text-slate-400 dark:text-slate-500 whitespace-pre-line">
+            {description}
+          </p>
+        )}
       </div>
 
       {trend && (

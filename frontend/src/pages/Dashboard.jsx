@@ -146,18 +146,18 @@ export default function Dashboard() {
           onClick={() => navigate('/schedule')}
           className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60 cursor-pointer transition-transform duration-200"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-2 rounded-xl bg-slate-100 text-slate-800 dark:bg-white dark:text-black">
-              <CalendarCheck size={20} />
+          <div className="flex items-center justify-between mb-6">
+            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-800 dark:bg-white dark:text-black">
+              <CalendarCheck size={24} />
             </div>
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attendance</div>
+            <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Attendance</div>
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-3xl font-bold text-slate-900 dark:text-slate-50">
+              <div className="text-4xl font-extrabold text-slate-900 dark:text-slate-50">
                 {Math.round(attendance?.attendancePercentage || 0)}%
               </div>
-              <div className="text-xs text-slate-500 mt-1">
+              <div className="text-base text-slate-500 mt-1">
                 {attendance?.presentDays || 0} / {attendance?.totalWorkingDays || 0} lectures attended
               </div>
             </div>
