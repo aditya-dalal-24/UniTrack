@@ -19,14 +19,19 @@ console.table({
 });
 
 /**
- * Enhanced Wake-up logic: Polls the health endpoint rather than just firing once.
+ * Enhanced Wake-up logic: Aggressively pings during cold start window,
+ * then backs off. Also pre-warms the security filter chain.
  */
+let backendAwake = false;
+
 async function wakeUpBackend(attempts = 0) {
-  if (attempts > 5) return; // Stop after 5 pings (approx 25s) if still failing
+  if (attempts > 8 || backendAwake) return;
+  
+  // More aggressive early on (3s), then back off (5s)
+  const delay = attempts < 3 ? 3000 : 5000;
   
   try {
     const start = Date.now();
-    // Use XHR/fetch to avoid axios interceptor logic for the ping itself
     const response = await fetch(`${API_BASE_URL.replace('/api', '')}/actuator/health`, { 
       method: 'GET', 
       mode: 'cors',
@@ -34,18 +39,30 @@ async function wakeUpBackend(attempts = 0) {
     });
     
     if (response.ok) {
-      console.log(`☀️ Backend is AWAKE (responded in ${Date.now() - start}ms)`);
+      backendAwake = true;
+      const elapsed = Date.now() - start;
+      console.log(`☀️ Backend is AWAKE (responded in ${elapsed}ms)`);
+      
+      // Pre-warm the security filter chain & JPA lazy beans
+      // by making a lightweight authenticated-path request
+      fetch(`${API_BASE_URL}/dashboard`, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+        }
+      }).catch(() => {}); // Silently ignore — just warming up
     } else {
       throw new Error(`Status ${response.status}`);
     }
   } catch (err) {
-    console.log(`😴 Backend sleeping or booting (Attempt ${attempts + 1})...`);
-    // Wait 5 seconds and try again
-    setTimeout(() => wakeUpBackend(attempts + 1), 5000);
+    console.log(`😴 Backend sleeping or booting (Attempt ${attempts + 1}/8)...`);
+    setTimeout(() => wakeUpBackend(attempts + 1), delay);
   }
 }
 
-// Start wake-up process immediately
+// Start wake-up process immediately when the JS bundle loads
 wakeUpBackend();
 
 // ==================== INTERCEPTORS ====================
