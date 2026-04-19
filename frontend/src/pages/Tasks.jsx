@@ -287,7 +287,7 @@ export default function Tasks() {
                         </h3>
                         
                         {task.type === TASK_TYPE.ASSIGNMENT && task.subject && (
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-brand bg-brand/5 w-fit px-2 py-1 rounded-lg mb-3">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-brand dark:text-slate-200 bg-brand/5 dark:bg-brand/20 w-fit px-2 py-1 rounded-lg mb-3">
                             <BookOpen size={12} /> {task.subject}
                           </div>
                         )}
@@ -357,24 +357,24 @@ export default function Tasks() {
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase px-1">Due Date</label>
-                    <input 
-                      type="date" 
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none text-slate-900 dark:text-white"
-                      value={newTask.dueDate}
-                      onChange={e => setNewTask({...newTask, dueDate: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase px-1">Due Time</label>
-                    <input 
-                      type="time" 
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none text-slate-900 dark:text-white"
-                      value={newTask.dueTime}
-                      onChange={e => setNewTask({...newTask, dueTime: e.target.value})}
-                    />
-                  </div>
+                    <div className="space-y-1 relative">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase px-1">Due Date</label>
+                      <input 
+                        type="date" 
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none text-slate-900 dark:text-white dark:[color-scheme:dark] relative z-10"
+                        value={newTask.dueDate}
+                        onChange={e => setNewTask({...newTask, dueDate: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1 relative">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase px-1">Due Time</label>
+                      <input 
+                        type="time" 
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none text-slate-900 dark:text-white dark:[color-scheme:dark] relative z-10"
+                        value={newTask.dueTime}
+                        onChange={e => setNewTask({...newTask, dueTime: e.target.value})}
+                      />
+                    </div>
                 </div>
               </div>
 
