@@ -36,11 +36,21 @@ import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
 
 const defaultCategories = [
-  { id: -1, name: "Food & Beverages", icon: Coffee, chartColor: "#64748b" },
-  { id: -2, name: "Transportation", icon: Bus, chartColor: "#475569" },
-  { id: -3, name: "Books & Stationery", icon: BookOpen, chartColor: "#334155" },
-  { id: -4, name: "Shopping", icon: ShoppingBag, chartColor: "#1e293b" },
-  { id: -5, name: "Entertainment", icon: MoreHorizontal, chartColor: "#0f172a" },
+  { id: -1, name: "Food & Beverages", icon: Coffee, chartColor: "#16a34a" }, // green-600
+  { id: -2, name: "Transportation", icon: Bus, chartColor: "#2563eb" }, // blue-600
+  { id: -3, name: "Books & Stationery", icon: BookOpen, chartColor: "#ca8a04" }, // yellow-600
+  { id: -4, name: "Shopping", icon: ShoppingBag, chartColor: "#dc2626" }, // red-600
+  { id: -5, name: "Entertainment", icon: MoreHorizontal, chartColor: "#7c3aed" }, // violet-600
+];
+
+const rainbowColors = [
+  "#16a34a", // green
+  "#2563eb", // blue
+  "#ca8a04", // yellow
+  "#dc2626", // red
+  "#7c3aed", // purple
+  "#cbd5e1", // off-white/gray
+  "#db2777", // pink
 ];
 
 export default function Expenses() {
@@ -107,7 +117,7 @@ export default function Expenses() {
   const highestExpense = expenses.length > 0 ? Math.max(...expenses.map((e) => e.amount || 0)) : 0;
 
   // Category breakdown for filtered expenses
-  const categoryBreakdown = categories.map((cat) => {
+  const categoryBreakdown = categories.map((cat, index) => {
     const catExpenses = expenses.filter((exp) => {
       // Match by ID first, fallback to name
       if (cat.id && exp.categoryId) return exp.categoryId === cat.id;
@@ -115,7 +125,8 @@ export default function Expenses() {
     });
     const total = catExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
     const percentage = totalExpenses > 0 ? (total / totalExpenses) * 100 : 0;
-    return { ...cat, total, percentage, chartColor: cat.chartColor || '#64748b' };
+    const chartColor = cat.chartColor || rainbowColors[index % rainbowColors.length];
+    return { ...cat, total, percentage, chartColor };
   });
 
   const goToPreviousMonth = () => {
@@ -243,6 +254,11 @@ export default function Expenses() {
       return <Icon className="h-5 w-5" />;
     }
     return <Tag className="h-5 w-5" />;
+  };
+
+  const getCategoryColor = (categoryName) => {
+    const cat = categoryBreakdown.find(c => c.name === categoryName);
+    return cat ? cat.chartColor : "#64748b";
   };
 
   // Prepare data for pie chart
@@ -754,17 +770,17 @@ export default function Expenses() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:fixed print:inset-0 print:bg-white print:z-50 print:block"
             onClick={() => { setShowBillModal(false); setDailyBill(null); }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col print:shadow-none print:max-w-none print:h-auto print:rounded-none"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
                 <h3 className="text-xl font-bold">Daily Expense Bill</h3>
                 <button onClick={() => { setShowBillModal(false); setDailyBill(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                   <X className="h-5 w-5" />
@@ -772,7 +788,7 @@ export default function Expenses() {
               </div>
 
               <div className="p-6 flex-1 overflow-y-auto">
-                <div className="flex gap-4 mb-8">
+                <div className="flex gap-4 mb-8 print:hidden">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Date</label>
                     <input 
@@ -797,13 +813,13 @@ export default function Expenses() {
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }} 
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 relative"
+                    className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 print:border-solid print:p-0 print:border-none relative"
                   >
                     {/* Receipt Header */}
-                    <div className="text-center mb-6 border-b border-dashed border-slate-200 dark:border-slate-800 pb-4">
-                      <h4 className="text-2xl font-black tracking-tighter italic text-indigo-600">UNITRACK</h4>
-                      <p className="text-[10px] text-slate-500 font-mono uppercase">Electronic Expense Statement</p>
-                      <div className="mt-4 flex justify-between text-[10px] font-mono text-slate-400 px-2">
+                    <div className="text-center mb-6 border-b border-dashed border-slate-200 dark:border-slate-800 print:border-black pb-4">
+                      <h4 className="text-2xl font-black tracking-tighter italic text-indigo-600 print:text-black">UNITRACK</h4>
+                      <p className="text-[10px] text-slate-500 font-mono uppercase print:text-black">Electronic Expense Statement</p>
+                      <div className="mt-4 flex justify-between text-[10px] font-mono text-slate-400 print:text-black px-2">
                         <span>DATE: {dailyBill.date}</span>
                         <span>REF: #{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
                       </div>
@@ -814,34 +830,36 @@ export default function Expenses() {
                       {dailyBill.expenses.map((exp, i) => (
                         <div key={i} className="flex justify-between items-start text-sm">
                           <div className="flex-1 pr-4">
-                            <p className="font-bold text-slate-900 dark:text-slate-100">{exp.categoryName || "Other"}</p>
-                            {exp.note && <p className="text-[10px] text-slate-500 italic">"{exp.note}"</p>}
-                            <p className="text-[10px] text-slate-400 font-mono">{exp.time || "00:00"}</p>
+                            <p className="font-bold print:font-extrabold" style={{ color: getCategoryColor(exp.categoryName || "Other") }}>
+                              {exp.categoryName || "Other"}
+                            </p>
+                            {exp.note && <p className="text-[10px] text-slate-500 print:text-gray-800 italic">"{exp.note}"</p>}
+                            <p className="text-[10px] text-slate-400 print:text-gray-800 font-mono">{exp.time || "00:00"}</p>
                           </div>
-                          <p className="font-mono font-bold">₹{exp.amount.toFixed(2)}</p>
+                          <p className="font-mono font-bold print:text-black">₹{exp.amount.toFixed(2)}</p>
                         </div>
                       ))}
                       {dailyBill.expenses.length === 0 && (
-                        <p className="text-center text-slate-400 text-sm py-8">No expenses found for this date.</p>
+                        <p className="text-center text-slate-400 print:text-black text-sm py-8">No expenses found for this date.</p>
                       )}
                     </div>
 
                     {/* Summary */}
-                    <div className="border-t-2 border-dashed border-slate-200 dark:border-slate-800 pt-4 mt-6">
+                    <div className="border-t-2 border-dashed border-slate-200 dark:border-slate-800 print:border-black pt-4 mt-6">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-slate-500 font-bold uppercase">Total Items</span>
-                        <span className="font-mono text-sm">{dailyBill.expenses.length}</span>
+                        <span className="text-xs text-slate-500 print:text-black font-bold uppercase">Total Items</span>
+                        <span className="font-mono text-sm print:text-black">{dailyBill.expenses.length}</span>
                       </div>
-                      <div className="flex justify-between items-center bg-indigo-600/5 dark:bg-indigo-400/5 p-3 rounded-xl">
-                        <span className="text-lg font-black uppercase text-indigo-600">Grand Total</span>
-                        <span className="text-xl font-mono font-black text-indigo-600">₹{dailyBill.totalAmount.toFixed(2)}</span>
+                      <div className="flex justify-between items-center bg-indigo-600/5 dark:bg-indigo-400/5 print:bg-transparent print:border-t-2 print:border-black print:rounded-none p-3 rounded-xl mt-2">
+                        <span className="text-lg font-black uppercase text-indigo-600 print:text-black">Grand Total</span>
+                        <span className="text-xl font-mono font-black text-indigo-600 print:text-black">₹{dailyBill.totalAmount.toFixed(2)}</span>
                       </div>
                     </div>
 
                     {/* Footer */}
                     <div className="mt-8 text-center">
-                      <div className="w-full h-8 bg-[url('https://www.scandit.com/wp-content/uploads/2021/11/barcode-hero.png')] bg-contain bg-center opacity-20 grayscale mb-2"></div>
-                      <p className="text-[10px] text-slate-400 font-mono italic">Thank you for tracking with UniTrack!</p>
+                      <div className="w-full h-8 bg-[url('https://www.scandit.com/wp-content/uploads/2021/11/barcode-hero.png')] bg-contain bg-center opacity-20 grayscale mb-2 print:hidden"></div>
+                      <p className="text-[10px] text-slate-400 font-mono italic print:text-black">Thank you for tracking with UniTrack!</p>
                     </div>
                   </motion.div>
                 ) : !fetchingBill && (
@@ -853,7 +871,7 @@ export default function Expenses() {
               </div>
 
               {dailyBill && (
-                <div className="p-6 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                <div className="p-6 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex gap-3 print:hidden">
                   <button 
                     onClick={() => window.print()} 
                     className="flex-1 flex items-center justify-center gap-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 py-3 rounded-2xl text-sm font-bold hover:scale-[1.02] transition-all"
