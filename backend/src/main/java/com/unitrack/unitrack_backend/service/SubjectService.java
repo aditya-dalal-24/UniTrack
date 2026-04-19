@@ -33,22 +33,45 @@ public class SubjectService {
                 .name(subject.getName())
                 .courseCode(subject.getCourseCode())
                 .professor(subject.getProfessor())
+                .roomNumber(subject.getRoomNumber())
+                .color(subject.getColor())
                 .build();
     }
 
-    public List<SubjectResponse> getSubjects(Principal principal) {
+    public List<SubjectResponse> getSubjects(Principal principal, Integer semester) {
         User user = getUser(principal);
-        return subjectRepository.findByUser(user)
+        Integer registeredSemester = user.getSemester() != null ? user.getSemester() : 1;
+        
+        if (semester == null) {
+            semester = registeredSemester;
+        }
+        
+        // If searching for the registered semester, include legacy 'null' subjects
+        if (semester.equals(registeredSemester)) {
+            return subjectRepository.findByUserAndSemesterOrSemesterIsNull(user, semester)
+                    .stream().map(this::mapSubject).collect(Collectors.toList());
+        }
+        
+        return subjectRepository.findByUserAndSemester(user, semester)
                 .stream().map(this::mapSubject).collect(Collectors.toList());
     }
 
     public SubjectResponse addSubject(Principal principal, SubjectRequest request) {
         User user = getUser(principal);
+        // Use semester from request if provided, otherwise default to user's registered semester
+        Integer semester = request.getSemester();
+        if (semester == null) {
+            semester = user.getSemester() != null ? user.getSemester() : 1;
+        }
+        
         Subject subject = Subject.builder()
                 .user(user)
+                .semester(semester)
                 .name(request.getName())
                 .courseCode(request.getCourseCode())
                 .professor(request.getProfessor())
+                .roomNumber(request.getRoomNumber())
+                .color(request.getColor())
                 .build();
         subjectRepository.save(subject);
         return mapSubject(subject);

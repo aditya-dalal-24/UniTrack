@@ -14,6 +14,7 @@ public class DashboardResponse {
     private ExpensesSummary expenses;
     private MarksSummary marks;
     private TodosSummary todos;
+    private TasksSummary tasks;
     private List<SubjectSummary> subjects;
 
     @Data
@@ -79,6 +80,16 @@ public class DashboardResponse {
         private double currentSgpa;
         private int totalSubjects;
         private int currentSemester;
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class TasksSummary {
+        private long totalTasks;
+        private long pendingTasks;
+        private long completedTasks;
     }
 
     @Data

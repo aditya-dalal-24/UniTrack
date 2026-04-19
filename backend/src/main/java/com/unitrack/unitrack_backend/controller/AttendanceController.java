@@ -20,8 +20,19 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @GetMapping
-    public ResponseEntity<AttendanceSummaryResponse> getSummary(Principal principal) {
+    public ResponseEntity<?> getAttendance(Principal principal, 
+                                           @RequestParam(required = false) LocalDate date) {
+        if (date != null) {
+            return ResponseEntity.ok(attendanceService.getByDate(principal, date));
+        }
         return ResponseEntity.ok(attendanceService.getSummary(principal));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<AttendanceResponse> updateRecord(Principal principal, 
+                                                           @PathVariable Long id, 
+                                                           @Valid @RequestBody AttendanceRequest request) {
+        return ResponseEntity.ok(attendanceService.updateRecord(principal, id, request));
     }
 
     @PostMapping

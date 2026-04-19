@@ -42,6 +42,8 @@ public class FeesService {
                 .dueDate(fee.getDueDate())
                 .paidDate(fee.getPaidDate())
                 .status(fee.getStatus())
+                .receiptData(fee.getReceiptData())
+                .receiptFileName(fee.getReceiptFileName())
                 .build();
     }
 
@@ -87,6 +89,8 @@ public class FeesService {
                 .dueDate(request.getDueDate())
                 .paidDate(request.getPaidDate())
                 .status(request.getStatus() != null ? request.getStatus() : FeesStatus.PENDING)
+                .receiptData(request.getReceiptData())
+                .receiptFileName(request.getReceiptFileName())
                 .build();
         feeRepository.save(fee);
         return mapToResponse(fee);
@@ -106,6 +110,10 @@ public class FeesService {
         fee.setDueDate(request.getDueDate());
         fee.setPaidDate(request.getPaidDate());
         fee.setStatus(request.getStatus());
+        if (request.getReceiptData() != null) {
+            fee.setReceiptData(request.getReceiptData());
+            fee.setReceiptFileName(request.getReceiptFileName());
+        }
         feeRepository.save(fee);
         return mapToResponse(fee);
     }

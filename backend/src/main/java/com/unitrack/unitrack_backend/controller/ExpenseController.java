@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -56,5 +57,13 @@ public class ExpenseController {
     public ResponseEntity<Void> delete(Principal principal, @PathVariable Long id) {
         expenseService.delete(principal, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/bill")
+    public ResponseEntity<com.unitrack.unitrack_backend.dto.response.ExpenseBillResponse> getDailyBill(
+            Principal principal,
+            @RequestParam String date) {
+        LocalDate localDate = LocalDate.parse(date);
+        return ResponseEntity.ok(expenseService.getDailyBill(principal, localDate));
     }
 }

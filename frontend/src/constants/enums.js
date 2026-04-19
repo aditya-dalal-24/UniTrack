@@ -20,6 +20,18 @@ export const FEES_STATUS = {
   PARTIAL: 'PARTIAL',
 };
 
+export const TASK_STATUS = {
+  PENDING: 'PENDING',
+  SUBMITTED: 'SUBMITTED',
+  OVERDUE: 'OVERDUE',
+  COMPLETED: 'COMPLETED',
+};
+
+export const TASK_TYPE = {
+  ASSIGNMENT: 'ASSIGNMENT',
+  TODO: 'TODO',
+};
+
 // Days used in timetable
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 

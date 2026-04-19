@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
     List<Subject> findByUser(User user);
+    List<Subject> findByUserAndSemester(User user, Integer semester);
+    List<Subject> findByUserAndSemesterOrSemesterIsNull(User user, Integer semester);
     void deleteAllByUser(User user);
 }

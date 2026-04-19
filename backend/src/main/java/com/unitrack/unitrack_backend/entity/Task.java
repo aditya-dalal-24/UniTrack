@@ -5,12 +5,12 @@ import lombok.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "fees")
+@Table(name = "tasks")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Fees {
+public class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,19 +20,20 @@ public class Fees {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    private Integer semester;
-    private String category;
-    private Double totalAmount;
-    private Double paidAmount;
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private String subject;
+
     private LocalDate dueDate;
-    private LocalDate paidDate;
+
+    private String dueTime;
 
     @Enumerated(EnumType.STRING)
-    private FeesStatus status;
+    private TaskStatus status;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String receiptData;
-
-    private String receiptFileName;
+    @Enumerated(EnumType.STRING)
+    private TaskType type;
 }

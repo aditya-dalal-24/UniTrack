@@ -383,10 +383,16 @@ export default function Profile() {
                       {isEditing ? (
                         <div className="flex gap-1.5 mt-1 w-full">
                           <select
-                            value={(editData.phone || "").includes(' ') ? (editData.phone || "").split(' ')[0] : '+91'}
+                            value={(() => {
+                              const phone = editData.phone || "";
+                              const found = countryCodes.find(c => phone.startsWith(c.code));
+                              return found ? found.code : "+91";
+                            })()}
                             onChange={(e) => {
-                              const num = (editData.phone || "").includes(' ') ? (editData.phone || "").split(' ').slice(1).join(' ') : (editData.phone || "");
-                              handleChange("phone", `${e.target.value} ${num}`.trim());
+                              const currentPhone = editData.phone || "";
+                              const found = countryCodes.find(c => currentPhone.startsWith(c.code));
+                              const numOnly = found ? currentPhone.slice(found.code.length).trim() : currentPhone.replace(/^\+\d+\s*/, "").trim();
+                              handleChange("phone", `${e.target.value} ${numOnly}`.trim());
                             }}
                             className="bg-white dark:bg-slate-900 border-2 border-brand/20 rounded-lg px-2 py-1.5 text-sm font-medium focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none w-[70px] cursor-pointer"
                           >
@@ -394,10 +400,17 @@ export default function Profile() {
                           </select>
                           <input
                             type="tel"
-                            value={(editData.phone || "").includes(' ') ? (editData.phone || "").split(' ').slice(1).join(' ') : (editData.phone || "")}
+                            value={(() => {
+                              const phone = editData.phone || "";
+                              const found = countryCodes.find(c => phone.startsWith(c.code));
+                              return found ? phone.slice(found.code.length).trim() : phone.replace(/^\+\d+\s*/, "").trim();
+                            })()}
                             onChange={(e) => {
-                              const code = (editData.phone || "").includes(' ') ? (editData.phone || "").split(' ')[0] : '+91';
-                              handleChange("phone", `${code} ${e.target.value}`.trim());
+                              const currentPhone = editData.phone || "";
+                              const found = countryCodes.find(c => currentPhone.startsWith(c.code));
+                              const code = found ? found.code : "+91";
+                              const newVal = e.target.value.replace(/^\+\d+\s*/, "").trim();
+                              handleChange("phone", `${code} ${newVal}`.trim());
                             }}
                             className="bg-white dark:bg-slate-900 border-2 border-brand/20 rounded-lg px-3 py-1.5 text-sm font-medium focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none flex-1 min-w-0 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             placeholder="Phone number"
@@ -706,10 +719,18 @@ function EditableInfoCard({
             ) : type === "tel" ? (
               <div className="flex gap-2 w-full mt-1.5">
                 <select
-                  value={(editValue || "").includes(' ') ? (editValue || "").split(' ')[0] : '+91'}
+                  value={(() => {
+                    const phone = editValue || "";
+                    const codes = ["+1", "+44", "+91", "+61", "+86"];
+                    const found = codes.find(c => phone.startsWith(c));
+                    return found || "+91";
+                  })()}
                   onChange={(e) => {
-                    const num = (editValue || "").includes(' ') ? (editValue || "").split(' ').slice(1).join(' ') : (editValue || "");
-                    onChange(`${e.target.value} ${num}`.trim());
+                    const currentPhone = editValue || "";
+                    const codes = ["+1", "+44", "+91", "+61", "+86"];
+                    const found = codes.find(c => currentPhone.startsWith(c));
+                    const numOnly = found ? currentPhone.slice(found.length).trim() : currentPhone.replace(/^\+\d+\s*/, "").trim();
+                    onChange(`${e.target.value} ${numOnly}`.trim());
                   }}
                   className="bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none w-20 focus:border-brand transition-all cursor-pointer"
                 >
@@ -721,10 +742,19 @@ function EditableInfoCard({
                 </select>
                 <input
                   type="tel"
-                  value={(editValue || "").includes(' ') ? (editValue || "").split(' ').slice(1).join(' ') : (editValue || "")}
+                  value={(() => {
+                    const phone = editValue || "";
+                    const codes = ["+1", "+44", "+91", "+61", "+86"];
+                    const found = codes.find(c => phone.startsWith(c));
+                    return found ? phone.slice(found.length).trim() : phone.replace(/^\+\d+\s*/, "").trim();
+                  })()}
                   onChange={(e) => {
-                    const code = (editValue || "").includes(' ') ? (editValue || "").split(' ')[0] : '+91';
-                    onChange(`${code} ${e.target.value}`.trim());
+                    const currentPhone = editValue || "";
+                    const codes = ["+1", "+44", "+91", "+61", "+86"];
+                    const found = codes.find(c => currentPhone.startsWith(c));
+                    const code = found || "+91";
+                    const newVal = e.target.value.replace(/^\+\d+\s*/, "").trim();
+                    onChange(`${code} ${newVal}`.trim());
                   }}
                   className="flex-1 w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-3 py-2.5 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-brand transition-all min-w-0"
                   placeholder="Phone number"

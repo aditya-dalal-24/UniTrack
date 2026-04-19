@@ -10,14 +10,12 @@ const LandingPage = lazy(() => import("./pages/LandingPage.jsx"));
 const AppLayout = lazy(() => import("./layout/AppLayout.jsx"));
 const AdminLayout = lazy(() => import("./layout/AdminLayout.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
-const Attendance = lazy(() => import("./pages/Attendance.jsx"));
-const Assignments = lazy(() => import("./pages/Assignments.jsx"));
+const Schedule = lazy(() => import("./pages/Schedule.jsx"));
 const Marks = lazy(() => import("./pages/Marks.jsx"));
 const Fees = lazy(() => import("./pages/Fees.jsx"));
 const Expenses = lazy(() => import("./pages/Expenses.jsx"));
-const Timetable = lazy(() => import("./pages/Timetable.jsx"));
 const Profile = lazy(() => import("./pages/Profile.jsx"));
-const ToDo = lazy(() => import("./pages/ToDo.jsx"));
+const Tasks = lazy(() => import("./pages/Tasks.jsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.jsx"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.jsx"));
 
@@ -76,13 +74,13 @@ function AppRoutes() {
           }
         >
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="attendance" element={<Attendance />} />
-          <Route path="assignments" element={<Assignments />} />
+          <Route path="schedule" element={<Schedule />} />
+          <Route path="attendance" element={<Navigate to="/schedule" replace />} />
+          <Route path="timetable" element={<Navigate to="/schedule" replace />} />
           <Route path="marks" element={<Marks />} />
           <Route path="fees" element={<Fees />} />
           <Route path="expenses" element={<Expenses />} />
-          <Route path="timetable" element={<Timetable />} />
-          <Route path="todo" element={<ToDo />} />
+          <Route path="tasks" element={<Tasks />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

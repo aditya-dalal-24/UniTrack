@@ -22,13 +22,11 @@ import { useAuth } from "../contexts/AuthContext";
 
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/attendance", label: "Attendance", icon: CalendarCheck },
-  { to: "/assignments", label: "Assignments", icon: BookOpen },
-  { to: "/timetable", label: "Timetable", icon: Calendar },
+  { to: "/schedule", label: "Schedule", icon: CalendarCheck },
+  { to: "/tasks", label: "Tasks", icon: CheckSquare },
   { to: "/marks", label: "Marks", icon: BarChart2 },
   { to: "/fees", label: "Fees", icon: ReceiptIndianRupee },
   { to: "/expenses", label: "Expenses", icon: Wallet },
-  { to: "/todo", label: "To-Do", icon: CheckSquare },
   { to: "/profile", label: "Profile", icon: Users },
 ];
 
@@ -40,10 +38,16 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     if (saved) {
       try {
         const paths = JSON.parse(saved);
-        // Only include paths that exist in the master links safely
-        return paths
+        
+        if (paths.includes("/attendance") || paths.includes("/timetable")) {
+          return links;
+        }
+
+        const matchedLinks = paths
           .map((to) => links.find((l) => l.to === to))
           .filter(Boolean);
+        const newLinks = links.filter((l) => !paths.includes(l.to));
+        return [...matchedLinks, ...newLinks];
       } catch (e) {
         return links;
       }

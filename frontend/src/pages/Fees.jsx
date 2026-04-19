@@ -10,6 +10,10 @@ import {
   AlertCircle,
   X,
   IndianRupee,
+  FileText,
+  Eye,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -27,10 +31,15 @@ export default function Fees() {
 
   const [newFee, setNewFee] = useState({
     category: "College",
+    customCategory: "",
     amount: "",
     paid: "",
     dueDate: "",
+    receiptData: null,
+    receiptFileName: "",
   });
+
+  const [viewingReceipt, setViewingReceipt] = useState(null);
 
   const getCategoryIcon = (category) => {
     switch (category) {
@@ -57,6 +66,25 @@ export default function Fees() {
     fetchFees();
   }, [selectedSemester]);
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit as per user hint "single image or simple pdf"
+        alert("File is too large. Max 2MB allowed.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewFee({
+          ...newFee,
+          receiptData: reader.result,
+          receiptFileName: file.name
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddFee = async () => {
     if (!newFee.amount || parseFloat(newFee.amount) <= 0 || !newFee.dueDate) {
       alert("Please enter a valid Amount greater than 0 and a Due Date.");
@@ -74,12 +102,14 @@ export default function Fees() {
 
     const payload = {
       semester: selectedSemester,
-      category: newFee.category,
+      category: newFee.category === "Other" ? newFee.customCategory : newFee.category,
       totalAmount,
       paidAmount,
       dueDate: newFee.dueDate,
       paidDate: paidAmount > 0 ? new Date().toISOString().split('T')[0] : null,
-      status
+      status,
+      receiptData: newFee.receiptData,
+      receiptFileName: newFee.receiptFileName,
     };
 
     const { error: apiError } = await api.addFee(payload);
@@ -89,8 +119,15 @@ export default function Fees() {
     }
 
     await fetchFees();
-    setNewFee({ category: "College", amount: "", paid: "", dueDate: "" });
+    setNewFee({ category: "College", customCategory: "", amount: "", paid: "", dueDate: "", receiptData: null, receiptFileName: "" });
     setShowAddFee(false);
+  };
+
+  const handleDeleteFee = async (id) => {
+    if (!confirm("Delete this fee record?")) return;
+    const { error } = await api.deleteFee(id);
+    if (error) alert(error);
+    else fetchFees();
   };
 
   const totalFees = feesSummary?.totalFees || 0;
@@ -238,10 +275,26 @@ export default function Fees() {
                           <option value="College">College Fee</option>
                           <option value="Hostel">Hostel Fee</option>
                           <option value="Library">Library Fine</option>
-                          <option value="Other">Other</option>
+                          <option value="Other">Other (Specify)</option>
                         </select>
                       </div>
                     </div>
+
+                    {newFee.category === "Other" && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                      >
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Category Name *</label>
+                        <input
+                          type="text"
+                          value={newFee.customCategory}
+                          onChange={(e) => setNewMark ? setNewFee({ ...newFee, customCategory: e.target.value }) : setNewFee({ ...newFee, customCategory: e.target.value })}
+                          placeholder="e.g. Exam Fee"
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                        />
+                      </motion.div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Total Amount *</label>
@@ -273,6 +326,34 @@ export default function Fees() {
                         onChange={(e) => setNewFee({ ...newFee, dueDate: e.target.value })}
                         className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
                       />
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Receipt (Optional)</label>
+                      <div className="relative group">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className={`w-full rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm flex items-center justify-center gap-2 transition-all ${newFee.receiptFileName ? 'border-brand bg-brand/5' : 'group-hover:border-brand/40 group-hover:bg-slate-50'}`}>
+                          {newFee.receiptFileName ? (
+                            <>
+                              <FileText className="h-4 w-4 text-brand" />
+                              <span className="text-brand font-medium truncate max-w-[200px]">{newFee.receiptFileName}</span>
+                              <button onClick={(e) => { e.stopPropagation(); setNewFee({...newFee, receiptData: null, receiptFileName: ""}) }} className="ml-auto text-slate-400 hover:text-red-500">
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 text-slate-400" />
+                              <span className="text-slate-500">Click to upload receipt (Image or PDF)</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -331,7 +412,8 @@ export default function Fees() {
                       <th className="px-6 py-4">Pending</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4">Due Date</th>
-                      <th className="px-6 py-4">Paid Date</th>
+                      <th className="px-6 py-4">Receipt</th>
+                      <th className="px-6 py-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -384,8 +466,26 @@ export default function Fees() {
                           <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
                             {fee.dueDate}
                           </td>
-                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
-                            {fee.paidDate || '-'}
+                          <td className="px-6 py-4 text-center">
+                            {fee.receiptData ? (
+                              <button 
+                                onClick={() => setViewingReceipt(fee)}
+                                className="p-2 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 transition-all"
+                                title="View Receipt"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-700">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleDeleteFee(fee.id)}
+                              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </td>
                         </motion.tr>
                       );
@@ -395,6 +495,66 @@ export default function Fees() {
               </div>
             )}
           </motion.div>
+
+          {/* Receipt Viewer Modal */}
+          <AnimatePresence>
+            {viewingReceipt && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                onClick={() => setViewingReceipt(null)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{viewingReceipt.category} Receipt</h3>
+                      <p className="text-xs text-slate-500">{viewingReceipt.receiptFileName}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a 
+                        href={viewingReceipt.receiptData} 
+                        download={viewingReceipt.receiptFileName}
+                        className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-brand transition-all"
+                        title="Download"
+                      >
+                        <Download className="h-5 w-5" />
+                      </a>
+                      <button 
+                        onClick={() => setViewingReceipt(null)}
+                        className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-500 transition-all"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 p-6 flex items-center justify-center">
+                    {viewingReceipt.receiptData.startsWith('data:application/pdf') ? (
+                      <iframe
+                        src={viewingReceipt.receiptData}
+                        className="w-full h-full min-h-[60vh] rounded-lg shadow-sm"
+                        title="Receipt PDF"
+                      />
+                    ) : (
+                      <img
+                        src={viewingReceipt.receiptData}
+                        alt="Receipt"
+                        className="max-w-full h-auto rounded-lg shadow-sm"
+                      />
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </div>

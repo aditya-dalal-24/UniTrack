@@ -182,14 +182,24 @@ export const api = {
     }),
 
   // ==================== ATTENDANCE ====================
-  getAttendance: () =>
-    request('get', '/attendance'),
+  getAttendance: (date = null) =>
+    request('get', date ? `/attendance?date=${date}` : '/attendance'),
+
+  updateAttendance: (id, data) =>
+    request('put', `/attendance/${id}`, {
+      date: data.date,
+      status: data.status,
+      subjectId: data.subjectId || null,
+      timetableSlotId: data.timetableSlotId || null,
+      note: data.note || null,
+    }),
 
   markAttendance: (data) =>
     request('post', '/attendance', {
       date: data.date,
       status: data.status,
       subjectId: data.subjectId || null,
+      timetableSlotId: data.timetableSlotId || null,
       note: data.note || null,
     }),
 
@@ -253,15 +263,36 @@ export const api = {
   deleteAllTodos: () =>
     request('delete', '/todos'),
 
+  // ==================== TASKS (Merged Assignments & Todos) ====================
+  getTasks: (type = null) =>
+    request('get', '/tasks', null, type ? { type } : null),
+
+  addTask: (data) =>
+    request('post', '/tasks', data),
+
+  updateTask: (id, data) =>
+    request('put', `/tasks/${id}`, data),
+
+  deleteTask: (id) =>
+    request('delete', `/tasks/${id}`),
+
+  deleteAllTasks: () =>
+    request('delete', '/tasks'),
+
+  migrateTasks: () =>
+    request('post', '/tasks/migrate'),
+
   // ==================== SUBJECTS ====================
-  getSubjects: () =>
-    request('get', '/subjects'),
+  getSubjects: (semester = null) =>
+    request('get', '/subjects', null, semester !== null ? { semester } : null),
 
   addSubject: (data) =>
     request('post', '/subjects', {
       name: data.name,
       courseCode: data.courseCode || null,
       professor: data.professor || null,
+      color: data.color || null,
+      semester: data.semester || null,
     }),
 
   deleteSubject: (id) =>
@@ -327,6 +358,8 @@ export const api = {
       dueDate: data.dueDate || null,
       paidDate: data.paidDate || null,
       status: data.status || 'PENDING',
+      receiptData: data.receiptData || null,
+      receiptFileName: data.receiptFileName || null,
     }),
 
   updateFee: (id, data) =>
@@ -364,6 +397,9 @@ export const api = {
 
   deleteExpense: (id) =>
     request('delete', `/expenses/${id}`),
+
+  getExpenseBill: (date) =>
+    request('get', '/expenses/bill', null, { date }),
 
   // ==================== ADMIN ====================
   getAdminUsers: () =>

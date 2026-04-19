@@ -9,6 +9,7 @@ import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.SubjectRepository;
 import com.unitrack.unitrack_backend.repository.TimetableRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
+import com.unitrack.unitrack_backend.repository.AttendanceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class TimetableService {
     private final TimetableRepository timetableRepository;
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
+    private final AttendanceRepository attendanceRepository;
 
     private User getUser(Principal principal) {
         return userRepository.findByEmail(principal.getName())
@@ -124,6 +126,7 @@ public class TimetableService {
         if (!slot.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Unauthorized");
         }
+        attendanceRepository.deleteByTimetableSlot(slot);
         timetableRepository.delete(slot);
     }
 

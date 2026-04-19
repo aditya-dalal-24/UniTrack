@@ -22,6 +22,9 @@ public class Subject {
     @Column(nullable = false)
     private String name;
 
+    private Integer semester;
     private String courseCode;
     private String professor;
+    private String roomNumber;
+    private String color;
 }

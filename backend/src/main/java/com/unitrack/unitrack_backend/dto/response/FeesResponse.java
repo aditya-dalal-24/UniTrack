@@ -18,4 +18,6 @@ public class FeesResponse {
     private LocalDate dueDate;
     private LocalDate paidDate;
     private FeesStatus status;
+    private String receiptData;
+    private String receiptFileName;
 }

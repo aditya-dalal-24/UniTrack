@@ -154,4 +154,18 @@ public class ExpenseService {
         }
         expenseRepository.delete(expense);
     }
+
+    public com.unitrack.unitrack_backend.dto.response.ExpenseBillResponse getDailyBill(Principal principal, LocalDate date) {
+        User user = getUser(principal);
+        List<Expense> expenses = expenseRepository.findByUserAndDateOrderByTimeAsc(user, date);
+        double total = expenses.stream().mapToDouble(Expense::getAmount).sum();
+        List<ExpenseResponse> responses = expenses.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return com.unitrack.unitrack_backend.dto.response.ExpenseBillResponse.builder()
+                .date(date)
+                .totalAmount(Math.round(total * 100.0) / 100.0)
+                .expenses(responses)
+                .build();
+    }
 }

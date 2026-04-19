@@ -39,7 +39,10 @@ const calculateFinalMarks = (midSem, internals, endSem) => {
 };
 
 export default function Marks() {
-  const [selectedSemester, setSelectedSemester] = useState(1);
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    return userData.semester || 1;
+  });
   const [selectedExamType, setSelectedExamType] = useState("All");
   
   const [loading, setLoading] = useState(true);
@@ -57,22 +60,41 @@ export default function Marks() {
     internals: "",
     endSem: ""
   });
+  
+  const [subjects, setSubjects] = useState([]);
+  const [showGlobalSubjectModal, setShowGlobalSubjectModal] = useState(false);
+  const [globalSubjectTarget, setGlobalSubjectTarget] = useState({ name: "", courseCode: "", color: "#6366f1" });
 
   const fetchMarks = async () => {
     setLoading(true);
     setError(null);
-    const { data, error: apiError } = await api.getMarks(selectedSemester);
-    if (apiError) {
-      setError(apiError);
-    } else {
-      setMarksSummary(data);
-    }
+    const { data: marksData, error: apiError } = await api.getMarks(selectedSemester);
+    if (apiError) setError(apiError);
+    else setMarksSummary(marksData);
+
+    const { data: subData } = await api.getSubjects(selectedSemester);
+    if (subData) setSubjects(subData);
+
     setLoading(false);
   };
 
   useEffect(() => {
     fetchMarks();
   }, [selectedSemester]);
+
+  const handleAddNewGlobalSubject = async () => {
+    if (!globalSubjectTarget.name) return alert("Subject Name required");
+    const { data, error } = await api.addSubject({ ...globalSubjectTarget, semester: selectedSemester });
+    if (error) {
+      alert(error);
+    } else {
+      const parsedData = { ...data, courseCode: data.courseCode || "" };
+      setSubjects([...subjects, parsedData]);
+      setNewMark({ ...newMark, subjectName: parsedData.name, subjectCode: parsedData.courseCode });
+      setShowGlobalSubjectModal(false);
+      setGlobalSubjectTarget({ name: "", courseCode: "", color: "#6366f1" });
+    }
+  };
 
   const saveMark = async () => {
     const midSemVal = parseFloat(newMark.midSem) || 0;
@@ -218,7 +240,7 @@ export default function Marks() {
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">Subjects</p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                    {marksSummary?.totalSubjects || 0}
+                    {subjects.length}
                   </p>
                 </div>
               </div>
@@ -396,13 +418,33 @@ export default function Marks() {
               <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Subject Name *</label>
-                  <input
-                    type="text"
-                    value={newMark.subjectName}
-                    onChange={(e) => setNewMark({ ...newMark, subjectName: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
-                    placeholder="e.g. Data Structures"
-                  />
+                  {!editingMark ? (
+                    <div className="flex gap-2">
+                       <select
+                         value={newMark.subjectName}
+                         onChange={(e) => {
+                           if (e.target.value === "__add_new__") {
+                             setShowGlobalSubjectModal(true);
+                           } else {
+                             const found = subjects.find(s => s.name === e.target.value);
+                             setNewMark({ ...newMark, subjectName: e.target.value, subjectCode: found ? (found.courseCode || "") : newMark.subjectCode });
+                           }
+                         }}
+                         className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white hover:cursor-pointer"
+                       >
+                         <option value="" disabled>Select a Subject</option>
+                         {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                         <option value="__add_new__" className="font-bold text-brand">+ Add New Subject</option>
+                       </select>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={newMark.subjectName}
+                      disabled
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-4 py-3 text-sm outline-none text-slate-500 dark:text-slate-400"
+                    />
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -478,6 +520,34 @@ export default function Marks() {
                   <Save className="h-4 w-4" />
                   Save
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Global Add Subject Modal */}
+      <AnimatePresence>
+        {showGlobalSubjectModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowGlobalSubjectModal(false)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <h3 className="text-lg font-bold dark:text-white">New Subject</h3>
+                <button onClick={() => setShowGlobalSubjectModal(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><X size={18} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">SUBJECT NAME</label>
+                  <input type="text" value={globalSubjectTarget.name} onChange={(e) => setGlobalSubjectTarget({...globalSubjectTarget, name: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand outline-none" placeholder="e.g. Database Systems" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">COURSE CODE</label>
+                  <input type="text" value={globalSubjectTarget.courseCode} onChange={(e) => setGlobalSubjectTarget({...globalSubjectTarget, courseCode: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand outline-none" placeholder="e.g. CS401" />
+                </div>
+              </div>
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
+                <button onClick={() => setShowGlobalSubjectModal(false)} className="px-4 py-2 font-bold text-sm text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl">Cancel</button>
+                <button onClick={handleAddNewGlobalSubject} className="px-4 py-2 bg-brand text-white font-bold text-sm rounded-xl">Create</button>
               </div>
             </motion.div>
           </div>

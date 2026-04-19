@@ -9,6 +9,8 @@ export default function StatsCard({
   trendUp,
   color,
   description,
+  onClick,
+  className,
 }) {
   const getColorClasses = (color) => {
     switch (color) {
@@ -27,11 +29,16 @@ export default function StatsCard({
 
   return (
     <motion.div
-      whileHover={{ y: -5 }}
+      whileHover={{ y: -5, scale: onClick ? 1.02 : 1 }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
+      onClick={onClick}
+      className={cn(
+        "relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60",
+        onClick && "cursor-pointer transition-transform duration-200",
+        className
+      )}
     >
       <div className="flex items-start justify-between">
         <div>
@@ -42,7 +49,7 @@ export default function StatsCard({
             {value}
           </h3>
           {description && (
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line">
               {description}
             </p>
           )}

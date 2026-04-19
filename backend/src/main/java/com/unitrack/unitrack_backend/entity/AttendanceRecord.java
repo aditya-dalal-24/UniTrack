@@ -3,6 +3,8 @@ package com.unitrack.unitrack_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 @Table(name = "attendance_records")
@@ -29,7 +31,13 @@ public class AttendanceRecord {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Subject subject;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "timetable_slot_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private TimetableSlot timetableSlot;
 
     private String note;
 }

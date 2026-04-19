@@ -16,5 +16,7 @@ public class AttendanceRequest {
 
     private Long subjectId;
 
+    private Long timetableSlotId;
+
     private String note;
 }

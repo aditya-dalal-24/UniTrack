@@ -11,4 +11,6 @@ public class SubjectResponse {
     private String name;
     private String courseCode;
     private String professor;
+    private String roomNumber;
+    private String color;
 }

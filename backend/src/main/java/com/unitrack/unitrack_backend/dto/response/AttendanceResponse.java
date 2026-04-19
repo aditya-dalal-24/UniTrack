@@ -14,5 +14,6 @@ public class AttendanceResponse {
     private AttendanceStatus status;
     private Long subjectId;
     private String subjectName;
+    private Long timetableSlotId;
     private String note;
 }

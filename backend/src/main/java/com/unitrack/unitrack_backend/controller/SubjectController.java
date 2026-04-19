@@ -19,8 +19,9 @@ public class SubjectController {
     private final SubjectService subjectService;
 
     @GetMapping
-    public ResponseEntity<List<SubjectResponse>> getSubjects(Principal principal) {
-        return ResponseEntity.ok(subjectService.getSubjects(principal));
+    public ResponseEntity<List<SubjectResponse>> getSubjects(@RequestParam(required = false) Integer semester,
+                                                            Principal principal) {
+        return ResponseEntity.ok(subjectService.getSubjects(principal, semester));
     }
 
     @PostMapping
