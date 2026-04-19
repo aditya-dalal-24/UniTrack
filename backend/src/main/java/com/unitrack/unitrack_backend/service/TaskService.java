@@ -20,8 +20,6 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
-    private final AssignmentRepository assignmentRepository;
-    private final TodoRepository todoRepository;
 
     private User getUser(Principal principal) {
         return userRepository.findByEmail(principal.getName())
@@ -102,67 +100,4 @@ public class TaskService {
         taskRepository.deleteAllByUser(user);
     }
 
-    /**
-     * One-time migration: copies existing Assignments and Todos into the unified Tasks table.
-     * Safe to call multiple times — checks if tasks already exist before migrating.
-     */
-    @Transactional
-    public int migrateData(Principal principal) {
-        User user = getUser(principal);
-
-        // Check if migration already happened
-        List<Task> existingTasks = taskRepository.findByUserOrderByDueDateAsc(user);
-        if (!existingTasks.isEmpty()) {
-            return 0; // Already migrated
-        }
-
-        int count = 0;
-
-        // Migrate Assignments
-        List<Assignment> assignments = assignmentRepository.findByUserOrderByDueDateAsc(user);
-        for (Assignment a : assignments) {
-            TaskStatus status;
-            if (a.getStatus() == AssignmentStatus.SUBMITTED) {
-                status = TaskStatus.SUBMITTED;
-            } else if (a.getStatus() == AssignmentStatus.OVERDUE) {
-                status = TaskStatus.OVERDUE;
-            } else {
-                status = TaskStatus.PENDING;
-            }
-
-            Task task = Task.builder()
-                    .user(user)
-                    .title(a.getTitle())
-                    .description(null)
-                    .subject(a.getSubject())
-                    .dueDate(a.getDueDate())
-                    .dueTime(null)
-                    .status(status)
-                    .type(TaskType.ASSIGNMENT)
-                    .build();
-            taskRepository.save(task);
-            count++;
-        }
-
-        // Migrate Todos
-        List<Todo> todos = todoRepository.findByUserOrderByDueDateAsc(user);
-        for (Todo t : todos) {
-            TaskStatus status = t.isCompleted() ? TaskStatus.COMPLETED : TaskStatus.PENDING;
-
-            Task task = Task.builder()
-                    .user(user)
-                    .title(t.getTitle())
-                    .description(t.getDescription())
-                    .subject(null)
-                    .dueDate(t.getDueDate())
-                    .dueTime(t.getDueTime() != null ? t.getDueTime().toString() : null)
-                    .status(status)
-                    .type(TaskType.TODO)
-                    .build();
-            taskRepository.save(task);
-            count++;
-        }
-
-        return count;
-    }
 }

@@ -185,7 +185,7 @@ export default function Dashboard() {
           title="Tasks"
           value={String(tasks?.pendingTasks || 0)}
           icon={BookOpen}
-          description={`Assignments: ${assignments?.submittedAssignments || 0} completed out of ${assignments?.totalAssignments || 0}\nTodos: ${todos?.completedTodos || 0} completed out of ${todos?.totalTodos || 0}`}
+          description={`Assignments: ${assignments?.submittedAssignments || 0} completed out of ${assignments?.totalAssignments || 0}\nTo-dos: ${todos?.completedTodos || 0} completed out of ${todos?.totalTodos || 0}`}
           color="brand"
           onClick={() => navigate('/tasks')}
         />
@@ -292,37 +292,37 @@ export default function Dashboard() {
           <h3 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">
             Academic Performance
           </h3>
-          <div className="flex flex-col items-center justify-center h-64 gap-6">
+          <div className="flex flex-col items-center justify-center min-h-[250px] py-4 gap-6">
             <div className="text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">CGPA</p>
-              <p className="text-5xl font-bold text-brand dark:text-white">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">CGPA</p>
+              <p className="text-6xl font-black text-brand dark:text-white tracking-tighter">
                 {((dashboardData?.marks?.cgpa) || 0).toFixed(2)}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-8 text-center">
+            <div className="grid grid-cols-2 gap-10 text-center">
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Current SGPA</p>
-                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Current SGPA</p>
+                <p className="text-5xl font-bold text-slate-800 dark:text-slate-100">
                   {((dashboardData?.marks?.currentSgpa) || 0).toFixed(2)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Subjects</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Subjects</p>
+                <p className="text-5xl font-bold text-slate-900 dark:text-slate-100">
                   {dashboardData?.marks?.totalSubjects || 0}
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-8 text-center">
+            <div className="grid grid-cols-2 gap-10 text-center border-t border-slate-100 dark:border-slate-800 pt-6 w-full max-w-lg">
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Tasks Pending</p>
-                <p className="text-xl font-bold text-slate-700 dark:text-slate-300">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Tasks Pending</p>
+                <p className="text-3xl font-bold text-red-500 dark:text-red-400">
                   {dashboardData?.todos?.pendingTodos || 0}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Tasks Done</p>
-                <p className="text-xl font-bold text-slate-800 dark:text-slate-200">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Tasks Done</p>
+                <p className="text-3xl font-bold text-emerald-500 dark:text-emerald-400">
                   {dashboardData?.todos?.completedTodos || 0}
                 </p>
               </div>

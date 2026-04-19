@@ -15,7 +15,6 @@ import {
   CheckSquare,
   BookOpen,
   Filter,
-  Download,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -60,14 +59,6 @@ export default function Tasks() {
     subject: "",
   });
 
-  const handleMigrate = async () => {
-    if (!confirm("This will import your legacy Assignments and Todos into the new unified Task system. Continue?")) return;
-    setLoading(true);
-    const { error } = await api.migrateTasks();
-    if (error) alert(error);
-    else await fetchTasks();
-    setLoading(false);
-  };
 
   const handleAddTask = async () => {
     if (!newTask.title || !newTask.dueDate) {
@@ -150,14 +141,6 @@ export default function Tasks() {
         description="Manage your assignments and todos in one place."
         actions={
           <div className="flex gap-2">
-            <button
-              onClick={handleMigrate}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2.5 text-sm font-semibold hover:bg-amber-500/20 transition-all border border-amber-500/20"
-              title="Import from old modules"
-            >
-              <Download className="h-4 w-4" />
-              Migrate Data
-            </button>
             <button
               onClick={() => setShowModal(true)}
               className="inline-flex items-center gap-2 rounded-xl bg-brand text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark transition-all active:scale-95"

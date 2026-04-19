@@ -58,9 +58,4 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/migrate")
-    public ResponseEntity<Map<String, Object>> migrate(Principal principal) {
-        int count = taskService.migrateData(principal);
-        return ResponseEntity.ok(Map.of("migrated", count));
-    }
 }

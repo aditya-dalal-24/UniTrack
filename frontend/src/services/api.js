@@ -279,9 +279,6 @@ export const api = {
   deleteAllTasks: () =>
     request('delete', '/tasks'),
 
-  migrateTasks: () =>
-    request('post', '/tasks/migrate'),
-
   // ==================== SUBJECTS ====================
   getSubjects: (semester = null) =>
     request('get', '/subjects', null, semester !== null ? { semester } : null),
