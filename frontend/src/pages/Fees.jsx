@@ -289,7 +289,7 @@ export default function Fees() {
                         <input
                           type="text"
                           value={newFee.customCategory}
-                          onChange={(e) => setNewMark ? setNewFee({ ...newFee, customCategory: e.target.value }) : setNewFee({ ...newFee, customCategory: e.target.value })}
+                          onChange={(e) => setNewFee({ ...newFee, customCategory: e.target.value })}
                           placeholder="e.g. Exam Fee"
                           className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
                         />
