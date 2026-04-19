@@ -41,7 +41,7 @@ async function wakeUpBackend(attempts = 0) {
     if (response.ok) {
       backendAwake = true;
       const elapsed = Date.now() - start;
-      console.log(`☀️ Backend is AWAKE (responded in ${elapsed}ms)`);
+      console.log(`Backend is AWAKE (responded in ${elapsed}ms)`);
       
       // Pre-warm the security filter chain & JPA lazy beans
       // by making a lightweight authenticated-path request
@@ -57,7 +57,7 @@ async function wakeUpBackend(attempts = 0) {
       throw new Error(`Status ${response.status}`);
     }
   } catch (err) {
-    console.log(`😴 Backend sleeping or booting (Attempt ${attempts + 1}/8)...`);
+    console.log(`Backend sleeping or booting (Attempt ${attempts + 1}/8)...`);
     setTimeout(() => wakeUpBackend(attempts + 1), delay);
   }
 }
@@ -108,7 +108,7 @@ axiosInstance.interceptors.response.use(
       config._retryCount += 1;
       const delay = config._retryCount * 2000; // Exponential backoff: 2s, 4s, 6s
       
-      console.warn(`🔄 Network error detected. Retrying request (${config._retryCount}/3) in ${delay}ms...`, config.url);
+      console.warn(`Network error detected. Retrying request (${config._retryCount}/3) in ${delay}ms...`, config.url);
       
       await new Promise(resolve => setTimeout(resolve, delay));
       return axiosInstance(config);

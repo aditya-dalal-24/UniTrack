@@ -50,8 +50,8 @@ export default function LoadingSpinner({ message = "Loading...", size = "md", fu
   // Progressive messages based on wait time
   const getColdStartMessage = () => {
     if (elapsed < 8) return null;
-    if (elapsed < 20) return "The server is waking up — this may take up to a minute on the first load...";
-    if (elapsed < 40) return "Still warming up... almost there! Free-tier servers sleep after inactivity.";
+    if (elapsed < 20) return "The server is waking up --- this may take up to a minute on the first load...";
+    if (elapsed < 40) return "Still warming up... almost there!";
     return "This is taking longer than usual. The server may be deploying. Please wait...";
   };
 
