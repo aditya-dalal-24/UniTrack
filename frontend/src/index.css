@@ -5,10 +5,17 @@
 @tailwind utilities;
 
 html,
-body,
+body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  box-sizing: border-box;
+}
+
 #root {
   height: 100%;
-  scroll-behavior: smooth;
+  width: 100%;
 }
 
 @layer base {
@@ -53,6 +60,8 @@ body,
   /* Consistent modern inputs */
   input, select, textarea {
     @apply text-slate-900 dark:text-slate-100;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 

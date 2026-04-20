@@ -160,7 +160,7 @@ export default function AdminDashboard() {
                             <p className="text-base font-bold text-slate-900 dark:text-slate-100">
                               {u.name}
                             </p>
-                            <p className="text-sm text-slate-500">{u.email}</p>
+                            <p className="text-sm text-slate-500 truncate max-w-full">{u.email}</p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${

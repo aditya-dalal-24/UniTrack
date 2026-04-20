@@ -251,7 +251,7 @@ export default function LoginPage({ onLogin }) {
         {/* Form */}
         <motion.form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800/70 px-5 py-6 shadow-xl backdrop-blur"
+          className="space-y-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800/70 px-4 sm:px-5 py-5 sm:py-6 shadow-xl backdrop-blur"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
@@ -304,7 +304,7 @@ export default function LoginPage({ onLogin }) {
               Email
             </label>
             <motion.div 
-              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 px-4 py-2.5 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/20 transition-all"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 px-3 sm:px-4 py-2 sm:py-2.5 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/20 transition-all"
               whileFocus={{ scale: 1.01 }}
             >
               <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
@@ -329,7 +329,7 @@ export default function LoginPage({ onLogin }) {
               Password
             </label>
             <motion.div 
-              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 px-4 py-2.5 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/20 transition-all"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/40 px-3 sm:px-4 py-2 sm:py-2.5 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/20 transition-all"
               whileFocus={{ scale: 1.01 }}
             >
               <Lock className="h-4 w-4 text-slate-400 flex-shrink-0" />

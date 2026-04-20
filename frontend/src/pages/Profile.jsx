@@ -287,7 +287,7 @@ export default function Profile() {
         </div>
 
         {/* Profile Content */}
-        <div className="px-6 md:px-10 pb-8 relative">
+        <div className="px-4 sm:px-6 md:px-10 pb-8 relative">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start -mt-20 md:-mt-24 relative z-10 w-full">
             {/* Avatar */}
             <div className="relative group flex-shrink-0 z-30">
@@ -434,7 +434,7 @@ export default function Profile() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 md:p-8 relative overflow-hidden"
+        className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-4 sm:p-6 md:p-8 relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 blur-3xl rounded-full pointer-events-none"></div>
         <div className="flex items-center gap-3 mb-6 relative z-10">
@@ -506,7 +506,7 @@ export default function Profile() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 md:p-8 relative overflow-hidden"
+        className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-4 sm:p-6 md:p-8 relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none"></div>
         <div className="flex items-center gap-3 mb-6 relative z-10">

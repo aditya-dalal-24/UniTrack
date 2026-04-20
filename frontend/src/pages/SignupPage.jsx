@@ -267,7 +267,7 @@ export default function SignupPage({ onLogin }) {
         {/* Form */}
         <motion.form
           onSubmit={handleSubmit}
-          className="space-y-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800/70 px-5 py-6 shadow-xl backdrop-blur"
+          className="space-y-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800/70 px-4 sm:px-5 py-5 sm:py-6 shadow-xl backdrop-blur"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
@@ -496,7 +496,7 @@ export default function SignupPage({ onLogin }) {
           </motion.div>
 
           {/* Year and Semester Row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {/* Year Field */}
             <motion.div 
               className="space-y-1"

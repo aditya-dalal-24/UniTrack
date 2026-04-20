@@ -312,7 +312,7 @@ export default function Tasks() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-8"
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Add New {activeTab === TASK_TYPE.ASSIGNMENT ? "Assignment" : "To-Do"}</h3>
