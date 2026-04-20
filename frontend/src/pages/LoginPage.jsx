@@ -190,14 +190,15 @@ export default function LoginPage({ onLogin }) {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="absolute top-8 left-8 z-50"
+        className="absolute top-4 left-4 sm:top-8 sm:left-8 z-50"
       >
         <Link 
           to="/" 
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand dark:hover:text-white transition-all hover:shadow-lg group"
+          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand dark:hover:text-white transition-all hover:shadow-lg group text-xs sm:text-sm"
         >
           <Home className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
-          <span className="text-sm font-semibold tracking-wide">Back to Home</span>
+          <span className="text-xs sm:text-sm font-semibold tracking-wide hidden sm:inline">Back to Home</span>
+          <span className="text-xs font-semibold tracking-wide sm:hidden">Home</span>
         </Link>
       </motion.div>
 
@@ -230,7 +231,7 @@ export default function LoginPage({ onLogin }) {
             Welcome back to UniTrack
           </motion.div>
           <motion.h1 
-            className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-50"
+            className="mt-3 sm:mt-4 text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.4 }}

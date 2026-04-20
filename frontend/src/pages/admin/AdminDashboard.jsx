@@ -77,14 +77,14 @@ export default function AdminDashboard() {
       transition={{ duration: 0.4 }}
       className="space-y-8"
     >
-      <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold dark:text-white">Admin Dashboard</h1>
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <div className="h-8 w-8 border-2 border-slate-300 border-t-brand rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
           {cards.map((card, i) => (
             <motion.div
               key={card.id}
@@ -92,15 +92,15 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1, duration: 0.3 }}
-              className="cursor-pointer rounded-3xl bg-white/90 dark:bg-slate-900/80 shadow-soft border border-slate-200/60 dark:border-slate-800/60 p-6 hover:-translate-y-1 hover:shadow-lg transition-all"
+              className="cursor-pointer rounded-2xl sm:rounded-3xl bg-white/90 dark:bg-slate-900/80 shadow-soft border border-slate-200/60 dark:border-slate-800/60 p-4 sm:p-6 hover:-translate-y-1 hover:shadow-lg transition-all"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${card.accent}`}>
-                  <card.icon className="h-6 w-6" />
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center ${card.accent}`}>
+                  <card.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{card.label}</p>
-              <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">{card.value}</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">{card.label}</p>
+              <p className="text-2xl sm:text-3xl font-black mt-1 text-slate-900 dark:text-white">{card.value}</p>
             </motion.div>
           ))}
         </div>

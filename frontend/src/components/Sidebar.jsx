@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { LimelightNav } from "./ui/LimelightNav";
 import { motion, Reorder, AnimatePresence, useDragControls } from "framer-motion";
 import {
   LayoutDashboard,
@@ -83,52 +84,31 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
     if (setMobileOpen) setMobileOpen(false);
   };
 
+  // Memoize bottom nav items for LimelightNav to prevent unnecessary recalculations
+  const mobileNavItems = useMemo(() => [
+    ...bottomNavLinks.map(link => ({
+      id: link.to,
+      to: link.to,
+      label: link.label,
+      icon: <link.icon />
+    })),
+    {
+      id: "more-menu",
+      label: "More",
+      icon: <Menu />,
+      onClick: () => setMobileOpen && setMobileOpen(true)
+    }
+  ], [setMobileOpen]);
+
   return (
     <>
       {/* ===== MOBILE BOTTOM NAV BAR (visible on small screens only) ===== */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/60 dark:border-slate-800/60 safe-area-bottom">
-        <div className="flex items-center justify-around px-1 py-1">
-          {bottomNavLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 min-w-0 flex-1 ${
-                  isActive
-                    ? "text-slate-900 dark:text-white"
-                    : "text-slate-400 dark:text-slate-500"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <div className="relative">
-                    <link.icon className={`h-5 w-5 ${isActive ? "scale-110" : ""} transition-transform`} />
-                    {isActive && (
-                      <motion.div
-                        layoutId="mobileActiveTab"
-                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-slate-900 dark:bg-white"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                  </div>
-                  <span className={`text-[10px] mt-1 font-medium truncate ${isActive ? "font-bold" : ""}`}>
-                    {link.label}
-                  </span>
-                </>
-              )}
-            </NavLink>
-          ))}
-          {/* More button to open full sidebar overlay */}
-          <button
-            onClick={() => setMobileOpen && setMobileOpen(true)}
-            className="flex flex-col items-center justify-center py-2 px-3 rounded-xl text-slate-400 dark:text-slate-500 min-w-0 flex-1"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="text-[10px] mt-1 font-medium">More</span>
-          </button>
-        </div>
-      </nav>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
+        <LimelightNav 
+          items={mobileNavItems}
+          className="border-0 border-t rounded-none border-slate-200/60 dark:border-slate-800/60 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_30px_rgba(0,0,0,0.3)]"
+        />
+      </div>
 
       {/* ===== MOBILE SIDEBAR OVERLAY (triggered by "More" button) ===== */}
       <AnimatePresence>

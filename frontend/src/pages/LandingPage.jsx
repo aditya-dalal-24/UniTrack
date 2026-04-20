@@ -66,7 +66,7 @@ export default function LandingPage() {
     return (
         <div className="relative min-h-screen w-full flex flex-col overflow-hidden bg-white dark:bg-neutral-950 transition-colors duration-500">
             {/* Navbar Overlay */}
-            <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6 lg:px-12 mx-auto max-w-screen-2xl">
+            <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 sm:p-6 lg:px-12 mx-auto max-w-screen-2xl">
                 <div className="flex lg:flex-1">
                     <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-2 group">
                         <div className="p-1 rounded-xl group-hover:scale-110 transition-transform duration-300">
@@ -75,7 +75,7 @@ export default function LandingPage() {
                         <span className="font-black text-2xl tracking-tighter text-slate-900 dark:text-white">UNITRACK</span>
                     </Link>
                 </div>
-                <div className="flex flex-1 justify-end items-center gap-4 md:gap-8">
+                <div className="flex flex-1 justify-end items-center gap-2 sm:gap-4 md:gap-8">
                     {/* Theme Toggle */}
                     <button
                         onClick={toggleDarkMode}
@@ -84,7 +84,7 @@ export default function LandingPage() {
                         {isDark ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-slate-600" />}
                     </button>
 
-                    <Link to="/login" className="text-sm font-bold tracking-wide text-slate-600 dark:text-slate-400 hover:text-brand dark:hover:text-white transition-colors">
+                    <Link to="/login" className="text-xs sm:text-sm font-bold tracking-wide text-slate-600 dark:text-slate-400 hover:text-brand dark:hover:text-white transition-colors">
                         SIGN IN
                     </Link>
                     <Link
@@ -134,7 +134,7 @@ export default function LandingPage() {
                         </span>
                     </motion.div>
 
-                    <h1 className="text-[2.25rem] sm:text-6xl md:text-[5rem] font-black mb-10 tracking-tighter leading-[1.1] text-black dark:text-white text-center drop-shadow-sm dark:drop-shadow-none">
+                    <h1 className="text-3xl sm:text-5xl md:text-[5rem] font-black mb-6 sm:mb-10 tracking-tighter leading-[1.1] text-black dark:text-white text-center drop-shadow-sm dark:drop-shadow-none">
                         UniTrack helps you<br />
                         manage your<br />
                         <WordCycle isDark={isDark} />
@@ -144,7 +144,7 @@ export default function LandingPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4, duration: 0.8 }}
-                        className="mt-6 mb-12 text-lg sm:text-xl max-w-2xl mx-auto text-slate-700 dark:text-slate-400 font-medium leading-relaxed"
+                        className="mt-4 sm:mt-6 mb-8 sm:mb-12 text-base sm:text-lg md:text-xl max-w-2xl mx-auto text-slate-700 dark:text-slate-400 font-medium leading-relaxed px-2"
                     >
                         The ultimate student companion. Seamlessly track attendance, assignments, and everything in between with a futuristic, zero-clutter experience.
                     </motion.p>
@@ -158,16 +158,16 @@ export default function LandingPage() {
                         <div className="group relative p-px rounded-2xl bg-gradient-to-b from-slate-200 to-slate-400 dark:from-white/30 dark:to-white/10 hover:shadow-[0_0_40px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all duration-500">
                             <button
                                 onClick={() => navigate("/signup")}
-                                className="relative px-10 py-5 bg-white dark:bg-neutral-950 rounded-[0.9rem] flex items-center gap-3 transition-colors group-hover:bg-slate-50 dark:group-hover:bg-neutral-900"
+                                className="relative px-6 sm:px-10 py-4 sm:py-5 bg-white dark:bg-neutral-950 rounded-[0.9rem] flex items-center gap-3 transition-colors group-hover:bg-slate-50 dark:group-hover:bg-neutral-900"
                             >
-                                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Start Managing</span>
+                                <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">Start Managing</span>
                                 <ArrowRight className="h-5 w-5 text-brand dark:text-white group-hover:translate-x-1 transition-transform duration-300" />
                             </button>
                         </div>
                         
                         <button
                             onClick={() => navigate("/login")}
-                            className="px-10 py-5 rounded-2xl text-slate-500 dark:text-slate-400 font-bold hover:text-brand dark:hover:text-white transition-colors"
+                            className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl text-slate-500 dark:text-slate-400 font-bold hover:text-brand dark:hover:text-white transition-colors"
                         >
                             Log in to dashboard
                         </button>

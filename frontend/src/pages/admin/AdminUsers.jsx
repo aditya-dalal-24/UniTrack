@@ -101,7 +101,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Users List */}
       <div className="rounded-3xl bg-white/90 dark:bg-slate-900/80 shadow-soft border overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-24">
@@ -112,138 +112,202 @@ export default function AdminUsers() {
             <p className="text-sm font-medium">No users found.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                  <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Name</th>
-                  <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Email</th>
-                  <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Role</th>
-                  <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Joined</th>
-                  <th className="text-right px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                <AnimatePresence>
-                  {filteredUsers.map((user) => {
-                    const isSelf = user.email?.toLowerCase() === userData?.email?.toLowerCase();
-                    const isSuper = user.role === "SUPER_ADMIN";
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Name</th>
+                    <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Email</th>
+                    <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Role</th>
+                    <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Status</th>
+                    <th className="text-left px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Joined</th>
+                    <th className="text-right px-6 py-3 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                  <AnimatePresence>
+                    {filteredUsers.map((user) => {
+                      const isSuper = user.role === "SUPER_ADMIN";
+                      return (
+                        <motion.tr
+                          key={user.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                        >
+                          <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              {user.name}
+                              {isSuper && (
+                                <span className="text-[10px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-1.5 py-0.5 rounded uppercase">
+                                  Super
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">{user.email}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {isSuperAdmin && !isSuper ? (
+                              <div className="relative inline-block">
+                                <select
+                                  value={user.role}
+                                  onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                                  disabled={actionLoading === user.id}
+                                  className={`appearance-none pr-7 pl-3 py-1 rounded-lg text-xs font-bold cursor-pointer border-0 outline-none transition-all ${ROLE_BADGE[user.role] || ROLE_BADGE.STUDENT}`}
+                                >
+                                  <option value="STUDENT">STUDENT</option>
+                                  <option value="ADMIN">ADMIN</option>
+                                  <option value="BOTH">BOTH</option>
+                                  <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                                </select>
+                                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none opacity-60" />
+                              </div>
+                            ) : (
+                              <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold ${ROLE_BADGE[user.role] || ROLE_BADGE.STUDENT}`}>
+                                {user.role}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {(user.active ?? user.isActive) ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                                <UserCheck className="h-3 w-3" /> Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                                <UserX className="h-3 w-3" /> Inactive
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-slate-400 dark:text-slate-500 whitespace-nowrap text-xs">
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            {isSuper ? (
+                              <span className="text-xs text-slate-400 italic">Protected</span>
+                            ) : (
+                              <div className="flex items-center justify-end gap-2">
+                                {(user.active ?? user.isActive) ? (
+                                  <button
+                                    onClick={() => handleDeactivate(user.id)}
+                                    disabled={actionLoading === user.id}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-all disabled:opacity-50"
+                                  >
+                                    Deactivate
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleActivate(user.id)}
+                                    disabled={actionLoading === user.id}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-all disabled:opacity-50"
+                                  >
+                                    Activate
+                                  </button>
+                                )}
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={() => handleDelete(user.id, user.name)}
+                                    disabled={actionLoading === user.id}
+                                    className="px-2 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-all disabled:opacity-50"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
+                </tbody>
+              </table>
+            </div>
 
-                    return (
-                      <motion.tr
-                        key={user.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                      >
-                        {/* Name */}
-                        <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4 p-4">
+              <AnimatePresence>
+                {filteredUsers.map((user) => {
+                  const isSuper = user.role === "SUPER_ADMIN";
+                  return (
+                    <motion.div
+                      key={user.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
                           <div className="flex items-center gap-2">
-                            {user.name}
+                            <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">{user.name}</h3>
                             {isSuper && (
-                              <span className="text-[10px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-1.5 py-0.5 rounded uppercase">
-                                Super
+                              <span className="text-[10px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-1.5 py-0.5 rounded">
+                                SUPER
                               </span>
                             )}
                           </div>
-                        </td>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{user.email}</p>
+                        </div>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${ROLE_BADGE[user.role] || ROLE_BADGE.STUDENT}`}>
+                          {user.role}
+                        </span>
+                      </div>
 
-                        {/* Email */}
-                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">{user.email}</td>
-
-                        {/* Role — inline dropdown for super admin */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {isSuperAdmin && !isSuper ? (
-                            <div className="relative inline-block">
-                              <select
-                                value={user.role}
-                                onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                disabled={actionLoading === user.id}
-                                className={`appearance-none pr-7 pl-3 py-1 rounded-lg text-xs font-bold cursor-pointer border-0 outline-none transition-all ${ROLE_BADGE[user.role] || ROLE_BADGE.STUDENT}`}
-                              >
-                                <option value="STUDENT">STUDENT</option>
-                                <option value="ADMIN">ADMIN</option>
-                                <option value="BOTH">BOTH</option>
-                                <option value="SUPER_ADMIN">SUPER_ADMIN</option>
-                              </select>
-                              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none opacity-60" />
-                            </div>
-                          ) : (
-                            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold ${ROLE_BADGE[user.role] || ROLE_BADGE.STUDENT}`}>
-                              {user.role}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                        <div className="flex items-center gap-3">
                           {(user.active ?? user.isActive) ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
-                              <UserCheck className="h-3 w-3" /> Active
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                              <UserCheck className="h-3 w-3" /> ACTIVE
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
-                              <UserX className="h-3 w-3" /> Inactive
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400">
+                              <UserX className="h-3 w-3" /> INACTIVE
                             </span>
                           )}
-                        </td>
-
-                        {/* Date */}
-                        <td className="px-6 py-4 text-slate-400 dark:text-slate-500 whitespace-nowrap text-xs">
-                          {user.createdAt
-                            ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })
-                            : "—"}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          {isSuper ? (
-                            <span className="text-xs text-slate-400 italic">Protected</span>
-                          ) : (
-                            <div className="flex items-center justify-end gap-2">
-                              {(user.active ?? user.isActive) ? (
-                                <button
-                                  onClick={() => handleDeactivate(user.id)}
-                                  disabled={actionLoading === user.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-all disabled:opacity-50"
-                                >
-                                  Deactivate
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleActivate(user.id)}
-                                  disabled={actionLoading === user.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-all disabled:opacity-50"
-                                >
-                                  Activate
-                                </button>
-                              )}
-                              {isSuperAdmin && (
-                                <button
-                                  onClick={() => handleDelete(user.id, user.name)}
-                                  disabled={actionLoading === user.id}
-                                  title="Permanently delete user and all data"
-                                  className="px-2 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-all disabled:opacity-50"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                        
+                        {!isSuper && (
+                          <div className="flex items-center gap-2">
+                            {(user.active ?? user.isActive) ? (
+                              <button
+                                onClick={() => handleDeactivate(user.id)}
+                                disabled={actionLoading === user.id}
+                                className="px-3 py-1.5 rounded-xl text-[10px] font-black bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 transition-all uppercase"
+                              >
+                                DEACTIVATE
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleActivate(user.id)}
+                                disabled={actionLoading === user.id}
+                                className="px-3 py-1.5 rounded-xl text-[10px] font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 transition-all uppercase"
+                              >
+                                ACTIVATE
+                              </button>
+                            )}
+                            {isSuperAdmin && (
+                              <button
+                                onClick={() => handleDelete(user.id, user.name)}
+                                disabled={actionLoading === user.id}
+                                className="p-1.5 rounded-xl bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {isSuper && <span className="text-[10px] text-slate-400 font-bold italic uppercase">Protected</span>}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </>
         )}
       </div>
 
