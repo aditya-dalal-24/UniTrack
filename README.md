@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <em>The ultimate companion for managing your academic life — attendance, tasks, expenses, grades, and more — all in one beautifully crafted interface.</em>
+  <em>The ultimate companion for managing your academic life - attendance, tasks, expenses, grades, and more - all in one beautifully crafted interface.</em>
 </p>
 
 <p align="center">
@@ -42,28 +42,28 @@ UniTrack is a premium, full-stack student productivity platform built with a hig
 
 ### Core Modules
 
-| Module | Description |
-|:---|:---|
-| **Dashboard** | Real-time aggregation of attendance, tasks, academic performance, and expense analytics with interactive charts |
-| **Unified Tasks** | Manage assignments and to-dos in a single tabbed interface with status tracking and deadline alerts |
-| **Attendance Monitor** | Subject-wise attendance tracking with visual status indicators, percentage calculations, and history graphs |
-| **Marks & GPA** | Exam score management with automatic SGPA/CGPA computation and semester-wise breakdowns |
-| **Fees & Financials** | Track total and pending fees with payment status badges, receipt uploads, and due date alerts |
-| **Expense Tracker** | Categorized personal expense logging with monthly history charts and daily bill tracking |
-| **Smart Scheduling** | Dynamic timetable management with day-wise views and subject-specific time slots |
-| **User Profile** | Academic profiles with unique generated avatars, roll number tracking, and course/semester persistence |
+| Module                 | Description                                                                                                     |
+| :--------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**          | Real-time aggregation of attendance, tasks, academic performance, and expense analytics with interactive charts |
+| **Unified Tasks**      | Manage assignments and to-dos in a single tabbed interface with status tracking and deadline alerts             |
+| **Attendance Monitor** | Subject-wise attendance tracking with visual status indicators, percentage calculations, and history graphs     |
+| **Marks & GPA**        | Exam score management with automatic SGPA/CGPA computation and semester-wise breakdowns                         |
+| **Fees & Financials**  | Track total and pending fees with payment status badges, receipt uploads, and due date alerts                   |
+| **Expense Tracker**    | Categorized personal expense logging with monthly history charts and daily bill tracking                        |
+| **Smart Scheduling**   | Dynamic timetable management with day-wise views and subject-specific time slots                                |
+| **User Profile**       | Academic profiles with unique generated avatars, roll number tracking, and course/semester persistence          |
 
 ### Platform Features
 
-| Feature | Description |
-|:---|:---|
-| **Admin System** | Hierarchical role management (Student → Admin → Super Admin) with protected escalation |
-| **Google OAuth** | One-click sign-in via Google Identity Services |
-| **Email Verification** | OTP-based email verification with SendGrid integration |
-| **Dark Mode** | Full dark/light theme support with smooth transitions across all components |
-| **Responsive Design** | Mobile-first layout that adapts seamlessly from phones to ultrawide monitors |
-| **Dynamic Sidebar** | Fully rearrangeable navigation modules with drag-and-drop and local persistence |
-| **Micro-Animations** | Fluid transitions and hover effects powered by Framer Motion |
+| Feature                | Description                                                                            |
+| :--------------------- | :------------------------------------------------------------------------------------- |
+| **Admin System**       | Hierarchical role management (Student → Admin → Super Admin) with protected escalation |
+| **Google OAuth**       | One-click sign-in via Google Identity Services                                         |
+| **Email Verification** | OTP-based email verification with SendGrid integration                                 |
+| **Dark Mode**          | Full dark/light theme support with smooth transitions across all components            |
+| **Responsive Design**  | Mobile-first layout that adapts seamlessly from phones to ultrawide monitors           |
+| **Dynamic Sidebar**    | Fully rearrangeable navigation modules with drag-and-drop and local persistence        |
+| **Micro-Animations**   | Fluid transitions and hover effects powered by Framer Motion                           |
 
 ---
 
@@ -71,11 +71,11 @@ UniTrack is a premium, full-stack student productivity platform built with a hig
 
 UniTrack implements a robust, multi-tiered role system:
 
-| Role | Capabilities | Access Level |
-|:---|:---|:---|
-| `STUDENT` | Manage personal attendance, marks, fees, tasks, and expenses | Student Dashboard |
-| `ADMIN` | View user statistics, monitor accounts, deactivate users | Admin Panel |
-| `SUPER_ADMIN` | Full control — role assignment, promotions, user deletion | Both Panels |
+| Role          | Capabilities                                                 | Access Level      |
+| :------------ | :----------------------------------------------------------- | :---------------- |
+| `STUDENT`     | Manage personal attendance, marks, fees, tasks, and expenses | Student Dashboard |
+| `ADMIN`       | View user statistics, monitor accounts, deactivate users     | Admin Panel       |
+| `SUPER_ADMIN` | Full control — role assignment, promotions, user deletion    | Both Panels       |
 
 > **Safety Layer**: The primary Super Admin (configured via environment variable) is protected from demotion or deactivation by other admins.
 
@@ -84,25 +84,27 @@ UniTrack implements a robust, multi-tiered role system:
 ## Tech Stack
 
 ### Frontend
-| Technology | Purpose |
-|:---|:---|
-| [React 19](https://reactjs.org/) + [Vite](https://vitejs.dev/) | UI framework & build tool |
-| [Tailwind CSS](https://tailwindcss.com/) | Utility-first styling |
-| [Framer Motion](https://www.framer.com/motion/) | Animations & transitions |
-| [Recharts](https://recharts.org/) | Theme-aware data visualizations |
-| [Lucide React](https://lucide.dev/) | Icon system |
-| React Context API | Global state management |
+
+| Technology                                                     | Purpose                         |
+| :------------------------------------------------------------- | :------------------------------ |
+| [React 19](https://reactjs.org/) + [Vite](https://vitejs.dev/) | UI framework & build tool       |
+| [Tailwind CSS](https://tailwindcss.com/)                       | Utility-first styling           |
+| [Framer Motion](https://www.framer.com/motion/)                | Animations & transitions        |
+| [Recharts](https://recharts.org/)                              | Theme-aware data visualizations |
+| [Lucide React](https://lucide.dev/)                            | Icon system                     |
+| React Context API                                              | Global state management         |
 
 ### Backend
-| Technology | Purpose |
-|:---|:---|
-| [Spring Boot 3.4.3](https://spring.io/projects/spring-boot) (Java 17) | REST API framework |
-| [Spring Security](https://spring.io/projects/spring-security) + JWT | Authentication & RBAC |
-| [Spring Data JPA](https://spring.io/projects/spring-data-jpa) + PostgreSQL | ORM & persistence |
-| [Spring Boot Actuator](https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html) | Health checks & monitoring |
-| [SpringDoc OpenAPI](https://springdoc.org/) | API documentation (Swagger UI) |
-| [SendGrid](https://sendgrid.com/) | Transactional email delivery |
-| [Docker](https://www.docker.com/) | Containerized deployment |
+
+| Technology                                                                                           | Purpose                        |
+| :--------------------------------------------------------------------------------------------------- | :----------------------------- |
+| [Spring Boot 3.4.3](https://spring.io/projects/spring-boot) (Java 17)                                | REST API framework             |
+| [Spring Security](https://spring.io/projects/spring-security) + JWT                                  | Authentication & RBAC          |
+| [Spring Data JPA](https://spring.io/projects/spring-data-jpa) + PostgreSQL                           | ORM & persistence              |
+| [Spring Boot Actuator](https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html) | Health checks & monitoring     |
+| [SpringDoc OpenAPI](https://springdoc.org/)                                                          | API documentation (Swagger UI) |
+| [SendGrid](https://sendgrid.com/)                                                                    | Transactional email delivery   |
+| [Docker](https://www.docker.com/)                                                                    | Containerized deployment       |
 
 ---
 
@@ -138,12 +140,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
-| Service | URL |
-|:---|:---|
-| Frontend | [http://localhost:3000](http://localhost:3000) |
-| Backend API | [http://localhost:8081/api](http://localhost:8081/api) |
+| Service      | URL                                                                            |
+| :----------- | :----------------------------------------------------------------------------- |
+| Frontend     | [http://localhost:3000](http://localhost:3000)                                 |
+| Backend API  | [http://localhost:8081/api](http://localhost:8081/api)                         |
 | Swagger Docs | [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html) |
-| PostgreSQL | `localhost:5432` |
+| PostgreSQL   | `localhost:5432`                                                               |
 
 ---
 
@@ -183,16 +185,16 @@ cd frontend && npm install && npm run dev
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|:---|:---|:---|
-| `SPRING_DATASOURCE_URL` | Yes | PostgreSQL JDBC URL |
-| `DB_USERNAME` | Yes | Database username |
-| `DB_PASSWORD` | Yes | Database password |
-| `JWT_SECRET` | Yes | Base64-encoded secret key for JWT signing |
-| `GOOGLE_CLIENT_ID` | Yes | Google OAuth2 client ID |
-| `SENDGRID_API_KEY` | No | SendGrid API key for email verification |
-| `SUPER_ADMIN_EMAIL` | No | Email of the protected super admin account |
-| `CORS_ALLOWED_ORIGINS` | No | Comma-separated list of allowed frontend origins |
+| Variable                | Required | Description                                      |
+| :---------------------- | :------- | :----------------------------------------------- |
+| `SPRING_DATASOURCE_URL` | Yes      | PostgreSQL JDBC URL                              |
+| `DB_USERNAME`           | Yes      | Database username                                |
+| `DB_PASSWORD`           | Yes      | Database password                                |
+| `JWT_SECRET`            | Yes      | Base64-encoded secret key for JWT signing        |
+| `GOOGLE_CLIENT_ID`      | Yes      | Google OAuth2 client ID                          |
+| `SENDGRID_API_KEY`      | No       | SendGrid API key for email verification          |
+| `SUPER_ADMIN_EMAIL`     | No       | Email of the protected super admin account       |
+| `CORS_ALLOWED_ORIGINS`  | No       | Comma-separated list of allowed frontend origins |
 
 ---
 
@@ -241,19 +243,19 @@ UniTrack/
 
 UniTrack exposes a comprehensive REST API secured with JWT Bearer tokens:
 
-| Endpoint Group | Base Path | Methods |
-|:---|:---|:---|
-| Authentication | `/api/auth` | Login, Register, Google OAuth, OTP Verify |
-| Dashboard | `/api/dashboard` | Aggregated student overview |
-| Tasks | `/api/tasks` | CRUD for unified tasks (assignments + todos) |
-| Attendance | `/api/attendance` | Mark, update, and query attendance records |
-| Marks | `/api/marks` | CRUD for exam scores with GPA calculation |
-| Fees | `/api/fees` | Fee records and payment status tracking |
-| Expenses | `/api/expenses` | Expense logging with category management |
-| Timetable | `/api/timetable` | Slot-based schedule management |
-| Subjects | `/api/subjects` | Subject registry with semester filtering |
-| Profile | `/api/profile` | User profile read/update |
-| Admin | `/api/admin` | User management and platform statistics |
+| Endpoint Group | Base Path         | Methods                                      |
+| :------------- | :---------------- | :------------------------------------------- |
+| Authentication | `/api/auth`       | Login, Register, Google OAuth, OTP Verify    |
+| Dashboard      | `/api/dashboard`  | Aggregated student overview                  |
+| Tasks          | `/api/tasks`      | CRUD for unified tasks (assignments + todos) |
+| Attendance     | `/api/attendance` | Mark, update, and query attendance records   |
+| Marks          | `/api/marks`      | CRUD for exam scores with GPA calculation    |
+| Fees           | `/api/fees`       | Fee records and payment status tracking      |
+| Expenses       | `/api/expenses`   | Expense logging with category management     |
+| Timetable      | `/api/timetable`  | Slot-based schedule management               |
+| Subjects       | `/api/subjects`   | Subject registry with semester filtering     |
+| Profile        | `/api/profile`    | User profile read/update                     |
+| Admin          | `/api/admin`      | User management and platform statistics      |
 
 > Full interactive API documentation available at `/swagger-ui.html` when the backend is running.
 
@@ -263,11 +265,11 @@ UniTrack exposes a comprehensive REST API secured with JWT Bearer tokens:
 
 UniTrack is deployed using a split architecture:
 
-| Component | Platform | URL |
-|:---|:---|:---|
-| Frontend | Render (Static Site) | `https://your-app.onrender.com` |
-| Backend | Render (Web Service) | `https://your-api.onrender.com` |
-| Database | Render (PostgreSQL) | Internal connection |
+| Component | Platform             | URL                             |
+| :-------- | :------------------- | :------------------------------ |
+| Frontend  | Render (Static Site) | `https://your-app.onrender.com` |
+| Backend   | Render (Web Service) | `https://your-api.onrender.com` |
+| Database  | Render (PostgreSQL)  | Internal connection             |
 
 ### Performance Optimizations
 

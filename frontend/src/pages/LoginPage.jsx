@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { api } from "../services/api";
 import Particles from "../components/Particles";
 import OtpVerificationModal from "../components/OtpVerificationModal";
+import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -23,6 +24,7 @@ export default function LoginPage({ onLogin }) {
   const [pendingEmail, setPendingEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [isWakingUp, setIsWakingUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Initialize dark mode on mount
   useEffect(() => {
@@ -225,7 +227,7 @@ export default function LoginPage({ onLogin }) {
               animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            Welcome back to UNITRACK
+            Welcome back to UniTrack
           </motion.div>
           <motion.h1 
             className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-50"
@@ -372,7 +374,8 @@ export default function LoginPage({ onLogin }) {
 
             <motion.button
               type="button"
-              className="text-xs font-medium text-brand hover:text-brand-dark"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-xs font-medium text-brand dark:text-blue-400 hover:text-brand-dark dark:hover:text-blue-300"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -443,7 +446,7 @@ export default function LoginPage({ onLogin }) {
             <motion.button
               type="button"
               onClick={() => navigate("/signup")}
-              className="font-semibold text-brand hover:text-brand-dark dark:text-accent dark:hover:text-accent/80 transition-colors"
+              className="font-semibold text-brand hover:text-brand-dark dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -459,6 +462,13 @@ export default function LoginPage({ onLogin }) {
           email={pendingEmail}
           onVerified={handleOtpVerified}
           onClose={() => setShowOtpModal(false)}
+        />
+      )}
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <ForgotPasswordModal
+          onClose={() => setShowForgotPassword(false)}
         />
       )}
     </div>

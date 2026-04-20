@@ -342,7 +342,73 @@ public class AuthService {
                 .build();
     }
 
+    // ==================== FORGOT PASSWORD ====================
+
+    public AuthResponse forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("No account found with this email address"));
+
+        // Don't allow password reset for Google-only users
+        if (user.getAuthProvider() == AuthProvider.GOOGLE && user.getPassword() == null) {
+            throw new RuntimeException("This account uses Google Sign-In. Password reset is not available.");
+        }
+
+        String otp = generateOtp();
+        user.setVerificationOtp(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
+        userRepository.save(user);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), otp, user.getName());
+
+        return AuthResponse.builder()
+                .token(null)
+                .name(user.getName())
+                .email(user.getEmail())
+                .userId(user.getId())
+                .gender(user.getGender())
+                .emailVerified(user.isEmailVerified())
+                .role(getEffectiveRole(user).name())
+                .build();
+    }
+
+    // ==================== RESET PASSWORD ====================
+
+    @Transactional
+    public AuthResponse resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getVerificationOtp() == null || user.getOtpExpiry() == null) {
+            throw new RuntimeException("No reset code found. Please request a new one.");
+        }
+
+        if (LocalDateTime.now().isAfter(user.getOtpExpiry())) {
+            throw new RuntimeException("Reset code has expired. Please request a new one.");
+        }
+
+        if (!user.getVerificationOtp().equals(request.getOtp())) {
+            throw new RuntimeException("Invalid reset code");
+        }
+
+        // Update password and clear OTP
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setVerificationOtp(null);
+        user.setOtpExpiry(null);
+        userRepository.save(user);
+
+        return AuthResponse.builder()
+                .token(null)
+                .name(user.getName())
+                .email(user.getEmail())
+                .userId(user.getId())
+                .gender(user.getGender())
+                .emailVerified(user.isEmailVerified())
+                .role(getEffectiveRole(user).name())
+                .build();
+    }
+
     // ==================== HELPERS ====================
+
 
     private String generateOtp() {
         return String.format("%06d", new Random().nextInt(999999));

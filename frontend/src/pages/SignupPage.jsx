@@ -243,7 +243,7 @@ export default function SignupPage({ onLogin }) {
               animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            Join UNITRACK Today
+            Join UniTrack  Today
           </motion.div>
           <motion.h1 
             className="mt-4 text-3xl font-bold text-slate-900 dark:text-slate-50"
@@ -379,7 +379,7 @@ export default function SignupPage({ onLogin }) {
                 type="tel"
                 name="phone"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                placeholder="+1 (555) 000-0000"
+                placeholder="+91 "
                 value={formData.phone}
                 onChange={handleChange}
               />
@@ -456,7 +456,7 @@ export default function SignupPage({ onLogin }) {
                 type="text"
                 name="course"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                placeholder="Computer Science"
+                placeholder="Your Course"
                 value={formData.course}
                 onChange={handleChange}
               />
@@ -541,7 +541,7 @@ export default function SignupPage({ onLogin }) {
               <motion.div 
                 className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 px-3 py-2 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/30 transition-all"
                 whileFocus={{ scale: 1.01 }}
-              >
+              > 
                 <Hash className="h-4 w-4 text-slate-400" />
                 <select
                   name="semester"
@@ -692,7 +692,7 @@ export default function SignupPage({ onLogin }) {
             <motion.button
               type="button"
               onClick={() => navigate("/login")}
-              className="font-semibold text-brand hover:text-brand-dark dark:text-accent dark:hover:text-accent/80 transition-colors"
+              className="font-semibold text-brand hover:text-brand-dark dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >

@@ -184,6 +184,12 @@ export const api = {
   resendOtp: (email) =>
     request('post', '/auth/resend-otp', { email }),
 
+  forgotPassword: (email) =>
+    request('post', '/auth/forgot-password', { email }),
+
+  resetPassword: (email, otp, newPassword) =>
+    request('post', '/auth/reset-password', { email, otp, newPassword }),
+
   // ==================== DASHBOARD ====================
   getDashboard: () =>
     request('get', '/dashboard'),

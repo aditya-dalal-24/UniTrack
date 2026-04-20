@@ -4,6 +4,7 @@ import com.sendgrid.*;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,15 @@ public class EmailService {
 
     @Value("${app.sendgrid.from-name}")
     private String fromName;
+
+    @PostConstruct
+    public void validateConfig() {
+        if (sendGridApiKey == null || sendGridApiKey.isBlank() || "placeholder".equals(sendGridApiKey)) {
+            log.warn("⚠️  SENDGRID_API_KEY is not configured! Email sending will fail with 401. Set the SENDGRID_API_KEY environment variable.");
+        } else {
+            log.info("SendGrid configured (key: {}...{})", sendGridApiKey.substring(0, 4), sendGridApiKey.substring(sendGridApiKey.length() - 4));
+        }
+    }
 
     /**
      * Sends OTP verification email via SendGrid HTTP API.
@@ -101,11 +111,102 @@ public class EmailService {
                 log.info("OTP email sent successfully to {} (status: {})", toEmail, response.getStatusCode());
             } else {
                 log.error("SendGrid rejected email to {}: status={}, body={}", toEmail, response.getStatusCode(), response.getBody());
-                throw new RuntimeException("Failed to send verification email. SendGrid returned status: " + response.getStatusCode());
+                String message = response.getStatusCode() == 401 
+                    ? "Failed to send verification email: SendGrid API Key is invalid or not configured (401 Unauthorized)." 
+                    : "Failed to send verification email. SendGrid returned status: " + response.getStatusCode();
+                throw new RuntimeException(message);
             }
         } catch (IOException e) {
             log.error("Failed to send OTP email to {}: {}", toEmail, e.getMessage());
             throw new RuntimeException("Failed to send verification email. Please try again.");
+        }
+    }
+
+    /**
+     * Sends password reset OTP email via SendGrid HTTP API.
+     */
+    public void sendPasswordResetEmail(String toEmail, String otp, String userName) {
+        Email from = new Email(fromEmail, fromName);
+        Email to = new Email(toEmail);
+        String subject = "UniTrack - Reset Your Password";
+
+        String html = """
+                <div style="font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 60px 20px; color: #1a1a1a;">
+                    <div style="max-width: 520px; margin: 0 auto; border: 2px solid #1a1a1a; padding: 48px; background: #ffffff; border-radius: 0;">
+                        <!-- Header -->
+                        <div style="text-align: center; margin-bottom: 48px;">
+                            <div style="letter-spacing: -0.04em; font-size: 32px; font-weight: 900; color: #1a1a1a; text-transform: uppercase;">
+                                UniTrack
+                            </div>
+                            <div style="height: 1px; width: 40px; background: #e5e7eb; margin: 16px auto;"></div>
+                        </div>
+
+                        <!-- Greeting & Context -->
+                        <div style="margin-bottom: 40px;">
+                            <p style="font-size: 18px; font-weight: 800; margin: 0 0 16px 0; letter-spacing: -0.01em;">Hi %s,</p>
+                            <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0;">
+                                We received a request to reset your password. Use the security code below to set a new password for your account.
+                            </p>
+                        </div>
+
+                        <!-- OTP Section -->
+                        <div style="background: #1a1a1a; padding: 40px; text-align: center; margin-bottom: 40px;">
+                            <p style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em; margin: 0 0 20px 0;">
+                                Password Reset Code
+                            </p>
+                            <div style="font-size: 48px; font-weight: 950; color: #ffffff; letter-spacing: 12px; margin-left: 12px; line-height: 1;">
+                                %s
+                            </div>
+                        </div>
+
+                        <!-- Expiry Info -->
+                        <div style="text-align: center;">
+                            <p style="font-size: 13px; color: #9ca3af; margin: 0;">
+                                This code is valid for <strong>10 minutes</strong>.<br>
+                                If you didn't request a password reset, you can safely ignore this email.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="max-width: 520px; margin: 32px auto 0; text-align: center;">
+                        <p style="font-size: 11px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.15em; text-transform: uppercase; margin: 0 0 8px 0;">
+                            UniTrack
+                        </p>
+                        <p style="font-size: 10px; color: #9ca3af; letter-spacing: 0.05em; margin: 0;">
+                            Built for the next generation of students.<br>
+                            &copy; 2026 UniTrack. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+                """
+                .formatted(userName, otp);
+
+        Content content = new Content("text/html", html);
+        Mail mail = new Mail(from, subject, to, content);
+
+        SendGrid sg = new SendGrid(sendGridApiKey);
+        Request request = new Request();
+
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sg.api(request);
+
+            if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+                log.info("Password reset email sent successfully to {} (status: {})", toEmail, response.getStatusCode());
+            } else {
+                log.error("SendGrid rejected password reset email to {}: status={}, body={}", toEmail, response.getStatusCode(), response.getBody());
+                String message = response.getStatusCode() == 401 
+                    ? "Failed to send password reset email: SendGrid API Key is invalid or not configured (401 Unauthorized)." 
+                    : "Failed to send password reset email. SendGrid returned status: " + response.getStatusCode();
+                throw new RuntimeException(message);
+            }
+        } catch (IOException e) {
+            log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage());
+            throw new RuntimeException("Failed to send password reset email. Please try again.");
         }
     }
 }
