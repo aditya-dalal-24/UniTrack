@@ -127,7 +127,7 @@ public class AuthService {
         }
 
         // Check if this is a Google-only user
-        if (user.getAuthProvider() == AuthProvider.GOOGLE && user.getPassword() == null) {
+        if (user.getAuthProvider() == AuthProvider.GOOGLE && (user.getPassword() == null || user.getPassword().startsWith("{GOOGLE}"))) {
             throw new RuntimeException("This account uses Google Sign-In. Please use the Google button to log in.");
         }
 
@@ -298,7 +298,7 @@ public class AuthService {
             user = User.builder()
                     .name(name)
                     .email(email)
-                    .password(null)
+                    .password("{GOOGLE}" + java.util.UUID.randomUUID().toString())
                     .authProvider(AuthProvider.GOOGLE)
                     .emailVerified(true)  // Google emails are pre-verified
                     .role(Role.STUDENT)
@@ -350,7 +350,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("No account found with this email address"));
 
         // Don't allow password reset for Google-only users
-        if (user.getAuthProvider() == AuthProvider.GOOGLE && user.getPassword() == null) {
+        if (user.getAuthProvider() == AuthProvider.GOOGLE && (user.getPassword() == null || user.getPassword().startsWith("{GOOGLE}"))) {
             throw new RuntimeException("This account uses Google Sign-In. Password reset is not available.");
         }
 
