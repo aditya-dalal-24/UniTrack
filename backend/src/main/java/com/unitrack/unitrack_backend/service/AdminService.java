@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,10 @@ public class AdminService {
         return userRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    public Page<AdminUserResponse> getAllUsersPaged(Pageable pageable) {
+        return userRepository.findAll(pageable).map(this::toResponse);
     }
 
     // ==================== STATS ====================

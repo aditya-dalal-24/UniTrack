@@ -345,6 +345,7 @@ public class AuthService {
     // ==================== FORGOT PASSWORD ====================
 
     public AuthResponse forgotPassword(ForgotPasswordRequest request) {
+        log.info("Processing forgot password request for email: {}", request.getEmail());
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("No account found with this email address"));
 

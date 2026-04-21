@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { DataProvider } from "./contexts/DataContext";
 import LoadingSpinner from "./components/LoadingSpinner";
 
 // Lazy-loaded pages for better performance
@@ -107,7 +108,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <DataProvider>
+        <AppRoutes />
+      </DataProvider>
     </AuthProvider>
   );
 }

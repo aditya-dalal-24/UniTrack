@@ -7,6 +7,7 @@ import com.sendgrid.helpers.mail.objects.Email;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -24,12 +25,18 @@ public class EmailService {
     @Value("${app.sendgrid.from-name}")
     private String fromName;
 
+    private SendGrid sendGridClient;
+
     @PostConstruct
     public void validateConfig() {
+        if (sendGridApiKey != null) {
+            sendGridApiKey = sendGridApiKey.trim();
+        }
         if (sendGridApiKey == null || sendGridApiKey.isBlank() || "placeholder".equals(sendGridApiKey)) {
             log.warn("⚠️  SENDGRID_API_KEY is not configured! Email sending will fail with 401. Set the SENDGRID_API_KEY environment variable.");
         } else {
             log.info("SendGrid configured (key: {}...{})", sendGridApiKey.substring(0, 4), sendGridApiKey.substring(sendGridApiKey.length() - 4));
+            this.sendGridClient = new SendGrid(sendGridApiKey);
         }
     }
 
@@ -37,7 +44,13 @@ public class EmailService {
      * Sends OTP verification email via SendGrid HTTP API.
      * This uses HTTPS (port 443) which works on all cloud platforms including Render.
      */
+    @Async
     public void sendOtpEmail(String toEmail, String otp, String userName) {
+        if (sendGridClient == null) {
+            log.error("Cannot send email: SendGrid client is not initialized.");
+            return;
+        }
+
         Email from = new Email(fromEmail, fromName);
         Email to = new Email(toEmail);
         String subject = "UniTrack - Verify Your Email";
@@ -96,8 +109,6 @@ public class EmailService {
 
         Content content = new Content("text/html", html);
         Mail mail = new Mail(from, subject, to, content);
-
-        SendGrid sg = new SendGrid(sendGridApiKey);
         Request request = new Request();
 
         try {
@@ -105,27 +116,30 @@ public class EmailService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
 
-            Response response = sg.api(request);
+            Response response = sendGridClient.api(request);
+            String msgId = response.getHeaders().get("X-Message-Id");
 
             if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
-                log.info("OTP email sent successfully to {} (status: {})", toEmail, response.getStatusCode());
+                log.info("OTP email sent successfully to {} (status: {}, msgId: {})", toEmail, response.getStatusCode(), msgId);
+                log.debug("SendGrid Response Body: {}", response.getBody());
             } else {
                 log.error("SendGrid rejected email to {}: status={}, body={}", toEmail, response.getStatusCode(), response.getBody());
-                String message = response.getStatusCode() == 401 
-                    ? "Failed to send verification email: SendGrid API Key is invalid or not configured (401 Unauthorized)." 
-                    : "Failed to send verification email. SendGrid returned status: " + response.getStatusCode();
-                throw new RuntimeException(message);
             }
         } catch (IOException e) {
             log.error("Failed to send OTP email to {}: {}", toEmail, e.getMessage());
-            throw new RuntimeException("Failed to send verification email. Please try again.");
         }
     }
 
     /**
      * Sends password reset OTP email via SendGrid HTTP API.
      */
+    @Async
     public void sendPasswordResetEmail(String toEmail, String otp, String userName) {
+        if (sendGridClient == null) {
+            log.error("Cannot send email: SendGrid client is not initialized.");
+            return;
+        }
+
         Email from = new Email(fromEmail, fromName);
         Email to = new Email(toEmail);
         String subject = "UniTrack - Reset Your Password";
@@ -184,8 +198,6 @@ public class EmailService {
 
         Content content = new Content("text/html", html);
         Mail mail = new Mail(from, subject, to, content);
-
-        SendGrid sg = new SendGrid(sendGridApiKey);
         Request request = new Request();
 
         try {
@@ -193,20 +205,17 @@ public class EmailService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
 
-            Response response = sg.api(request);
+            Response response = sendGridClient.api(request);
+            String msgId = response.getHeaders().get("X-Message-Id");
 
             if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
-                log.info("Password reset email sent successfully to {} (status: {})", toEmail, response.getStatusCode());
+                log.info("Password reset email sent successfully to {} (status: {}, msgId: {})", toEmail, response.getStatusCode(), msgId);
+                log.debug("SendGrid Response Body: {}", response.getBody());
             } else {
                 log.error("SendGrid rejected password reset email to {}: status={}, body={}", toEmail, response.getStatusCode(), response.getBody());
-                String message = response.getStatusCode() == 401 
-                    ? "Failed to send password reset email: SendGrid API Key is invalid or not configured (401 Unauthorized)." 
-                    : "Failed to send password reset email. SendGrid returned status: " + response.getStatusCode();
-                throw new RuntimeException(message);
             }
         } catch (IOException e) {
             log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage());
-            throw new RuntimeException("Failed to send password reset email. Please try again.");
         }
     }
 }

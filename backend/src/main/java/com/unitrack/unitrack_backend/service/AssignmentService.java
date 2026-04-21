@@ -8,6 +8,7 @@ import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.AssignmentRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,7 @@ public class AssignmentService {
                 .collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public AssignmentResponse create(Principal principal, AssignmentRequest request) {
         User user = getUser(principal);
         Assignment assignment = Assignment.builder()
@@ -61,6 +63,7 @@ public class AssignmentService {
         return mapToResponse(assignment);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public AssignmentResponse update(Principal principal, Long id, AssignmentRequest request) {
         User user = getUser(principal);
         Assignment assignment = assignmentRepository.findById(id)
@@ -78,6 +81,7 @@ public class AssignmentService {
         return mapToResponse(assignment);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void delete(Principal principal, Long id) {
         User user = getUser(principal);
         Assignment assignment = assignmentRepository.findById(id)
@@ -89,6 +93,7 @@ public class AssignmentService {
         assignmentRepository.delete(assignment);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteAll(Principal principal) {
         User user = getUser(principal);
         assignmentRepository.deleteAllByUser(user);

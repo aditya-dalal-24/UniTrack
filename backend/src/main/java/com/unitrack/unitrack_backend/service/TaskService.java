@@ -9,10 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +53,18 @@ public class TaskService {
         return tasks.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    public Page<TaskResponse> getTasksPaged(Principal principal, TaskType type, Pageable pageable) {
+        User user = getUser(principal);
+        Page<Task> tasks;
+        if (type != null) {
+            tasks = taskRepository.findByUserAndTypeOrderByDueDateAsc(user, type, pageable);
+        } else {
+            tasks = taskRepository.findByUserOrderByDueDateAsc(user, pageable);
+        }
+        return tasks.map(this::mapToResponse);
+    }
+
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public TaskResponse createTask(Principal principal, TaskRequest request) {
         User user = getUser(principal);
         Task task = Task.builder()
@@ -66,6 +81,7 @@ public class TaskService {
         return mapToResponse(task);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public TaskResponse updateTask(Principal principal, Long id, TaskRequest request) {
         User user = getUser(principal);
         Task task = taskRepository.findById(id)
@@ -84,6 +100,7 @@ public class TaskService {
         return mapToResponse(task);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteTask(Principal principal, Long id) {
         User user = getUser(principal);
         Task task = taskRepository.findById(id)
@@ -95,6 +112,7 @@ public class TaskService {
     }
 
     @Transactional
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteAllTasks(Principal principal) {
         User user = getUser(principal);
         taskRepository.deleteAllByUser(user);

@@ -8,6 +8,7 @@ import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.TodoRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,7 @@ public class TodoService {
         return todos.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public TodoResponse create(Principal principal, TodoRequest request) {
         User user = getUser(principal);
         Todo todo = Todo.builder()
@@ -65,6 +67,7 @@ public class TodoService {
         return mapToResponse(todo);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public TodoResponse update(Principal principal, Long id, TodoRequest request) {
         User user = getUser(principal);
         Todo todo = todoRepository.findById(id)
@@ -81,6 +84,7 @@ public class TodoService {
         return mapToResponse(todo);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void delete(Principal principal, Long id) {
         User user = getUser(principal);
         Todo todo = todoRepository.findById(id)
@@ -91,6 +95,7 @@ public class TodoService {
         todoRepository.delete(todo);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteAll(Principal principal) {
         User user = getUser(principal);
         todoRepository.deleteAllByUser(user);

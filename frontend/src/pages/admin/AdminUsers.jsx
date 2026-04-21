@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, ShieldCheck, UserCheck, UserX, ChevronDown, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
+import Pagination from "../../components/Pagination";
 
 
 const ROLE_BADGE = {
@@ -20,6 +21,8 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -42,6 +45,16 @@ export default function AdminUsers() {
         u.role?.toLowerCase().includes(q)
     );
   }, [users, search]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = currentPage * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
+  const handleSearch = useCallback((e) => {
+    setSearch(e.target.value);
+    setCurrentPage(0);
+  }, []);
 
   const handleActivate = async (id) => {
     setActionLoading(id);
@@ -95,7 +108,7 @@ export default function AdminUsers() {
             type="text"
             placeholder="Search by name, email, or role..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearch}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/20 transition-all"
           />
         </div>
@@ -128,7 +141,7 @@ export default function AdminUsers() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                   <AnimatePresence>
-                    {filteredUsers.map((user) => {
+                    {paginatedUsers.map((user) => {
                       const isSuper = user.role === "SUPER_ADMIN";
                       return (
                         <motion.tr
@@ -230,7 +243,7 @@ export default function AdminUsers() {
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4 p-4">
               <AnimatePresence>
-                {filteredUsers.map((user) => {
+                {paginatedUsers.map((user) => {
                   const isSuper = user.role === "SUPER_ADMIN";
                   return (
                     <motion.div
@@ -311,9 +324,22 @@ export default function AdminUsers() {
         )}
       </div>
 
+      {/* Pagination */}
+      {filteredUsers.length > pageSize && (
+        <div className="px-4">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredUsers.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      )}
+
       {/* User count footer */}
       <p className="text-xs text-slate-400 dark:text-slate-500 text-right">
-        Showing {filteredUsers.length} of {users.length} users
+        Showing {paginatedUsers.length} of {filteredUsers.length} users
       </p>
     </motion.div>
   );

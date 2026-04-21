@@ -23,6 +23,14 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, Lo
     long countByUserAndStatus(User user, AttendanceStatus status);
     long countByUserAndStatusAndSubject(User user, AttendanceStatus status, Subject subject);
     long countByUserAndSubject(User user, Subject subject);
+    
+    // Aggregated Attendance Query
+    @Query("SELECT a.subject.name AS subjectName, " +
+           "SUM(CASE WHEN a.status = com.unitrack.unitrack_backend.entity.AttendanceStatus.PRESENT THEN 1 ELSE 0 END) AS presentCount, " +
+           "COUNT(a) AS totalCount " +
+           "FROM AttendanceRecord a WHERE a.user = :user AND a.subject IS NOT NULL " +
+           "GROUP BY a.subject.name")
+    List<Object[]> getSubjectAttendanceSummary(@Param("user") User user);
     void deleteByUserAndDate(User user, LocalDate date);
     void deleteAllByUser(User user);
     @Modifying

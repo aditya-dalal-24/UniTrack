@@ -15,6 +15,7 @@ import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -57,6 +58,7 @@ public class ExpenseService {
                 .collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public ExpenseCategoryResponse addCategory(Principal principal, ExpenseCategoryRequest request) {
         User user = getUser(principal);
         ExpenseCategory category = ExpenseCategory.builder()
@@ -70,6 +72,7 @@ public class ExpenseService {
                 .build();
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteCategory(Principal principal, Long id) {
         User user = getUser(principal);
         ExpenseCategory category = categoryRepository.findById(id)
@@ -124,6 +127,7 @@ public class ExpenseService {
                 .build();
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public ExpenseResponse create(Principal principal, ExpenseRequest request) {
         User user = getUser(principal);
 
@@ -145,6 +149,7 @@ public class ExpenseService {
         return mapToResponse(expense);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void delete(Principal principal, Long id) {
         User user = getUser(principal);
         Expense expense = expenseRepository.findById(id)

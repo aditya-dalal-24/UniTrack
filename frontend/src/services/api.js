@@ -287,8 +287,15 @@ export const api = {
     request('delete', '/todos'),
 
   // ==================== TASKS (Merged Assignments & Todos) ====================
-  getTasks: (type = null) =>
-    request('get', '/tasks', null, type ? { type } : null),
+  getTasks: (type = null, page = null, size = null) => {
+    const params = {};
+    if (type) params.type = type;
+    if (page !== null && size !== null) {
+      params.page = page;
+      params.size = size;
+    }
+    return request('get', '/tasks', null, Object.keys(params).length ? params : null);
+  },
 
   addTask: (data) =>
     request('post', '/tasks', data),
@@ -422,8 +429,14 @@ export const api = {
     request('get', '/expenses/bill', null, { date }),
 
   // ==================== ADMIN ====================
-  getAdminUsers: () =>
-    request('get', '/admin/users'),
+  getAdminUsers: (page = null, size = null) => {
+    const params = {};
+    if (page !== null && size !== null) {
+      params.page = page;
+      params.size = size;
+    }
+    return request('get', '/admin/users', null, Object.keys(params).length ? params : null);
+  },
 
   getAdminStats: () =>
     request('get', '/admin/stats'),

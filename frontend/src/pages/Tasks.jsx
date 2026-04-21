@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -21,6 +21,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { api } from "../services/api";
 import { TASK_STATUS, TASK_TYPE } from "../constants/enums";
+import Pagination from "../components/Pagination";
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
@@ -28,6 +29,8 @@ export default function Tasks() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(TASK_TYPE.ASSIGNMENT); // ASSIGNMENT or TODO
   const [filter, setFilter] = useState("all"); // all, active/pending, completed/submitted
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(12);
 
   // Load tasks from backend
   const fetchTasks = async () => {
@@ -127,6 +130,23 @@ export default function Tasks() {
     })
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
+  // Paginate
+  const paginatedTasks = useMemo(() => {
+    const start = currentPage * pageSize;
+    return filteredTasks.slice(start, start + pageSize);
+  }, [filteredTasks, currentPage, pageSize]);
+
+  // Reset page when tab or filter changes
+  const handleTabChange = useCallback((tab) => {
+    setActiveTab(tab);
+    setCurrentPage(0);
+  }, []);
+
+  const handleFilterChange = useCallback((f) => {
+    setFilter(f);
+    setCurrentPage(0);
+  }, []);
+
   const isOverdue = (dueDate, dueTime, status) => {
     if (status === TASK_STATUS.COMPLETED || status === TASK_STATUS.SUBMITTED) return false;
     const now = new Date();
@@ -155,7 +175,7 @@ export default function Tasks() {
       {/* Tabs */}
       <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl w-fit relative border border-slate-200 dark:border-slate-700">
         <button
-          onClick={() => setActiveTab(TASK_TYPE.ASSIGNMENT)}
+          onClick={() => handleTabChange(TASK_TYPE.ASSIGNMENT)}
           className={`relative z-10 flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
             activeTab === TASK_TYPE.ASSIGNMENT
               ? "text-white"
@@ -173,7 +193,7 @@ export default function Tasks() {
           Assignments
         </button>
         <button
-          onClick={() => setActiveTab(TASK_TYPE.TODO)}
+          onClick={() => handleTabChange(TASK_TYPE.TODO)}
           className={`relative z-10 flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
             activeTab === TASK_TYPE.TODO
               ? "text-white"
@@ -202,7 +222,7 @@ export default function Tasks() {
             {["all", "active", "completed"].map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => handleFilterChange(f)}
                 className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filter === f ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800"}`}
               >
                 {f.toUpperCase()}
@@ -212,13 +232,13 @@ export default function Tasks() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
-              {filteredTasks.length === 0 ? (
+              {paginatedTasks.length === 0 && filteredTasks.length === 0 ? (
                 <div className="col-span-full py-20 text-center bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                   <ClipboardList className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                   <p className="text-slate-500">No {activeTab.toLowerCase()}s found.</p>
                 </div>
               ) : (
-                filteredTasks.map((task) => (
+                paginatedTasks.map((task) => (
                   <motion.div
                     key={task.id}
                     layout
@@ -295,6 +315,18 @@ export default function Tasks() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Pagination */}
+          {filteredTasks.length > pageSize && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredTasks.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[12, 24, 48]}
+            />
+          )}
         </div>
       )}
 

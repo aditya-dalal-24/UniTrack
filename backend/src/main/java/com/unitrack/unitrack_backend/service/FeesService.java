@@ -10,6 +10,7 @@ import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.FeesRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -78,6 +79,7 @@ public class FeesService {
                 .build();
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public FeesResponse create(Principal principal, FeesRequest request) {
         User user = getUser(principal);
         Fees fee = Fees.builder()
@@ -96,6 +98,7 @@ public class FeesService {
         return mapToResponse(fee);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public FeesResponse update(Principal principal, Long id, FeesRequest request) {
         User user = getUser(principal);
         Fees fee = feeRepository.findById(id)
@@ -118,6 +121,7 @@ public class FeesService {
         return mapToResponse(fee);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void delete(Principal principal, Long id) {
         User user = getUser(principal);
         Fees fee = feeRepository.findById(id)

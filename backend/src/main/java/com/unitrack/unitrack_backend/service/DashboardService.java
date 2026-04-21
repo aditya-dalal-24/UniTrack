@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import org.springframework.cache.annotation.Cacheable;
+
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -33,6 +35,7 @@ public class DashboardService {
                                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         }
 
+        @Cacheable(value = "dashboard", key = "#principal.name")
         public DashboardResponse getDashboard(Principal principal) {
                 User user = getUser(principal);
 
@@ -56,17 +59,15 @@ public class DashboardService {
                 long lmWorking = lmPresent + lmAbsent;
                 double lastMonthPct = lmWorking > 0 ? Math.round((lmPresent * 100.0 / lmWorking) * 100.0) / 100.0 : 0.0;
 
-                List<Subject> allSubjects = subjectRepository.findByUser(user);
+                List<Object[]> aggAttendance = attendanceRepository.getSubjectAttendanceSummary(user);
                 List<DashboardResponse.SubjectSummary> subjectSummaries = new ArrayList<>();
-                for (Subject sub : allSubjects) {
-                        long p = attendanceRepository.countByUserAndStatusAndSubject(user, AttendanceStatus.PRESENT,
-                                        sub);
-                        long a = attendanceRepository.countByUserAndStatusAndSubject(user, AttendanceStatus.ABSENT,
-                                        sub);
-                        long t = p + a;
+                for (Object[] row : aggAttendance) {
+                        String name = (String) row[0];
+                        long p = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+                        long t = row[2] != null ? ((Number) row[2]).longValue() : 0L;
                         double pct = t > 0 ? Math.round((p * 100.0 / t) * 100.0) / 100.0 : 0.0;
                         subjectSummaries.add(DashboardResponse.SubjectSummary.builder()
-                                        .name(sub.getName())
+                                        .name(name)
                                         .attendancePercentage(pct)
                                         .build());
                 }
@@ -106,15 +107,24 @@ public class DashboardService {
                 double monthTotal = monthExpenses.stream().mapToDouble(Expense::getAmount).sum();
                 double allTimeTotal = allExpenses.stream().mapToDouble(Expense::getAmount).sum();
 
-                // Historical Expenses (Last 6 Months)
+                // Historical Expenses (Last 6 Months) optimized using native query
+                LocalDate sixMonthsAgo = now.minusMonths(5).withDayOfMonth(1);
+                List<Object[]> aggExpenses = expenseRepository.getMonthlyAggregatedExpenses(user.getId(), sixMonthsAgo);
+                
+                // Map to fast lookup for the last 6 months
+                java.util.Map<String, Double> expensesMap = new java.util.HashMap<>();
+                for(Object[] row : aggExpenses) {
+                        int m = ((Number) row[0]).intValue();
+                        int y = ((Number) row[1]).intValue();
+                        double tot = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
+                        expensesMap.put(y + "-" + m, tot);
+                }
+
                 List<DashboardResponse.ExpenseMonthlyRecord> history = new ArrayList<>();
                 for (int i = 5; i >= 0; i--) {
                         YearMonth targetMonth = YearMonth.now().minusMonths(i);
-                        LocalDate start = targetMonth.atDay(1);
-                        LocalDate end = targetMonth.atEndOfMonth();
-                        double subtotal = expenseRepository
-                                        .findByUserAndDateBetweenOrderByDateDescTimeDesc(user, start, end)
-                                        .stream().mapToDouble(Expense::getAmount).sum();
+                        String key = targetMonth.getYear() + "-" + targetMonth.getMonthValue();
+                        double subtotal = expensesMap.getOrDefault(key, 0.0);
                         history.add(DashboardResponse.ExpenseMonthlyRecord.builder()
                                         .month(targetMonth.getMonth().name().substring(0, 3))
                                         .amount(subtotal)

@@ -8,6 +8,7 @@ import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.SubjectRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -56,6 +57,7 @@ public class SubjectService {
                 .stream().map(this::mapSubject).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public SubjectResponse addSubject(Principal principal, SubjectRequest request) {
         User user = getUser(principal);
         // Use semester from request if provided, otherwise default to user's registered semester
@@ -77,6 +79,7 @@ public class SubjectService {
         return mapSubject(subject);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteSubject(Principal principal, Long id) {
         User user = getUser(principal);
         Subject subject = subjectRepository.findById(id)

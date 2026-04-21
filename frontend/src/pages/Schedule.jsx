@@ -377,10 +377,10 @@ export default function Schedule() {
         </div>
       </div>
 
-      {loading && !timetable ? <LoadingSpinner /> : (
+      {loading ? <LoadingSpinner /> : error ? <ErrorMessage message={error} onRetry={loadBackendData} /> : (
         <AnimatePresence mode="wait">
           {activeTab === "daily" ? (
-            <motion.div key="daily" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <motion.div key="daily" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-6">
               
               {/* Daily Attendance Summary Stats */}
               {displayStats && (
@@ -657,7 +657,7 @@ export default function Schedule() {
               </div>
             </motion.div>
           ) : (
-            <motion.div key="setup" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <motion.div key="setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-6">
               {/* TIMETABLE SETUP UI REMAINS */}
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowEditTimeSlots(!showEditTimeSlots)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-600 text-white hover:bg-slate-700 transition text-sm font-bold shadow-md inline-block"><Clock size={16} /> Edit Time Slots</button>

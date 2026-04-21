@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -13,7 +13,7 @@ import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { useAuth } from "../contexts/AuthContext";
-import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 import UserAvatar from "../components/UserAvatar";
 import {
   BarChart,
@@ -33,25 +33,15 @@ const COLORS = ["#475569", "#64748b", "#94a3b8", "#cbd5e1"];
 export default function Dashboard() {
   const navigate = useNavigate();
   const { userData, isDark } = useAuth();
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { dashboardData, dashboardLoading: loading, dashboardError: error, fetchDashboard } = useData();
 
-  const fetchDashboard = async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: apiError } = await api.getDashboard();
-    if (apiError) {
-      setError(apiError);
-    } else {
-      setDashboardData(data);
-    }
-    setLoading(false);
-  };
+  const handleRetry = useCallback(() => {
+    fetchDashboard(true);
+  }, [fetchDashboard]);
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [fetchDashboard]);
 
   const attendance = dashboardData?.attendance;
   const attendanceData = useMemo(() => 
@@ -78,7 +68,7 @@ export default function Dashboard() {
   ] : [], [dashboardData?.marks]);
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." fullPage showColdStartMsg />;
-  if (error) return <ErrorMessage message={error} onRetry={fetchDashboard} />;
+  if (error) return <ErrorMessage message={error} onRetry={handleRetry} />;
 
   const fees = dashboardData?.fees;
   const assignments = dashboardData?.assignments;

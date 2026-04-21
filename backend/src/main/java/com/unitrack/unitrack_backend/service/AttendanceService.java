@@ -14,6 +14,7 @@ import com.unitrack.unitrack_backend.repository.SubjectRepository;
 import com.unitrack.unitrack_backend.entity.Subject;
 import com.unitrack.unitrack_backend.entity.TimetableSlot;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -72,6 +73,7 @@ public class AttendanceService {
                 .build();
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public AttendanceResponse addRecord(Principal principal, AttendanceRequest request) {
         User user = getUser(principal);
 
@@ -109,6 +111,7 @@ public class AttendanceService {
         return mapToResponse(record);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public AttendanceResponse updateRecord(Principal principal, Long id, AttendanceRequest request) {
         User user = getUser(principal);
         AttendanceRecord record = attendanceRepository.findById(id)
@@ -133,6 +136,7 @@ public class AttendanceService {
         return records.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteRecord(Principal principal, Long id) {
         User user = getUser(principal);
         AttendanceRecord record = attendanceRepository.findById(id)
@@ -144,6 +148,7 @@ public class AttendanceService {
         attendanceRepository.delete(record);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteByDate(Principal principal, java.time.LocalDate date) {
         User user = getUser(principal);
         attendanceRepository.deleteByUserAndDate(user, date);

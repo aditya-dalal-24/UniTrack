@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Sun, Moon } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import LightRays from "../components/LightRays";
+import InteractiveDice from "../components/ui/InteractiveDice";
 
 function WordCycle({ isDark }) {
     const lightModeCategories = [
@@ -117,7 +118,7 @@ export default function LandingPage() {
             </div>
 
             {/* Content Section */}
-            <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 md:px-6 text-center">
+            <main className="relative z-10 flex-1 flex flex-col items-center justify-start px-4 md:px-6 text-center pt-8 sm:pt-12">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -148,6 +149,15 @@ export default function LandingPage() {
                     >
                         The ultimate student companion. Seamlessly track attendance, assignments, and everything in between with a futuristic, zero-clutter experience.
                     </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.5, duration: 0.8, type: "spring", stiffness: 50 }}
+                        className="w-full flex justify-center mb-8 sm:mb-12"
+                    >
+                        <InteractiveDice />
+                    </motion.div>
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}

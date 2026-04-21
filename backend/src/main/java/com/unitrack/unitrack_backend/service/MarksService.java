@@ -9,6 +9,7 @@ import com.unitrack.unitrack_backend.exception.ResourceNotFoundException;
 import com.unitrack.unitrack_backend.repository.MarksRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -90,6 +91,7 @@ public class MarksService {
                 .build();
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public MarksResponse create(Principal principal, MarksRequest request) {
         User user = getUser(principal);
         Marks mark = Marks.builder()
@@ -109,6 +111,7 @@ public class MarksService {
         return mapToResponse(mark);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public MarksResponse update(Principal principal, Long id, MarksRequest request) {
         User user = getUser(principal);
         Marks mark = marksRepository.findById(id)
@@ -130,6 +133,7 @@ public class MarksService {
         return mapToResponse(mark);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void delete(Principal principal, Long id) {
         User user = getUser(principal);
         Marks mark = marksRepository.findById(id)

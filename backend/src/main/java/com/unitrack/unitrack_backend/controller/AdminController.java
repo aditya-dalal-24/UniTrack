@@ -6,6 +6,8 @@ import com.unitrack.unitrack_backend.dto.response.AdminUserResponse;
 import com.unitrack.unitrack_backend.service.AdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +22,13 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/users")
-    public ResponseEntity<List<AdminUserResponse>> getAllUsers() {
+    public ResponseEntity<?> getAllUsers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page != null && size != null) {
+            Pageable pageable = PageRequest.of(page, size);
+            return ResponseEntity.ok(adminService.getAllUsersPaged(pageable));
+        }
         return ResponseEntity.ok(adminService.getAllUsers());
     }
 
