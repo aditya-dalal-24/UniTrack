@@ -69,8 +69,8 @@ export default function Profile() {
     }
   };
 
-  const fetchProfile = async () => {
-    setLoading(true);
+  const fetchProfile = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError(null);
     
     const avatarKey = `profile_avatar_${userId}`;
@@ -122,7 +122,7 @@ export default function Profile() {
       };
       setStudentData(fetched);
     }
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {

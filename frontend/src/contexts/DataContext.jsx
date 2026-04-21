@@ -17,14 +17,14 @@ export function DataProvider({ children }) {
 
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (matches backend Caffeine TTL)
 
-  const fetchDashboard = useCallback(async (forceRefresh = false) => {
+  const fetchDashboard = useCallback(async (forceRefresh = false, showSpinner = true) => {
     const now = Date.now();
     // Return cached data if it's still fresh and not forced
     if (!forceRefresh && dashboardData && (now - lastFetchRef.current < CACHE_TTL)) {
       return { data: dashboardData, error: null };
     }
 
-    setDashboardLoading(true);
+    if (showSpinner && !dashboardData) setDashboardLoading(true);
     setDashboardError(null);
     const { data, error: apiError } = await api.getDashboard();
     if (apiError) {
@@ -33,7 +33,7 @@ export function DataProvider({ children }) {
       setDashboardData(data);
       lastFetchRef.current = Date.now();
     }
-    setDashboardLoading(false);
+    if (showSpinner) setDashboardLoading(false);
     return { data, error: apiError };
   }, [dashboardData]);
 

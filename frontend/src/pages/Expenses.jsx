@@ -77,8 +77,8 @@ export default function Expenses() {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  const fetchExpensesAndCategories = async () => {
-    setLoading(true);
+  const fetchExpensesAndCategories = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError(null);
     const apiMonth = selectedMonth + 1; // backend expects 1-indexed month
     const [expensesResponse, categoriesResponse] = await Promise.all([
@@ -94,7 +94,7 @@ export default function Expenses() {
       setExpenses(expensesResponse.data?.expenses || []);
       setCategories(categoriesResponse.data?.length > 0 ? categoriesResponse.data : defaultCategories);
     }
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
@@ -183,7 +183,7 @@ export default function Expenses() {
       return;
     }
 
-    await fetchExpensesAndCategories();
+    await fetchExpensesAndCategories(false);
 
     // Reset form
     setNewExpense({
@@ -202,7 +202,7 @@ export default function Expenses() {
       alert(apiError);
       return;
     }
-    await fetchExpensesAndCategories();
+    await fetchExpensesAndCategories(false);
   };
 
   const handleAddCategory = async () => {
@@ -218,7 +218,7 @@ export default function Expenses() {
       return;
     }
 
-    await fetchExpensesAndCategories();
+    await fetchExpensesAndCategories(false);
     setNewCategoryName("");
     setShowAddCategory(false);
   };
@@ -244,7 +244,7 @@ export default function Expenses() {
       alert(apiError);
       return;
     }
-    await fetchExpensesAndCategories();
+    await fetchExpensesAndCategories(false);
   };
 
   const getCategoryIcon = (categoryName) => {

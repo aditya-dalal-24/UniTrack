@@ -65,8 +65,8 @@ export default function Marks() {
   const [showGlobalSubjectModal, setShowGlobalSubjectModal] = useState(false);
   const [globalSubjectTarget, setGlobalSubjectTarget] = useState({ name: "", courseCode: "", color: "#6366f1" });
 
-  const fetchMarks = async () => {
-    setLoading(true);
+  const fetchMarks = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError(null);
     const { data: marksData, error: apiError } = await api.getMarks(selectedSemester);
     if (apiError) setError(apiError);
@@ -75,7 +75,7 @@ export default function Marks() {
     const { data: subData } = await api.getSubjects(selectedSemester);
     if (subData) setSubjects(subData);
 
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function Marks() {
       return;
     }
 
-    await fetchMarks();
+    await fetchMarks(false);
     setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
     setEditingMark(null);
     setShowSubjectModal(false);
@@ -144,7 +144,7 @@ export default function Marks() {
         alert(apiError);
         return;
       }
-      await fetchMarks();
+      await fetchMarks(false);
     }
   };
 

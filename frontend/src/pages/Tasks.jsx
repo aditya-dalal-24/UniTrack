@@ -33,8 +33,8 @@ export default function Tasks() {
   const [pageSize, setPageSize] = useState(12);
 
   // Load tasks from backend
-  const fetchTasks = async () => {
-    setLoading(true);
+  const fetchTasks = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError(null);
     const { data, error: apiError } = await api.getTasks();
     if (apiError) {
@@ -42,7 +42,7 @@ export default function Tasks() {
     } else {
       setTasks(data || []);
     }
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
@@ -52,6 +52,7 @@ export default function Tasks() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [actionLoading, setActionLoading] = useState(null);
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -81,19 +82,29 @@ export default function Tasks() {
       return;
     }
 
-    await fetchTasks();
+    await fetchTasks(false); // Silent refresh without spinner
     setNewTask({ title: "", description: "", dueDate: "", dueTime: "00:00", type: activeTab, subject: "" });
     setShowModal(false);
   };
 
   const handleDeleteTask = async (id) => {
     if (!confirm("Delete this task?")) return;
+    setActionLoading(id);
+    const prevTasks = [...tasks];
+    setTasks(tasks.filter(t => t.id !== id)); // Optimistic UI
+    
     const { error } = await api.deleteTask(id);
-    if (error) alert(error);
-    else setTasks(tasks.filter(t => t.id !== id));
+    setActionLoading(null);
+    if (error) {
+      alert(error);
+      setTasks(prevTasks); // Revert on failure
+    }
   };
 
   const toggleTaskStatus = async (task) => {
+    if (actionLoading === task.id) return; // Prevent spam
+    setActionLoading(task.id);
+    
     let nextStatus;
     if (task.type === TASK_TYPE.ASSIGNMENT) {
       nextStatus = task.status === TASK_STATUS.SUBMITTED ? TASK_STATUS.PENDING : TASK_STATUS.SUBMITTED;
@@ -101,18 +112,28 @@ export default function Tasks() {
       nextStatus = task.status === TASK_STATUS.COMPLETED ? TASK_STATUS.PENDING : TASK_STATUS.COMPLETED;
     }
 
+    const prevTasks = [...tasks];
+    setTasks(tasks.map(t => t.id === task.id ? { ...t, status: nextStatus } : t)); // Optimistic UI
+
     const { error } = await api.updateTask(task.id, { ...task, status: nextStatus });
-    if (error) alert(error);
-    else {
-      setTasks(tasks.map(t => t.id === task.id ? { ...t, status: nextStatus } : t));
+    setActionLoading(null);
+    if (error) {
+      alert(error);
+      setTasks(prevTasks); // Revert on failure
     }
   };
 
   const handleSaveEdit = async () => {
+    setActionLoading(editingId);
+    const prevTasks = [...tasks];
+    setTasks(tasks.map(t => t.id === editingId ? editData : t)); // Optimistic UI
+    
     const { error } = await api.updateTask(editingId, editData);
-    if (error) alert(error);
-    else {
-      setTasks(tasks.map(t => t.id === editingId ? editData : t));
+    setActionLoading(null);
+    if (error) {
+      alert(error);
+      setTasks(prevTasks); // Revert on failure
+    } else {
       setEditingId(null);
     }
   };

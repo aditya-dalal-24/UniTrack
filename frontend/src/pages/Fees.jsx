@@ -50,8 +50,8 @@ export default function Fees() {
     }
   };
 
-  const fetchFees = async () => {
-    setLoading(true);
+  const fetchFees = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError(null);
     const { data, error: apiError } = await api.getFees(selectedSemester);
     if (apiError) {
@@ -59,7 +59,7 @@ export default function Fees() {
     } else {
       setFeesSummary(data);
     }
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function Fees() {
       return;
     }
 
-    await fetchFees();
+    await fetchFees(false);
     setNewFee({ category: "College", customCategory: "", amount: "", paid: "", dueDate: "", receiptData: null, receiptFileName: "" });
     setShowAddFee(false);
   };
@@ -127,7 +127,7 @@ export default function Fees() {
     if (!confirm("Delete this fee record?")) return;
     const { error } = await api.deleteFee(id);
     if (error) alert(error);
-    else fetchFees();
+    else fetchFees(false);
   };
 
   const totalFees = feesSummary?.totalFees || 0;

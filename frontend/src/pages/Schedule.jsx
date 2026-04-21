@@ -62,6 +62,7 @@ export default function Schedule() {
   const [showAddClass, setShowAddClass] = useState(false);
   const [showEditTimeSlots, setShowEditTimeSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [loadingSlots, setLoadingSlots] = useState({});
 
   const [newSubject, setNewSubject] = useState({ name: "", color: "#6366f1", professor: "", roomNumber: "" });
   const [newClass, setNewClass] = useState({
@@ -103,8 +104,8 @@ export default function Schedule() {
   useEffect(() => { localStorage.setItem("uniTrackHolidays", JSON.stringify(holidays)); }, [holidays]);
   useEffect(() => { localStorage.setItem("uniTrackExams", JSON.stringify(exams)); }, [exams]);
 
-  const loadBackendData = async () => {
-    setLoading(true);
+  const loadBackendData = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     setError(null);
     
     // Fetch overall attendance map AND subjects AND timetable concurrently
@@ -172,7 +173,7 @@ export default function Schedule() {
       setAttendanceMap(map);
     }
     
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   const loadDailyAttendance = async () => {
@@ -201,7 +202,7 @@ export default function Schedule() {
     if (!confirm("Are you sure? This will delete the subject everywhere.")) return;
     const { error } = await api.deleteSubject(id);
     if (error) alert(error);
-    else { loadBackendData(); }
+    else { loadBackendData(false); }
   };
 
   const addTimeSlot = () => {
@@ -228,14 +229,14 @@ export default function Schedule() {
       ? await api.updateTimetableSlot(newClass.backendId, payload)
       : await api.addTimetableSlot(payload);
     if (result.error) alert(result.error);
-    else { loadBackendData(); setShowAddClass(false); }
+    else { loadBackendData(false); setShowAddClass(false); }
   };
 
   const deleteClass = async (day, slotStart) => {
     const existing = timetable[`${day}-${slotStart}`];
     if (existing?.backendId) {
       const { error } = await api.deleteTimetableSlot(existing.backendId);
-      if (error) alert(error); else loadBackendData();
+      if (error) alert(error); else loadBackendData(false);
     }
   };
 
@@ -272,19 +273,45 @@ export default function Schedule() {
   };
 
   const toggleAttendanceStatus = async (slotId, newStatus) => {
+    if (loadingSlots[slotId]) return; // Prevent spam clicks
+    
+    // Optimistic UI Update
+    setLoadingSlots(prev => ({ ...prev, [slotId]: true }));
+    const prevDailyRecords = { ...dailyRecords };
+    
     const existingRecord = dailyRecords[slotId];
-    if (existingRecord && existingRecord.recordId) {
-      // Update
-      const { data, error } = await api.updateAttendance(existingRecord.recordId, {
-        date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
-      });
-      if (error) alert(error); else loadBackendData();
-    } else {
-      // Create
-      const { data, error } = await api.markAttendance({
-        date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
-      });
-      if (error) alert(error); else loadBackendData();
+    setDailyRecords(prev => ({
+      ...prev,
+      [slotId]: { ...existingRecord, status: newStatus }
+    }));
+
+    try {
+      if (existingRecord && existingRecord.recordId) {
+        // Update
+        const { error } = await api.updateAttendance(existingRecord.recordId, {
+          date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
+        });
+        if (error) throw new Error(error);
+      } else {
+        // Create
+        const { data, error } = await api.markAttendance({
+          date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
+        });
+        if (error) throw new Error(error);
+        if (data && data.id) {
+           setDailyRecords(prev => ({
+             ...prev,
+             [slotId]: { status: newStatus, recordId: data.id }
+           }));
+        }
+      }
+      loadBackendData(false); // refresh silently in background to keep data consistent
+    } catch (err) {
+      alert(err.message || err);
+      setDailyRecords(prevDailyRecords); // Revert optimistic update
+    } finally {
+      // Small cooldown to prevent double taps visually
+      setTimeout(() => setLoadingSlots(prev => ({ ...prev, [slotId]: false })), 300);
     }
   };
 
@@ -542,10 +569,18 @@ export default function Schedule() {
                             </div>
                           </div>
                           <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl gap-2 w-fit border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <button onClick={() => toggleAttendanceStatus(classData.backendId, "PRESENT")} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
+                            <button 
+                              disabled={loadingSlots[classData.backendId]}
+                              onClick={() => toggleAttendanceStatus(classData.backendId, "PRESENT")} 
+                              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${loadingSlots[classData.backendId] ? 'opacity-50 cursor-not-allowed' : ''} ${isPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                            >
                               <CheckCircle size={18} /> PRESENT
                             </button>
-                            <button onClick={() => toggleAttendanceStatus(classData.backendId, "ABSENT")} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
+                            <button 
+                              disabled={loadingSlots[classData.backendId]}
+                              onClick={() => toggleAttendanceStatus(classData.backendId, "ABSENT")} 
+                              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${loadingSlots[classData.backendId] ? 'opacity-50 cursor-not-allowed' : ''} ${isAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                            >
                               <X size={18} /> ABSENT
                             </button>
                           </div>

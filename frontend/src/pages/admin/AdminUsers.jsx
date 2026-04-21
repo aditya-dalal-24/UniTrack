@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import Pagination from "../../components/Pagination";
+import useDebounce from "../../hooks/useDebounce";
 
 
 const ROLE_BADGE = {
@@ -23,6 +24,8 @@ export default function AdminUsers() {
   const [actionLoading, setActionLoading] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  
+  const debouncedSearch = useDebounce(search, 300);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -36,15 +39,15 @@ export default function AdminUsers() {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users;
-    const q = search.toLowerCase();
+    if (!debouncedSearch.trim()) return users;
+    const q = debouncedSearch.toLowerCase();
     return users.filter(
       (u) =>
         u.name?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
         u.role?.toLowerCase().includes(q)
     );
-  }, [users, search]);
+  }, [users, debouncedSearch]);
 
   const paginatedUsers = useMemo(() => {
     const start = currentPage * pageSize;
