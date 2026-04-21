@@ -170,6 +170,23 @@ export default function Expenses() {
       }
     }
 
+    // Optimistic UI Update
+    const tempId = Date.now();
+    const selectedCategory = categories.find(c => c.id === categoryId);
+    const optimisticExpense = {
+      id: tempId,
+      categoryId,
+      categoryName: selectedCategory ? selectedCategory.name : "Other",
+      amount: parseFloat(newExpense.amount),
+      note: newExpense.note,
+      date: newExpense.date,
+      time: newExpense.time,
+      isOptimistic: true // marker to prevent secondary interactions if needed
+    };
+
+    const prevExpenses = [...expenses];
+    setExpenses(prev => [optimisticExpense, ...prev]);
+
     const { error: apiError } = await api.addExpense({
       categoryId: categoryId,
       amount: parseFloat(newExpense.amount),
@@ -179,6 +196,7 @@ export default function Expenses() {
     });
 
     if (apiError) {
+      setExpenses(prevExpenses); // Rollback
       alert(apiError);
       return;
     }
@@ -197,8 +215,12 @@ export default function Expenses() {
   };
 
   const handleDeleteExpense = async (id) => {
+    const prevExpenses = [...expenses];
+    setExpenses(prev => prev.filter(e => e.id !== id)); // Optimistic UI
+
     const { error: apiError } = await api.deleteExpense(id);
     if (apiError) {
+      setExpenses(prevExpenses); // Rollback
       alert(apiError);
       return;
     }

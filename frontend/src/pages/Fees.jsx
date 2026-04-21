@@ -112,8 +112,24 @@ export default function Fees() {
       receiptFileName: newFee.receiptFileName,
     };
 
+    // Optimistic UI Update
+    const prevSummary = { ...feesSummary };
+    const tempId = Date.now();
+    const optimisticFee = {
+      id: tempId,
+      ...payload,
+      pendingAmount: payload.totalAmount - payload.paidAmount,
+      isOptimistic: true
+    };
+
+    setFeesSummary({
+      ...(feesSummary || {}),
+      fees: [...(feesSummary?.fees || []), optimisticFee],
+    });
+
     const { error: apiError } = await api.addFee(payload);
     if (apiError) {
+      setFeesSummary(prevSummary); // Rollback
       alert(apiError);
       return;
     }
@@ -125,9 +141,20 @@ export default function Fees() {
 
   const handleDeleteFee = async (id) => {
     if (!confirm("Delete this fee record?")) return;
+    
+    const prevSummary = { ...feesSummary };
+    setFeesSummary({
+      ...feesSummary,
+      fees: feesSummary.fees.filter(f => f.id !== id)
+    }); // Optimistic UI
+
     const { error } = await api.deleteFee(id);
-    if (error) alert(error);
-    else fetchFees(false);
+    if (error) {
+      setFeesSummary(prevSummary); // Rollback
+      alert(error);
+    } else {
+      fetchFees(false);
+    }
   };
 
   const totalFees = feesSummary?.totalFees || 0;

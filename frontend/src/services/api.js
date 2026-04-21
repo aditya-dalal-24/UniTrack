@@ -118,19 +118,50 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// ==================== RESPONSE NORMALIZER ====================
+// ==================== RESPONSE NORMALIZER & CACHE ====================
+
+const apiCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 mins
+
+export const clearApiCache = () => apiCache.clear();
 
 /**
  * Wraps every API call in a normalized { data, error } response.
- * On success: { data: <response>, error: null }
- * On failure: { data: null, error: <message> }
+ * Implements SWR (Stale-While-Revalidate) global cache for ultra-fast page speeds.
  */
 async function request(method, url, body = null, params = null) {
   try {
     const config = { method, url };
     if (body) config.data = body;
     if (params) config.params = params;
+
+    const isGet = method.toLowerCase() === 'get';
+    let cacheKey = null;
+
+    if (isGet) {
+      cacheKey = url + (params ? JSON.stringify(params) : '');
+      const cached = apiCache.get(cacheKey);
+      
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+        // Fire background revalidation to keep cache fresh
+        axiosInstance(config).then(res => {
+          apiCache.set(cacheKey, { data: res.data, timestamp: Date.now() });
+        }).catch(() => {}); 
+        
+        // Instantly return cached data (zero-lag rendering)
+        return { data: cached.data, error: null };
+      }
+    } else {
+      // Brutal cache invalidation on ANY mutation to guarantee cross-module consistency
+      apiCache.clear();
+    }
+
     const response = await axiosInstance(config);
+    
+    if (isGet && cacheKey) {
+      apiCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+    }
+
     return { data: response.data, error: null };
   } catch (error) {
     let message = 'Something went wrong. Please try again.';

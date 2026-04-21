@@ -117,6 +117,22 @@ export default function Marks() {
       gradePoints: points
     };
 
+    // Optimistic UI Update
+    const prevSummary = { ...marksSummary };
+    if (editingMark) {
+      setMarksSummary({
+        ...marksSummary,
+        marks: marksSummary.marks.map(m => m.id === editingMark.id ? { ...payload, id: editingMark.id } : m)
+      });
+    } else {
+      const tempId = Date.now();
+      const newMarksArray = [...(marksSummary?.marks || []), { ...payload, id: tempId, isOptimistic: true }];
+      setMarksSummary({
+        ...(marksSummary || {}),
+        marks: newMarksArray
+      });
+    }
+
     let apiError;
     if (editingMark) {
       const resp = await api.updateMarks(editingMark.id, payload);
@@ -127,6 +143,7 @@ export default function Marks() {
     }
 
     if (apiError) {
+      setMarksSummary(prevSummary); // Rollback
       alert(apiError);
       return;
     }
@@ -139,8 +156,15 @@ export default function Marks() {
 
   const deleteMark = async (id) => {
     if (confirm("Are you sure you want to delete this record?")) {
+      const prevSummary = { ...marksSummary };
+      setMarksSummary({
+        ...marksSummary,
+        marks: marksSummary.marks.filter(m => m.id !== id)
+      }); // Optimistic UI
+
       const { error: apiError } = await api.deleteMarks(id);
       if (apiError) {
+        setMarksSummary(prevSummary); // Rollback
         alert(apiError);
         return;
       }
