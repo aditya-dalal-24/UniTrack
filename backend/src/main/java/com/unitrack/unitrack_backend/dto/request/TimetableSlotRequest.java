@@ -16,8 +16,12 @@ public class TimetableSlotRequest {
     private String endTime;
 
     private String subjectName;
+    private String subjectFullName;
     private String courseCode;
     private String professor;
     private String roomNumber;
+    private String color;
+    private String groupInfo;
     private Long subjectId;
+    private Boolean isBreak = false;
 }

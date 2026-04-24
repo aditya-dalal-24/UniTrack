@@ -5,7 +5,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
   timeout: 60000, // Increased to 60s to handle Render cold starts
 });
 
@@ -353,12 +352,29 @@ export const api = {
       semester: data.semester || null,
     }),
 
+  updateSubject: (id, data) =>
+    request('put', `/subjects/${id}`, {
+      name: data.name,
+      fullName: data.fullName || null,
+      courseCode: data.courseCode || null,
+      roomNumber: data.roomNumber || null,
+      professor: data.professor || null,
+      color: data.color || null,
+      semester: data.semester || null,
+    }),
+
   deleteSubject: (id) =>
     request('delete', `/subjects/${id}`),
+
+  deleteAllSubjects: () =>
+    request('delete', '/subjects'),
 
   // ==================== TIMETABLE — SLOTS ====================
   getTimetable: () =>
     request('get', '/timetable'),
+
+  clearTimetable: () =>
+    request('delete', '/timetable'),
 
   addTimetableSlot: (data) =>
     request('post', '/timetable', {
@@ -369,6 +385,7 @@ export const api = {
       courseCode: data.courseCode || null,
       professor: data.professor || null,
       roomNumber: data.roomNumber || null,
+      groupInfo: data.groupInfo || null,
       subjectId: data.subjectId || null,
     }),
 
@@ -381,6 +398,7 @@ export const api = {
       courseCode: data.courseCode || null,
       professor: data.professor || null,
       roomNumber: data.roomNumber || null,
+      groupInfo: data.groupInfo || null,
       subjectId: data.subjectId || null,
     }),
 
@@ -389,6 +407,15 @@ export const api = {
 
   deleteAllTimetableSlots: () =>
     request('delete', '/timetable'),
+
+  uploadTimetable: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request('post', '/timetable/upload', formData);
+  },
+
+  saveTimetableBatch: (slots) =>
+    request('post', '/timetable/batch', slots),
 
   // ==================== MARKS ====================
   getMarks: (semester = null) =>

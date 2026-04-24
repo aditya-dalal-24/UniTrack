@@ -30,9 +30,22 @@ public class SubjectController {
         return ResponseEntity.ok(subjectService.addSubject(principal, request));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<SubjectResponse> updateSubject(Principal principal,
+                                                         @PathVariable Long id,
+                                                         @Valid @RequestBody SubjectRequest request) {
+        return ResponseEntity.ok(subjectService.updateSubject(principal, id, request));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSubject(Principal principal, @PathVariable Long id) {
         subjectService.deleteSubject(principal, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAllSubjects(Principal principal) {
+        subjectService.deleteAllSubjects(principal);
         return ResponseEntity.noContent().build();
     }
 }

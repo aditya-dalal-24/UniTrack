@@ -36,4 +36,8 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, Lo
     @Modifying
     @Query("DELETE FROM AttendanceRecord a WHERE a.timetableSlot = :timetableSlot")
     void deleteByTimetableSlot(@Param("timetableSlot") com.unitrack.unitrack_backend.entity.TimetableSlot timetableSlot);
+
+    @Modifying
+    @Query("DELETE FROM AttendanceRecord a WHERE a.subject = :subject")
+    void deleteBySubject(@Param("subject") Subject subject);
 }

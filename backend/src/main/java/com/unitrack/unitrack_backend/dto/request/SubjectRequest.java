@@ -8,7 +8,7 @@ public class SubjectRequest {
 
     @NotBlank(message = "Subject name is required")
     private String name;
-
+    private String fullName;
     private String courseCode;
     private String professor;
     private String roomNumber;

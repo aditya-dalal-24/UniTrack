@@ -12,8 +12,11 @@ public class TimetableSlotResponse {
     private String startTime;
     private String endTime;
     private String subjectName;
+    private String subjectFullName;
     private String courseCode;
     private String professor;
     private String roomNumber;
+    private String groupInfo;
     private Long subjectId;
+    private Boolean isBreak = false;
 }

@@ -15,7 +15,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,10 +47,13 @@ public class TimetableService {
                 .startTime(slot.getStartTime())
                 .endTime(slot.getEndTime())
                 .subjectName(resolvedName)
+                .subjectFullName(slot.getSubjectFullName())
                 .courseCode(slot.getCourseCode())
                 .professor(slot.getProfessor())
                 .roomNumber(slot.getRoomNumber())
+                .groupInfo(slot.getGroupInfo())
                 .subjectId(slot.getSubject() != null ? slot.getSubject().getId() : null)
+                .isBreak(slot.getIsBreak())
                 .build();
     }
 
@@ -72,6 +75,8 @@ public class TimetableService {
                 .courseCode(request.getCourseCode())
                 .professor(request.getProfessor())
                 .roomNumber(request.getRoomNumber())
+                .groupInfo(request.getGroupInfo())
+                .isBreak(request.getIsBreak())
                 .build();
 
         if (request.getSubjectId() != null) {
@@ -102,6 +107,8 @@ public class TimetableService {
         slot.setCourseCode(request.getCourseCode());
         slot.setProfessor(request.getProfessor());
         slot.setRoomNumber(request.getRoomNumber());
+        slot.setGroupInfo(request.getGroupInfo());
+        slot.setIsBreak(request.getIsBreak());
 
         if (request.getSubjectId() != null) {
             Subject subject = subjectRepository.findById(request.getSubjectId())
@@ -132,6 +139,85 @@ public class TimetableService {
 
     public void deleteAllSlots(Principal principal) {
         User user = getUser(principal);
+        attendanceRepository.deleteAllByUser(user);
         timetableRepository.deleteAllByUser(user);
+    }
+
+    public List<TimetableSlotResponse> saveBatch(Principal principal, List<TimetableSlotRequest> requests) {
+        User user = getUser(principal);
+
+        // 1. Clear existing data to replace with new batch
+        attendanceRepository.deleteAllByUser(user);
+        timetableRepository.deleteAllByUser(user);
+
+        // 2. Clear subjects and their attendance
+        List<Subject> existingSubjects = subjectRepository.findByUser(user);
+        for (Subject s : existingSubjects) {
+            attendanceRepository.deleteBySubject(s);
+        }
+        subjectRepository.deleteAll(existingSubjects);
+        subjectRepository.flush();
+
+        // 3. Process new slots
+        Map<String, Subject> subjectCache = new HashMap<>();
+        Set<String> seenKeys = new HashSet<>();
+        Integer semester = user.getSemester() != null ? user.getSemester() : 1;
+        List<TimetableSlot> slotsToSave = new ArrayList<>();
+
+        for (TimetableSlotRequest req : requests) {
+            // Deduplicate incoming requests
+            String day = req.getDayOfWeek() != null ? req.getDayOfWeek().toUpperCase() : "UNKNOWN";
+            String start = req.getStartTime() != null ? req.getStartTime() : "";
+            String subName = req.getSubjectName() != null ? req.getSubjectName() : "";
+
+            String prof = req.getProfessor() != null ? req.getProfessor() : "";
+            String slotKey = String.format("%s|%s|%s|%s", day, start, subName, prof);
+            if (!seenKeys.add(slotKey))
+                continue;
+
+            TimetableSlot slot = TimetableSlot.builder()
+                    .user(user)
+                    .dayOfWeek(day)
+                    .startTime(req.getStartTime())
+                    .endTime(req.getEndTime())
+                    .subjectName(req.getSubjectName())
+                    .subjectFullName(req.getSubjectFullName())
+                    .courseCode(req.getCourseCode())
+                    .professor(req.getProfessor())
+                    .roomNumber(req.getRoomNumber())
+                    .groupInfo(req.getGroupInfo())
+                    .isBreak(req.getIsBreak() != null && req.getIsBreak())
+                    .build();
+
+            // Link Subject entity if it's not a break
+            if (!slot.getIsBreak() && req.getSubjectName() != null && !req.getSubjectName().isBlank()) {
+                String cacheKey = (req.getSubjectName().toLowerCase().trim() + "|" + 
+                                  (req.getProfessor() != null ? req.getProfessor().toLowerCase().trim() : "")).trim();
+                Subject subject = subjectCache.get(cacheKey);
+
+                if (subject == null) {
+                    subject = Subject.builder()
+                            .user(user)
+                            .name(req.getSubjectName())
+                            .fullName(req.getSubjectFullName())
+                            .courseCode(req.getCourseCode())
+                            .professor(req.getProfessor())
+                            .roomNumber(req.getRoomNumber())
+                            .color(req.getColor() != null ? req.getColor() : "#6366f1")
+                            .semester(semester)
+                            .build();
+                    subject = subjectRepository.save(subject);
+                    subjectCache.put(cacheKey, subject);
+                }
+                slot.setSubject(subject);
+            }
+
+            slotsToSave.add(slot);
+        }
+
+        List<TimetableSlot> saved = timetableRepository.saveAll(slotsToSave);
+        timetableRepository.flush();
+
+        return saved.stream().map(this::mapSlot).collect(Collectors.toList());
     }
 }

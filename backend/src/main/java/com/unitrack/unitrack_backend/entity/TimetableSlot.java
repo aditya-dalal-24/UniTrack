@@ -29,9 +29,12 @@ public class TimetableSlot {
     private String endTime;
 
     private String subjectName;
+    private String subjectFullName;
     private String courseCode;
     private String professor;
     private String roomNumber;
+    private String groupInfo;
+    private Boolean isBreak = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")

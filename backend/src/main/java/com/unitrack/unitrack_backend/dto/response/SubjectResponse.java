@@ -9,6 +9,7 @@ import lombok.*;
 public class SubjectResponse {
     private Long id;
     private String name;
+    private String fullName;
     private String courseCode;
     private String professor;
     private String roomNumber;

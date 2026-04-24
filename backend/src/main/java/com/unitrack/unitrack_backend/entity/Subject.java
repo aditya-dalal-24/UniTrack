@@ -22,6 +22,8 @@ public class Subject {
     @Column(nullable = false)
     private String name;
 
+    private String fullName;
+
     private Integer semester;
     private String courseCode;
     private String professor;
