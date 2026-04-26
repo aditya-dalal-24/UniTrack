@@ -30,7 +30,6 @@ public class Fees {
     @Enumerated(EnumType.STRING)
     private FeesStatus status;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String receiptData;
 

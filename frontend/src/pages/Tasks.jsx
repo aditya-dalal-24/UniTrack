@@ -23,7 +23,22 @@ import { api } from "../services/api";
 import { TASK_STATUS, TASK_TYPE } from "../constants/enums";
 import Pagination from "../components/Pagination";
 
+const TILE_COLORS = [
+  "bg-blue-100/50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-600/40",
+  "bg-emerald-100/50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-600/40",
+  "bg-rose-100/50 border-rose-200 dark:bg-rose-900/30 dark:border-rose-600/40",
+  "bg-amber-100/50 border-amber-200 dark:bg-amber-900/30 dark:border-amber-600/40",
+  "bg-purple-100/50 border-purple-200 dark:bg-purple-900/30 dark:border-purple-600/40",
+  "bg-indigo-100/50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-600/40",
+];
+
 export default function Tasks() {
+  const [subjects, setSubjects] = useState([]);
+  const userSemester = useMemo(() => {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    return parseInt(userData.semester) || 1;
+  }, []);
+
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,9 +60,49 @@ export default function Tasks() {
     if (showSpinner) setLoading(false);
   };
 
+  const fetchSubjects = async () => {
+    try {
+      const [ttRes, subRes] = await Promise.all([
+        api.getTimetable(),
+        api.getSubjects() // Fallback to backend's authoritative current semester
+      ]);
+
+      const combined = new Map();
+      
+      // Add subjects from timetable
+      if (ttRes.data && Array.isArray(ttRes.data)) {
+        ttRes.data.forEach(slot => {
+          if (!slot.isBreak && slot.subjectName && slot.subjectName.trim()) {
+            const name = slot.subjectName.trim();
+            if (!combined.has(name.toLowerCase())) {
+              combined.set(name.toLowerCase(), { id: slot.subjectId || `tt-${slot.id}`, name });
+            }
+          }
+        });
+      }
+
+      // Merge with actual subjects list
+      if (subRes.data && Array.isArray(subRes.data)) {
+        subRes.data.forEach(sub => {
+          if (sub.name && sub.name.trim()) {
+            const name = sub.name.trim();
+            if (!combined.has(name.toLowerCase())) {
+              combined.set(name.toLowerCase(), sub);
+            }
+          }
+        });
+      }
+
+      setSubjects(Array.from(combined.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (err) {
+      console.error("Failed to fetch subjects:", err);
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
-  }, []);
+    fetchSubjects();
+  }, [userSemester]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -65,7 +120,7 @@ export default function Tasks() {
 
 
   const handleAddTask = async () => {
-    if (!newTask.title || !newTask.dueDate) {
+    if (!newTask.title?.trim() || !newTask.dueDate) {
       alert("Title and Due Date are required.");
       return;
     }
@@ -183,7 +238,17 @@ export default function Tasks() {
         actions={
           <div className="flex gap-2">
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setNewTask({
+                  title: "",
+                  description: "",
+                  dueDate: new Date().toISOString().split('T')[0],
+                  dueTime: "23:59",
+                  type: activeTab,
+                  subject: "",
+                });
+                setShowModal(true);
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-brand text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark transition-all active:scale-95"
             >
               <Plus className="h-4 w-4" />
@@ -266,7 +331,11 @@ export default function Tasks() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className={`group relative bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-sm hover:shadow-xl transition-all ${task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED ? 'border-emerald-100 dark:border-emerald-900/30' : 'border-slate-200 dark:border-slate-800'}`}
+                    className={`group relative p-6 rounded-3xl border shadow-sm hover:shadow-xl transition-all ${
+                      task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED 
+                      ? 'bg-emerald-50/30 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30' 
+                      : `${TILE_COLORS[task.id % TILE_COLORS.length]}`
+                    }`}
                   >
                     {editingId === task.id ? (
                       <div className="space-y-3">
@@ -374,22 +443,29 @@ export default function Tasks() {
                   placeholder="Task Title *" 
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-brand/20 text-slate-900 dark:text-white"
                   value={newTask.title}
-                  onChange={e => setNewTask({...newTask, title: e.target.value})}
+                  onChange={e => setNewTask(prev => ({...prev, title: e.target.value}))}
                 />
                 <textarea 
                   placeholder="Details (optional)" 
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-brand/20 resize-none h-32 text-slate-900 dark:text-white"
                   value={newTask.description}
-                  onChange={e => setNewTask({...newTask, description: e.target.value})}
+                  onChange={e => setNewTask(prev => ({...prev, description: e.target.value}))}
                 />
                 
                 {activeTab === TASK_TYPE.ASSIGNMENT && (
-                  <input 
-                    placeholder="Subject (e.g., Mathematics)" 
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-brand/20 text-slate-900 dark:text-white"
-                    value={newTask.subject}
-                    onChange={e => setNewTask({...newTask, subject: e.target.value})}
-                  />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase px-1">Subject</label>
+                    <select 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-brand/20 text-slate-900 dark:text-white hover:cursor-pointer"
+                      value={newTask.subject}
+                      onChange={e => setNewTask(prev => ({...prev, subject: e.target.value}))}
+                    >
+                      <option value="">Select Subject (Optional)</option>
+                      {subjects.map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
@@ -399,7 +475,8 @@ export default function Tasks() {
                         type="date" 
                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none text-slate-900 dark:text-white dark:[color-scheme:dark] relative z-10"
                         value={newTask.dueDate}
-                        onChange={e => setNewTask({...newTask, dueDate: e.target.value})}
+                        onChange={e => setNewTask(prev => ({...prev, dueDate: e.target.value}))}
+                        required
                       />
                     </div>
                     <div className="space-y-1 relative">
@@ -408,7 +485,7 @@ export default function Tasks() {
                         type="time" 
                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 outline-none text-slate-900 dark:text-white dark:[color-scheme:dark] relative z-10"
                         value={newTask.dueTime}
-                        onChange={e => setNewTask({...newTask, dueTime: e.target.value})}
+                        onChange={e => setNewTask(prev => ({...prev, dueTime: e.target.value}))}
                       />
                     </div>
                 </div>

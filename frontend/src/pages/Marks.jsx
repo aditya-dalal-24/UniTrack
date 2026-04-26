@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Award,
@@ -30,6 +30,32 @@ const calculateGrade = (totalMarks) => {
   return { grade: "F", points: 0 };
 };
 
+const getGradeColor = (grade) => {
+  if (!grade || grade === "-") return "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-500 dark:border-slate-800";
+  
+  const g = grade.toUpperCase();
+  switch (g) {
+    case "O":
+      return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800/50";
+    case "A+":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50";
+    case "A":
+      return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/50";
+    case "B+":
+      return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50";
+    case "B":
+      return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50";
+    case "C":
+      return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800/50";
+    case "P":
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-800/50";
+    case "F":
+      return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50";
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-800/50";
+  }
+};
+
 // Calculate final marks: 25% mid-sem + 25% internals + 50% end-sem
 const calculateFinalMarks = (midSem, internals, endSem) => {
   const midSemContribution = (midSem / 25) * 25;
@@ -41,12 +67,13 @@ const calculateFinalMarks = (midSem, internals, endSem) => {
 export default function Marks() {
   const [selectedSemester, setSelectedSemester] = useState(() => {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-    return userData.semester || 1;
+    return parseInt(userData.semester) || 1;
   });
   const [selectedExamType, setSelectedExamType] = useState("All");
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [timetableCredits, setTimetableCredits] = useState({});
   const [marksSummary, setMarksSummary] = useState(null);
   
   const [showSubjectModal, setShowSubjectModal] = useState(false);
@@ -65,20 +92,57 @@ export default function Marks() {
   const [showGlobalSubjectModal, setShowGlobalSubjectModal] = useState(false);
   const [globalSubjectTarget, setGlobalSubjectTarget] = useState({ name: "", courseCode: "", color: "#6366f1" });
 
+  const [hiddenSubjects, setHiddenSubjects] = useState(() => {
+    try {
+      const data = localStorage.getItem("hiddenMarksSubjects");
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const fetchMarks = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
     setError(null);
-    const { data: marksData, error: apiError } = await api.getMarks(selectedSemester);
-    if (apiError) setError(apiError);
-    else setMarksSummary(marksData);
+    
+    const [marksRes, subRes, ttRes] = await Promise.all([
+      api.getMarks(selectedSemester),
+      api.getSubjects(selectedSemester),
+      api.getTimetable()
+    ]);
+    
+    if (marksRes.error) setError(marksRes.error);
+    else setMarksSummary(marksRes.data);
 
-    const { data: subData } = await api.getSubjects(selectedSemester);
-    if (subData) setSubjects(subData);
+    if (subRes.data) setSubjects(subRes.data);
+
+    if (ttRes.data && Array.isArray(ttRes.data)) {
+      const counts = {};
+      ttRes.data.forEach(slot => {
+        if (!slot.isBreak) {
+          const key = slot.subjectId ? `id_${slot.subjectId}` : (slot.subjectName ? `name_${slot.subjectName.trim().toLowerCase()}` : null);
+          if (key) {
+            counts[key] = (counts[key] || 0) + 1;
+          }
+        }
+      });
+      setTimetableCredits(counts);
+    }
 
     if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    if (!userData.semester) {
+      api.getProfile().then(({ data }) => {
+        if (data && data.semester) {
+          userData.semester = data.semester;
+          localStorage.setItem("userData", JSON.stringify(userData));
+          if (selectedSemester === 1) setSelectedSemester(parseInt(data.semester));
+        }
+      });
+    }
     fetchMarks();
   }, [selectedSemester]);
 
@@ -94,6 +158,24 @@ export default function Marks() {
       setShowGlobalSubjectModal(false);
       setGlobalSubjectTarget({ name: "", courseCode: "", color: "#6366f1" });
     }
+  };
+
+  const handleDeleteMark = async (id, name) => {
+    if (!confirm(`Are you sure you want to delete the marks record for ${name}?`)) return;
+    const { error } = await api.deleteMarks(id);
+    if (error) {
+      alert(error);
+    } else {
+      fetchMarks(false);
+    }
+  };
+
+  const handleDeleteSubject = async (tempId, name) => {
+    if (!confirm(`Are you sure you want to remove "${name}" from the marks table? (It will not be deleted from the schedule)`)) return;
+    const subjectId = tempId.replace("new-", "");
+    const newHidden = [...hiddenSubjects, subjectId];
+    setHiddenSubjects(newHidden);
+    localStorage.setItem("hiddenMarksSubjects", JSON.stringify(newHidden));
   };
 
   const saveMark = async () => {
@@ -187,7 +269,53 @@ export default function Marks() {
 
   const cgpa = marksSummary?.cgpa || 0;
   const currentSgpa = marksSummary?.currentSgpa || 0;
-  const marks = marksSummary?.marks || [];
+  
+  const mergedMarks = useMemo(() => {
+    const existingMarks = marksSummary?.marks || [];
+    const result = existingMarks.map(m => {
+      const matchedSub = Array.isArray(subjects) ? subjects.find(s => (s.name || "").trim().toLowerCase() === (m.subjectName || "").trim().toLowerCase()) : null;
+      let ttCount = 0;
+      if (matchedSub) {
+         ttCount = timetableCredits[`id_${matchedSub.id}`] || timetableCredits[`name_${(matchedSub.name || "").trim().toLowerCase()}`];
+      } else {
+         ttCount = timetableCredits[`name_${(m.subjectName || "").trim().toLowerCase()}`];
+      }
+      return {
+        ...m,
+        credits: ttCount || m.credits || 3
+      };
+    });
+    
+    // Add missing subjects from the semester-specific subjects list
+    if (Array.isArray(subjects)) {
+      subjects.forEach(sub => {
+        if (!sub.name) return;
+        const hasMark = existingMarks.some(m => 
+          (m.subjectName || "").trim().toLowerCase() === sub.name.trim().toLowerCase()
+        );
+        if (!hasMark && !hiddenSubjects.includes(sub.id.toString())) {
+          const ttCount = timetableCredits[`id_${sub.id}`] || timetableCredits[`name_${sub.name.trim().toLowerCase()}`];
+          result.push({
+            id: `new-${sub.id}`,
+            subjectName: sub.name,
+            subjectCode: sub.courseCode || "",
+            credits: ttCount || 3, 
+            midSem: null,
+            internals: null,
+            endSem: null,
+            finalScore: 0,
+            grade: "-",
+            gradePoints: 0,
+            isNew: true
+          });
+        }
+      });
+    }
+    
+    return result.sort((a, b) => (a.subjectName || "").localeCompare(b.subjectName || ""));
+  }, [marksSummary, subjects, timetableCredits]);
+
+  const marks = mergedMarks;
 
   return (
     <div className="space-y-6">
@@ -221,14 +349,14 @@ export default function Marks() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-6 shadow-lg text-white"
+              className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark dark:bg-none dark:bg-white p-6 shadow-lg text-white dark:text-slate-900 border border-transparent dark:border-slate-100"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-white/20 dark:bg-brand/10 flex items-center justify-center text-white dark:text-brand">
                   <Award className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-white/80">Overall CGPA</p>
+                  <p className="text-sm text-white/80 dark:text-slate-500 font-medium">Overall CGPA</p>
                   <p className="text-3xl font-bold">{(cgpa || 0).toFixed(2)}</p>
                 </div>
               </div>
@@ -238,14 +366,14 @@ export default function Marks() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 shadow-lg text-white"
+              className="rounded-2xl bg-gradient-to-br from-teal-600 to-blue-700 p-6 shadow-lg text-white"
             >
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-white/80">Current SGPA</p>
+                  <p className="text-sm text-white/80 font-medium">Current SGPA</p>
                   <p className="text-3xl font-bold">{(currentSgpa || 0).toFixed(2)}</p>
                 </div>
               </div>
@@ -327,23 +455,23 @@ export default function Marks() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Subject</th>
-                    <th className="px-6 py-4 font-medium">Credits</th>
+                    <th className="px-6 py-4 font-bold text-sm">Subject</th>
+                    <th className="px-6 py-4 font-bold text-sm text-center">Credits</th>
                     {(selectedExamType === "All" || selectedExamType === "Mid-Sem") && (
-                      <th className="px-6 py-4 font-medium">Mid Sem (25)</th>
+                      <th className="px-6 py-4 font-bold text-sm text-center">Mid Sem (25)</th>
                     )}
                     {(selectedExamType === "All" || selectedExamType === "Internals") && (
-                      <th className="px-6 py-4 font-medium">Internals (25)</th>
+                      <th className="px-6 py-4 font-bold text-sm text-center">Internals (25)</th>
                     )}
                     {(selectedExamType === "All" || selectedExamType === "End-Sem") && (
-                      <th className="px-6 py-4 font-medium">End Sem (50)</th>
+                      <th className="px-6 py-4 font-bold text-sm text-center">End Sem (50)</th>
                     )}
-                    <th className="px-6 py-4 font-medium">Total (100)</th>
-                    <th className="px-6 py-4 font-medium">Grade</th>
-                    <th className="px-6 py-4 font-medium">Points</th>
-                    <th className="px-6 py-4 font-medium text-right">Actions</th>
+                    <th className="px-6 py-4 font-bold text-sm text-center">Total (100)</th>
+                    <th className="px-6 py-4 font-bold text-sm text-center">Grade</th>
+                    <th className="px-6 py-4 font-bold text-sm text-center">Points</th>
+                    <th className="px-6 py-4 font-bold text-sm text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -369,36 +497,57 @@ export default function Marks() {
                     </tr>
                   ) : (
                     marks.map((mark) => (
-                      <tr key={mark.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr key={mark.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0">
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-semibold text-slate-900 dark:text-slate-100">{mark.subjectName}</div>
-                            {mark.subjectCode && <div className="text-xs text-slate-500">{mark.subjectCode}</div>}
+                            <div className="font-bold text-slate-900 dark:text-white text-base">
+                              {mark.subjectName}
+                            </div>
+                            {mark.subjectCode && <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">{mark.subjectCode}</div>}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{mark.credits}</td>
+                        <td className="px-6 py-4 font-semibold text-center text-slate-700 dark:text-slate-300">{mark.credits}</td>
                         {(selectedExamType === "All" || selectedExamType === "Mid-Sem") && (
-                          <td className="px-6 py-4">{mark.midSem}</td>
+                          <td className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-300">{mark.midSem ?? "-"}</td>
                         )}
                         {(selectedExamType === "All" || selectedExamType === "Internals") && (
-                          <td className="px-6 py-4">{mark.internals}</td>
+                          <td className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-300">{mark.internals ?? "-"}</td>
                         )}
                         {(selectedExamType === "All" || selectedExamType === "End-Sem") && (
-                          <td className="px-6 py-4">{mark.endSem}</td>
+                          <td className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-300">{mark.endSem ?? "-"}</td>
                         )}
-                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{parseFloat(mark.finalScore || 0).toFixed(2)}</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                        <td className="px-6 py-4 font-black text-center text-brand dark:text-white text-base">{mark.isNew ? "-" : parseFloat(mark.finalScore || 0).toFixed(2)}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center justify-center rounded-lg px-3 py-1 text-sm font-black shadow-sm border ${getGradeColor(mark.grade)}`}>
                             {mark.grade}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{mark.gradePoints}</td>
+                        <td className="px-6 py-4 font-bold text-center text-slate-700 dark:text-slate-300">{mark.isNew ? "-" : mark.gradePoints}</td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button onClick={() => startEditMark(mark)} className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
-                              <Edit2 className="h-4 w-4" />
+                            <button 
+                              onClick={() => {
+                                if (mark.isNew) {
+                                  setEditingMark(null);
+                                  setNewMark({ 
+                                    subjectName: mark.subjectName || "", 
+                                    subjectCode: mark.subjectCode || "", 
+                                    credits: (mark.credits || 3).toString(), 
+                                    midSem: "", 
+                                    internals: "", 
+                                    endSem: "" 
+                                  });
+                                  setShowSubjectModal(true);
+                                } else {
+                                  startEditMark(mark);
+                                }
+                              }} 
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                              title={mark.isNew ? "Enter Marks" : "Edit Marks"}
+                            >
+                              {mark.isNew ? <Plus className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
                             </button>
-                            <button onClick={() => deleteMark(mark.id)} className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                            <button onClick={() => mark.isNew ? handleDeleteSubject(mark.id, mark.subjectName) : handleDeleteMark(mark.id, mark.subjectName)} className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Delete">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>

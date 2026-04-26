@@ -11,6 +11,7 @@ import java.util.List;
 
 public interface TimetableRepository extends JpaRepository<TimetableSlot, Long> {
     List<TimetableSlot> findByUserOrderByDayOfWeekAscStartTimeAsc(User user);
+    List<TimetableSlot> findByUserAndDayOfWeekOrderByStartTimeAsc(User user, String dayOfWeek);
     List<TimetableSlot> findBySubject(Subject subject);
     void deleteAllByUser(User user);
 

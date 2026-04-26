@@ -11,7 +11,8 @@ import {
   ArrowLeftRight,
   Menu,
   X,
-  Search
+  Search,
+  Quote
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useMemo } from "react";
@@ -19,6 +20,7 @@ import { useMemo } from "react";
 const adminLinks = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/thoughts", label: "Thoughts", icon: Quote },
 ];
 
 export default function AdminSidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {

@@ -19,6 +19,7 @@ const Profile = lazy(() => import("./pages/Profile.jsx"));
 const Tasks = lazy(() => import("./pages/Tasks.jsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.jsx"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.jsx"));
+const AdminThoughts = lazy(() => import("./pages/admin/AdminThoughts.jsx"));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -96,6 +97,7 @@ function AppRoutes() {
         >
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="thoughts" element={<AdminThoughts />} />
         </Route>
 
         {/* Fallback */}

@@ -59,18 +59,26 @@ public class DashboardService {
                 long lmWorking = lmPresent + lmAbsent;
                 double lastMonthPct = lmWorking > 0 ? Math.round((lmPresent * 100.0 / lmWorking) * 100.0) / 100.0 : 0.0;
 
+                // ── Subjects & Attendance ──────────────────────────────
+                Integer targetSemester = user.getSemester() != null ? user.getSemester() : 1;
+                List<Subject> userSubjects = subjectRepository.findByUserAndSemesterOrSemesterIsNull(user, targetSemester);
+                
                 List<Object[]> aggAttendance = attendanceRepository.getSubjectAttendanceSummary(user);
-                List<DashboardResponse.SubjectSummary> subjectSummaries = new ArrayList<>();
+                java.util.Map<String, Double> attendanceMap = new java.util.HashMap<>();
                 for (Object[] row : aggAttendance) {
                         String name = (String) row[0];
                         long p = row[1] != null ? ((Number) row[1]).longValue() : 0L;
                         long t = row[2] != null ? ((Number) row[2]).longValue() : 0L;
                         double pct = t > 0 ? Math.round((p * 100.0 / t) * 100.0) / 100.0 : 0.0;
-                        subjectSummaries.add(DashboardResponse.SubjectSummary.builder()
-                                        .name(name)
-                                        .attendancePercentage(pct)
-                                        .build());
+                        attendanceMap.put(name, pct);
                 }
+
+                List<DashboardResponse.SubjectSummary> subjectSummaries = userSubjects.stream()
+                                .map(s -> DashboardResponse.SubjectSummary.builder()
+                                                .name(s.getName())
+                                                .attendancePercentage(attendanceMap.getOrDefault(s.getName(), 0.0))
+                                                .build())
+                                .collect(Collectors.toList());
 
                 // ── Fees ────────────────────────────────────────────────
                 List<Fees> allFees = feesRepository.findByUser(user);
@@ -207,7 +215,7 @@ public class DashboardService {
                                 .marks(DashboardResponse.MarksSummary.builder()
                                                 .cgpa(cgpa)
                                                 .currentSgpa(sgpa)
-                                                .totalSubjects(allMarks.size())
+                                                .totalSubjects(userSubjects.size())
                                                 .currentSemester(currentSemester)
                                                 .build())
                                 .todos(DashboardResponse.TodosSummary.builder()

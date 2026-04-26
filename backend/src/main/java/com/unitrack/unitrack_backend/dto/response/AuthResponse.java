@@ -12,6 +12,7 @@ public class AuthResponse {
     private String email;
     private Long userId;
     private String gender;
+    private Integer semester;
     private boolean emailVerified;
     private String role;
 }

@@ -47,24 +47,18 @@ public class SubjectService {
 
     public List<SubjectResponse> getSubjects(Principal principal, Integer semester) {
         User user = getUser(principal);
-        Integer registeredSemester = user.getSemester() != null ? user.getSemester() : 1;
-
+        
         if (semester == null) {
-            semester = registeredSemester;
+            semester = user.getSemester() != null ? user.getSemester() : 1;
         }
 
-        // If searching for the registered semester, include legacy 'null' subjects
-        if (semester.equals(registeredSemester)) {
-            return subjectRepository.findByUserAndSemesterOrSemesterIsNull(user, semester)
-                    .stream().map(this::mapSubject).collect(Collectors.toList());
-        }
-
-        return subjectRepository.findByUserAndSemester(user, semester)
+        // Return subjects for the requested semester OR subjects with no semester (global)
+        return subjectRepository.findByUserAndSemesterOrSemesterIsNull(user, semester)
                 .stream().map(this::mapSubject).collect(Collectors.toList());
     }
 
     @CacheEvict(value = "dashboard", key = "#principal.name")
-    public SubjectResponse addSubject(Principal principal, SubjectRequest request) {
+        public SubjectResponse addSubject(Principal principal, SubjectRequest request) {
         User user = getUser(principal);
         // Use semester from request if provided, otherwise default to user's registered
         // semester

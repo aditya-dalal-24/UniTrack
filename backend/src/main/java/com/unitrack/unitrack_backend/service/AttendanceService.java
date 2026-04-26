@@ -153,4 +153,39 @@ public class AttendanceService {
         User user = getUser(principal);
         attendanceRepository.deleteByUserAndDate(user, date);
     }
+
+    public List<com.unitrack.unitrack_backend.dto.response.TodayLectureResponse> getTodayLectures(Principal principal) {
+        User user = getUser(principal);
+        java.time.LocalDate today = java.time.LocalDate.now();
+        String dayOfWeek = today.getDayOfWeek().name(); // e.g. "SATURDAY"
+
+        List<TimetableSlot> slots = timetableRepository.findByUserAndDayOfWeekOrderByStartTimeAsc(user, dayOfWeek);
+
+        return slots.stream()
+                .filter(slot -> !Boolean.TRUE.equals(slot.getIsBreak()))
+                .map(slot -> {
+                    // Look up existing attendance for this slot today
+                    var existingRecord = attendanceRepository.findByUserAndDateAndTimetableSlot(user, today, slot);
+
+                    String resolvedName = slot.getSubjectName();
+                    if ((resolvedName == null || resolvedName.isBlank()) && slot.getSubject() != null) {
+                        resolvedName = slot.getSubject().getName();
+                    }
+
+                    return com.unitrack.unitrack_backend.dto.response.TodayLectureResponse.builder()
+                            .slotId(slot.getId())
+                            .subjectName(resolvedName)
+                            .subjectFullName(slot.getSubjectFullName())
+                            .startTime(slot.getStartTime())
+                            .endTime(slot.getEndTime())
+                            .professor(slot.getProfessor())
+                            .roomNumber(slot.getRoomNumber())
+                            .groupInfo(slot.getGroupInfo())
+                            .subjectId(slot.getSubject() != null ? slot.getSubject().getId() : null)
+                            .attendanceRecordId(existingRecord.map(AttendanceRecord::getId).orElse(null))
+                            .status(existingRecord.map(AttendanceRecord::getStatus).orElse(null))
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
 }

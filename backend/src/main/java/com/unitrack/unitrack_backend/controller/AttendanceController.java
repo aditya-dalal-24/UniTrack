@@ -35,6 +35,11 @@ public class AttendanceController {
         return ResponseEntity.ok(attendanceService.updateRecord(principal, id, request));
     }
 
+    @GetMapping("/today")
+    public ResponseEntity<?> getTodayLectures(Principal principal) {
+        return ResponseEntity.ok(attendanceService.getTodayLectures(principal));
+    }
+
     @PostMapping
     public ResponseEntity<AttendanceResponse> addRecord(Principal principal,
                                                         @Valid @RequestBody AttendanceRequest request) {

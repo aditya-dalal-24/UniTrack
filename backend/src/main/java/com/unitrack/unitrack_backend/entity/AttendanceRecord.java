@@ -8,8 +8,7 @@ import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 @Table(name = "attendance_records", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "date", "timetable_slot_id"}),
-    @UniqueConstraint(columnNames = {"user_id", "date", "subject_id"})
+    @UniqueConstraint(columnNames = {"user_id", "date", "timetable_slot_id"})
 })
 @Data
 @NoArgsConstructor

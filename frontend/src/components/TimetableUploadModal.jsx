@@ -17,10 +17,12 @@ import {
   Users
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useData } from '../contexts/DataContext';
 
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
 
 export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess }) {
+  const { invalidateDashboard } = useData();
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
@@ -130,6 +132,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
     if (error) {
       setError(error);
     } else {
+      invalidateDashboard();
       onUploadSuccess();
       onClose();
     }

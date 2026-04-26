@@ -109,6 +109,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(false)
                 .role(Role.STUDENT.name())
                 .build();
@@ -146,6 +147,7 @@ public class AuthService {
                     .email(user.getEmail())
                     .userId(user.getId())
                     .gender(user.getGender())
+                    .semester(user.getSemester())
                     .emailVerified(false)
                     .role(getEffectiveRole(user).name())
                     .build();
@@ -176,6 +178,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(true)
                 .role(effectiveRole)
                 .build();
@@ -229,6 +232,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(true)
                 .role(effectiveRole)
                 .build();
@@ -257,6 +261,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(false)
                 .role(getEffectiveRole(user).name())
                 .build();
@@ -337,6 +342,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(true)
                 .role(effectiveRole)
                 .build();
@@ -367,6 +373,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(user.isEmailVerified())
                 .role(getEffectiveRole(user).name())
                 .build();
@@ -403,6 +410,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .userId(user.getId())
                 .gender(user.getGender())
+                .semester(user.getSemester())
                 .emailVerified(user.isEmailVerified())
                 .role(getEffectiveRole(user).name())
                 .build();

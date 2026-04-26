@@ -256,11 +256,27 @@ export const api = {
       note: data.note || null,
     }),
 
+  // ==================== THOUGHT OF THE DAY ====================
+  getTodayThought: () =>
+    request('get', '/thoughts/today'),
+
+  getAdminThoughts: () =>
+    request('get', '/admin/thoughts'),
+
+  addAdminThought: (data) =>
+    request('post', '/admin/thoughts', data),
+
+  deleteAdminThought: (id) =>
+    request('delete', `/admin/thoughts/${id}`),
+
   deleteAttendance: (id) =>
     request('delete', `/attendance/${id}`),
 
   deleteAttendanceByDate: (date) =>
     request('delete', `/attendance/date/${date}`),
+
+  getTodayLectures: () =>
+    request('get', '/attendance/today'),
 
   // ==================== ASSIGNMENTS ====================
   getAssignments: () =>

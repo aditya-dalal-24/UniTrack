@@ -22,7 +22,10 @@ import { api } from "../services/api";
 import { FEES_STATUS } from "../constants/enums";
 
 export default function Fees() {
-  const [selectedSemester, setSelectedSemester] = useState(1);
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    return parseInt(userData.semester) || 1;
+  });
   const [showAddFee, setShowAddFee] = useState(false);
   
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,16 @@ export default function Fees() {
   };
 
   useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    if (!userData.semester) {
+      api.getProfile().then(({ data }) => {
+        if (data && data.semester) {
+          userData.semester = data.semester;
+          localStorage.setItem("userData", JSON.stringify(userData));
+          if (selectedSemester === 1) setSelectedSemester(parseInt(data.semester));
+        }
+      });
+    }
     fetchFees();
   }, [selectedSemester]);
 
@@ -367,16 +380,16 @@ export default function Fees() {
                         <div className={`w-full rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2.5 text-sm flex items-center justify-center gap-2 transition-all ${newFee.receiptFileName ? 'border-brand bg-brand/5' : 'group-hover:border-brand/40 group-hover:bg-slate-50'}`}>
                           {newFee.receiptFileName ? (
                             <>
-                              <FileText className="h-4 w-4 text-brand" />
-                              <span className="text-brand font-medium truncate max-w-[200px]">{newFee.receiptFileName}</span>
-                              <button onClick={(e) => { e.stopPropagation(); setNewFee({...newFee, receiptData: null, receiptFileName: ""}) }} className="ml-auto text-slate-400 hover:text-red-500">
+                              <FileText className="h-4 w-4 text-brand dark:text-brand-400" />
+                              <span className="text-brand dark:text-brand-400 font-medium truncate max-w-[200px]">{newFee.receiptFileName}</span>
+                              <button onClick={(e) => { e.stopPropagation(); setNewFee({...newFee, receiptData: null, receiptFileName: ""}) }} className="ml-auto text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400">
                                 <X className="h-4 w-4" />
                               </button>
                             </>
                           ) : (
                             <>
-                              <Upload className="h-4 w-4 text-slate-400" />
-                              <span className="text-slate-500">Click to upload receipt (Image or PDF)</span>
+                              <Upload className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                              <span className="text-slate-500 dark:text-slate-400">Click to upload receipt (Image or PDF)</span>
                             </>
                           )}
                         </div>
@@ -418,7 +431,7 @@ export default function Fees() {
 
             {currentSemesterFees.length === 0 ? (
               <div className="p-12 text-center">
-                <CreditCard className="h-12 w-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+                <CreditCard className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                 <p className="text-slate-500 dark:text-slate-400">No fees added for this semester</p>
                 <button
                   onClick={() => setShowAddFee(true)}
@@ -433,14 +446,14 @@ export default function Fees() {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
                     <tr>
-                      <th className="px-6 py-4">Category</th>
-                      <th className="px-6 py-4">Total Amount</th>
-                      <th className="px-6 py-4">Paid Amount</th>
-                      <th className="px-6 py-4">Pending</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Due Date</th>
-                      <th className="px-6 py-4">Receipt</th>
-                      <th className="px-6 py-4">Actions</th>
+                      <th className="px-6 py-4 text-center">Category</th>
+                      <th className="px-6 py-4 text-center">Total Amount</th>
+                      <th className="px-6 py-4 text-center">Paid Amount</th>
+                      <th className="px-6 py-4 text-center">Pending</th>
+                      <th className="px-6 py-4 text-center">Status</th>
+                      <th className="px-6 py-4 text-center">Due Date</th>
+                      <th className="px-6 py-4 text-center">Receipt</th>
+                      <th className="px-6 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -460,9 +473,9 @@ export default function Fees() {
                           transition={{ delay: 0.5 + index * 0.05 }}
                           className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center bg-brand/10 text-brand`}>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center bg-brand/10 text-brand dark:text-brand-400`}>
                                 {getCategoryIcon(fee.category)}
                               </div>
                               <span className="font-medium text-slate-900 dark:text-slate-100">
@@ -470,13 +483,13 @@ export default function Fees() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
+                          <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400">
                             ₹{fee.totalAmount?.toLocaleString() || 0}
                           </td>
-                          <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-medium">
+                          <td className="px-6 py-4 text-center text-emerald-600 dark:text-emerald-400 font-medium">
                             ₹{fee.paidAmount?.toLocaleString() || 0}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 text-center">
                             {pending > 0 ? (
                               <span className="text-red-600 dark:text-red-400 font-medium">
                                 ₹{pending.toLocaleString()}
@@ -485,19 +498,19 @@ export default function Fees() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 text-center">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}>
                               {fee.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
+                          <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 text-xs">
                             {fee.dueDate}
                           </td>
                           <td className="px-6 py-4 text-center">
                             {fee.receiptData ? (
                               <button 
                                 onClick={() => setViewingReceipt(fee)}
-                                className="p-2 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 transition-all"
+                                className="p-2 rounded-lg bg-brand/10 text-brand dark:text-brand-400 hover:bg-brand/20 transition-all"
                                 title="View Receipt"
                               >
                                 <Eye className="h-4 w-4" />
@@ -506,10 +519,10 @@ export default function Fees() {
                               <span className="text-slate-300 dark:text-slate-700">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => handleDeleteFee(fee.id)}
-                              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                              className="p-2 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>

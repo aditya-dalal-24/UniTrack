@@ -11,6 +11,7 @@ import com.unitrack.unitrack_backend.repository.TimetableRepository;
 import com.unitrack.unitrack_backend.repository.UserRepository;
 import com.unitrack.unitrack_backend.repository.AttendanceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -64,6 +65,7 @@ public class TimetableService {
                 .stream().map(this::mapSlot).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public TimetableSlotResponse addSlot(Principal principal, TimetableSlotRequest request) {
         User user = getUser(principal);
         TimetableSlot slot = TimetableSlot.builder()
@@ -93,6 +95,7 @@ public class TimetableService {
         return mapSlot(slot);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public TimetableSlotResponse updateSlot(Principal principal, Long id, TimetableSlotRequest request) {
         User user = getUser(principal);
         TimetableSlot slot = timetableRepository.findById(id)
@@ -126,6 +129,7 @@ public class TimetableService {
         return mapSlot(slot);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteSlot(Principal principal, Long id) {
         User user = getUser(principal);
         TimetableSlot slot = timetableRepository.findById(id)
@@ -137,12 +141,14 @@ public class TimetableService {
         timetableRepository.delete(slot);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public void deleteAllSlots(Principal principal) {
         User user = getUser(principal);
         attendanceRepository.deleteAllByUser(user);
         timetableRepository.deleteAllByUser(user);
     }
 
+    @CacheEvict(value = "dashboard", key = "#principal.name")
     public List<TimetableSlotResponse> saveBatch(Principal principal, List<TimetableSlotRequest> requests) {
         User user = getUser(principal);
 
@@ -150,8 +156,9 @@ public class TimetableService {
         attendanceRepository.deleteAllByUser(user);
         timetableRepository.deleteAllByUser(user);
 
-        // 2. Clear subjects and their attendance
-        List<Subject> existingSubjects = subjectRepository.findByUser(user);
+        // 2. Clear subjects and their attendance for THIS SEMESTER ONLY
+        Integer semester = user.getSemester() != null ? user.getSemester() : 1;
+        List<Subject> existingSubjects = subjectRepository.findByUserAndSemester(user, semester);
         for (Subject s : existingSubjects) {
             attendanceRepository.deleteBySubject(s);
         }
@@ -161,7 +168,7 @@ public class TimetableService {
         // 3. Process new slots
         Map<String, Subject> subjectCache = new HashMap<>();
         Set<String> seenKeys = new HashSet<>();
-        Integer semester = user.getSemester() != null ? user.getSemester() : 1;
+        semester = user.getSemester() != null ? user.getSemester() : 1;
         List<TimetableSlot> slotsToSave = new ArrayList<>();
 
         for (TimetableSlotRequest req : requests) {

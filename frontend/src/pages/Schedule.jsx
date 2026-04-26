@@ -19,13 +19,16 @@ import {
   Grid,
   User,
   MapPin,
-  Users
+  Users,
+  CalendarPlus
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import TimetableUploadModal from "../components/TimetableUploadModal";
+import MarkAttendanceWizard from "../components/MarkAttendanceWizard";
 
 // const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -55,6 +58,7 @@ export default function Schedule() {
   const [activeTab, setActiveTab] = useState("daily");
   
   // Shared Timetable/Template State
+  const { invalidateDashboard } = useData();
   const [subjects, setSubjects] = useState([]);
   const [timeSlots, setTimeSlots] = useState(() => {
     const saved = localStorage.getItem("timetable_timeslots");
@@ -125,6 +129,7 @@ export default function Schedule() {
   const [attendanceMap, setAttendanceMap] = useState({});
 
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAttendanceWizard, setShowAttendanceWizard] = useState(false);
 
   useEffect(() => { localStorage.setItem("timetable_timeslots", JSON.stringify(timeSlots)); }, [timeSlots]);
   useEffect(() => { localStorage.setItem("uniTrackHolidays", JSON.stringify(holidays)); }, [holidays]);
@@ -255,6 +260,7 @@ export default function Schedule() {
         setNewSubject({ name: "", fullName: "", color: "#6366f1", professor: "", roomNumber: "" });
         setShowAddSubject(false);
         setEditingSubjectId(null);
+        invalidateDashboard();
         loadBackendData(false); // Reload to reflect changes in tiles
       }
     } else {
@@ -263,6 +269,7 @@ export default function Schedule() {
       else if (data) {
         setSubjects([...subjects, { ...data, color: newSubject.color }]);
         setNewSubject({ name: "", fullName: "", color: "#6366f1", professor: "", roomNumber: "" });
+        invalidateDashboard();
         setShowAddSubject(false);
       }
     }
@@ -285,7 +292,10 @@ export default function Schedule() {
     if (!confirm("Are you sure? This will delete the subject everywhere.")) return;
     const { error } = await api.deleteSubject(id);
     if (error) alert(error);
-    else { loadBackendData(false); }
+    else { 
+      invalidateDashboard();
+      loadBackendData(false); 
+    }
   };
 
   const addTimeSlot = () => {
@@ -312,7 +322,11 @@ export default function Schedule() {
       ? await api.updateTimetableSlot(newClass.backendId, payload)
       : await api.addTimetableSlot(payload);
     if (result.error) alert(result.error);
-    else { loadBackendData(false); setShowAddClass(false); }
+    else { 
+      invalidateDashboard();
+      loadBackendData(false); 
+      setShowAddClass(false); 
+    }
   };
 
   const deleteClass = async (day, slotStart, backendId) => {
@@ -324,7 +338,11 @@ export default function Schedule() {
     }
     if (idToDelete) {
       const { error } = await api.deleteTimetableSlot(idToDelete);
-      if (error) alert(error); else loadBackendData(false);
+      if (error) alert(error); 
+      else {
+        invalidateDashboard();
+        loadBackendData(false);
+      }
     }
   };
 
@@ -335,6 +353,7 @@ export default function Schedule() {
     else {
       localStorage.removeItem("timetable_timeslots");
       setTimeSlots([]);
+      invalidateDashboard();
       loadBackendData(true);
     }
   };
@@ -348,6 +367,7 @@ export default function Schedule() {
       setTimeSlots([]);
       setSubjects([]);
       setTimetable({});
+      invalidateDashboard();
       loadBackendData(true);
     }
   };
@@ -488,6 +508,22 @@ export default function Schedule() {
     }
   };
 
+  const markAllForSelectedDate = async (status) => {
+    const lectures = getLecturesForDate();
+    const allSlotIds = [];
+    lectures.forEach(({ classes }) => {
+      classes.forEach(c => {
+        if (!c.isBreak) {
+          allSlotIds.push(c.backendId);
+        }
+      });
+    });
+
+    if (allSlotIds.length > 0) {
+      await toggleAttendanceStatus(allSlotIds, status);
+    }
+  };
+
   const changeDate = (offset) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + offset);
@@ -544,7 +580,7 @@ export default function Schedule() {
       return {
         id: sub.id,
         name: sub.name,
-        shortName: sub.name.substring(0, 5).toUpperCase(),
+        shortName: sub.name,
         percentage: pct,
         present,
         total,
@@ -635,12 +671,18 @@ export default function Schedule() {
                       </h2>
                     </div>
                     
-                    <div className="flex gap-2">
-                      <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-xs px-4 py-2 font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => setShowAttendanceWizard(true)}
+                        className="text-sm px-6 py-3 font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition flex items-center gap-2"
+                      >
+                        <CalendarPlus size={18}/> Mark Today's Attendance
+                      </button>
+                      <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-sm px-6 py-3 font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition">
                         {isCalendarExpanded ? "Hide Calendar" : "Show Calendar"}
                       </button>
-                      <button onClick={() => setShowAddHoliday(true)} className="text-xs px-4 py-2 font-bold rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition flex items-center gap-2"><Plus size={14}/> Holiday</button>
-                      <button onClick={() => setShowAddExam(true)} className="text-xs px-4 py-2 font-bold rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition flex items-center gap-2"><Plus size={14}/> Exam</button>
+                      <button onClick={() => setShowAddHoliday(true)} className="text-sm px-6 py-3 font-bold rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition flex items-center gap-2"><Plus size={18}/> Holiday</button>
+                      <button onClick={() => setShowAddExam(true)} className="text-sm px-6 py-3 font-bold rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition flex items-center gap-2"><Plus size={18}/> Exam</button>
                     </div>
                 </div>
 
@@ -653,31 +695,49 @@ export default function Schedule() {
                       className="overflow-hidden"
                     >
                       {!isCalendarExpanded && (
-                        <div className="flex flex-col items-center gap-2 w-full max-w-sm mb-6 mx-auto">
-                            {(() => {
-                              const dayName = new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long" });
-                              const dayStyles = {
-                                Monday: "bg-indigo-500/10 dark:bg-indigo-500/30 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/50 shadow-indigo-500/10",
-                                Tuesday: "bg-emerald-500/10 dark:bg-emerald-500/30 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/50 shadow-emerald-500/10",
-                                Wednesday: "bg-amber-500/10 dark:bg-amber-500/30 text-amber-800 dark:text-amber-300 border-amber-400 dark:border-amber-500/50 shadow-amber-500/10",
-                                Thursday: "bg-purple-500/10 dark:bg-purple-500/30 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/50 shadow-purple-500/10",
-                                Friday: "bg-rose-500/10 dark:bg-rose-500/30 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-500/50 shadow-rose-500/10",
-                                Saturday: "bg-cyan-500/10 dark:bg-cyan-500/30 text-cyan-600 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/50 shadow-cyan-500/10",
-                                Sunday: "bg-slate-500/10 dark:bg-slate-500/30 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-500/50 shadow-slate-500/10"
-                              }[dayName] || "bg-brand/10 dark:bg-brand/30 text-brand dark:text-brand-300 border-brand/20 dark:border-brand-500/50 shadow-brand/10";
-                              
-                              return (
-                                <div className={`px-6 py-1.5 rounded-full text-[13px] font-black uppercase tracking-[0.2em] border shadow-md mb-2 transition-all duration-300 ${dayStyles}`}>
-                                  {dayName}
+                        <div className="flex flex-col xl:flex-row items-center justify-between mb-6 gap-6">
+                            {/* Empty div for perfect centering of date selector on xl screens */}
+                            <div className="hidden xl:block flex-1"></div>
+                            
+                            <div className="flex flex-col items-center gap-2 w-full max-w-sm shrink-0 mx-auto xl:mx-0">
+                                {(() => {
+                                  const dayName = new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long" });
+                                  const dayStyles = {
+                                    Monday: "bg-indigo-500/10 dark:bg-indigo-500/30 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/50 shadow-indigo-500/10",
+                                    Tuesday: "bg-emerald-500/10 dark:bg-emerald-500/30 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/50 shadow-emerald-500/10",
+                                    Wednesday: "bg-amber-500/10 dark:bg-amber-500/30 text-amber-800 dark:text-amber-300 border-amber-400 dark:border-amber-500/50 shadow-amber-500/10",
+                                    Thursday: "bg-purple-500/10 dark:bg-purple-500/30 text-purple-600 dark:text-purple-300 border-purple-200 dark:border-purple-500/50 shadow-purple-500/10",
+                                    Friday: "bg-rose-500/10 dark:bg-rose-500/30 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-500/50 shadow-rose-500/10",
+                                    Saturday: "bg-cyan-500/10 dark:bg-cyan-500/30 text-cyan-600 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/50 shadow-cyan-500/10",
+                                    Sunday: "bg-slate-500/10 dark:bg-slate-500/30 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-500/50 shadow-slate-500/10"
+                                  }[dayName] || "bg-brand/10 dark:bg-brand/30 text-brand dark:text-brand-300 border-brand/20 dark:border-brand-500/50 shadow-brand/10";
+                                  
+                                  return (
+                                    <div className={`px-6 py-1.5 rounded-full text-[13px] font-black uppercase tracking-[0.2em] border shadow-md mb-2 transition-all duration-300 ${dayStyles}`}>
+                                      {dayName}
+                                    </div>
+                                  );
+                                })()}
+                                <div className="flex items-center justify-between w-full">
+                                    <button onClick={() => changeDate(-1)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronLeft size={20}/></button>
+                                    <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="font-bold text-lg bg-transparent border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl outline-none flex-1 mx-3 text-center dark:text-white dark:[color-scheme:dark]" />
+                                    <button onClick={() => changeDate(1)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronRight size={20}/></button>
                                 </div>
-                              );
-                            })()}
-                            <div className="flex items-center justify-between w-full">
-                                <button onClick={() => changeDate(-1)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronLeft size={20}/></button>
-                                <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="font-bold text-lg bg-transparent border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl outline-none flex-1 mx-3 text-center dark:text-white dark:[color-scheme:dark]" />
-                                <button onClick={() => changeDate(1)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronRight size={20}/></button>
+                                <button onClick={() => setSelectedDate(toISODate(new Date()))} className="w-full px-4 py-2 font-black rounded-xl transition bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-300 dark:hover:bg-brand/30">Today</button>
                             </div>
-                            <button onClick={() => setSelectedDate(toISODate(new Date()))} className="w-full px-4 py-2 font-black rounded-xl transition bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-300 dark:hover:bg-brand/30">Today</button>
+                            
+                            <div className="flex-1 w-full flex justify-center xl:justify-center">
+                                {getLecturesForDate().length > 1 && !isHoliday(new Date(selectedDate).toDateString()) && !isExam(new Date(selectedDate).toDateString()) && (
+                                  <div className="flex flex-row gap-3 w-full justify-center xl:justify-center">
+                                    <button onClick={() => markAllForSelectedDate('PRESENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm text-center leading-tight">
+                                      <CheckCircle size={22} className="mb-0.5" /> <span>Mark All<br/>Present</span>
+                                    </button>
+                                    <button onClick={() => markAllForSelectedDate('ABSENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors border border-red-200/60 dark:border-red-800/40 shadow-sm text-center leading-tight">
+                                      <X size={22} className="mb-0.5" /> <span>Mark All<br/>Absent</span>
+                                    </button>
+                                  </div>
+                                )}
+                            </div>
                         </div>
                       )}
 
@@ -761,101 +821,113 @@ export default function Schedule() {
                             No lectures scheduled for this day.
                           </div>
                         ) : (
-                          getLecturesForDate().map(({ slot, classes }, groupIdx) => {
-                            const isAnyBreak = classes.some(c => c.isBreak);
-                            const realBreaks = classes.filter(c => c.isBreak && (c.subject?.toUpperCase().includes("BREAK") || c.subject?.toUpperCase().includes("LUNCH")));
-                            const isRealBreakGroup = realBreaks.length > 0;
-                            const isParallel = classes.length > 1;
-                            
-                            // Check if all classes in group have same status
-                            const statuses = classes.map(c => dailyRecords[c.backendId]?.status);
-                            const isAllPresent = statuses.every(s => s === "PRESENT");
-                            const isAllAbsent = statuses.every(s => s === "ABSENT");
-                            const isMixed = !isAllPresent && !isAllAbsent && statuses.some(s => s);
-                            const isAnyLoading = classes.some(c => loadingSlots[c.backendId]);
+                          <>
+                            {isCalendarExpanded && getLecturesForDate().length > 1 && (
+                              <div className="flex flex-row justify-end gap-3 mb-2 px-2">
+                                <button onClick={() => markAllForSelectedDate('PRESENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm text-center leading-tight">
+                                  <CheckCircle size={22} className="mb-0.5" /> <span>Mark All<br/>Present</span>
+                                </button>
+                                <button onClick={() => markAllForSelectedDate('ABSENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors border border-red-200/60 dark:border-red-800/40 shadow-sm text-center leading-tight">
+                                  <X size={22} className="mb-0.5" /> <span>Mark All<br/>Absent</span>
+                                </button>
+                              </div>
+                            )}
+                            {getLecturesForDate().map(({ slot, classes }, groupIdx) => {
+                              const isAnyBreak = classes.some(c => c.isBreak);
+                              const realBreaks = classes.filter(c => c.isBreak && (c.subject?.toUpperCase().includes("BREAK") || c.subject?.toUpperCase().includes("LUNCH")));
+                              const isRealBreakGroup = realBreaks.length > 0;
+                              const isParallel = classes.length > 1;
+                              
+                              // Check if all classes in group have same status
+                              const statuses = classes.map(c => dailyRecords[c.backendId]?.status);
+                              const isAllPresent = statuses.every(s => s === "PRESENT");
+                              const isAllAbsent = statuses.every(s => s === "ABSENT");
+                              const isMixed = !isAllPresent && !isAllAbsent && statuses.some(s => s);
+                              const isAnyLoading = classes.some(c => loadingSlots[c.backendId]);
 
-                            return (
-                              <div key={groupIdx} className={`flex flex-col xl:flex-row xl:items-center justify-between p-5 rounded-3xl border transition-all gap-6 ${
-                                isRealBreakGroup 
-                                ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-800/40 italic" 
-                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm"
-                              }`}>
-                                <div className="flex flex-col gap-4 flex-1 min-w-0">
-                                  {classes.map((classData, idx) => {
-                                    const isThisRealBreak = classData.isBreak && (classData.subject?.toUpperCase().includes("BREAK") || classData.subject?.toUpperCase().includes("LUNCH"));
-                                    const subjectColor = getSubjectColor(classData.subject, classData.subjectId);
-                                    
-                                    return (
-                                      <div key={classData.backendId || idx} className="flex items-start gap-4">
-                                        <div className="w-1.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: isThisRealBreak ? '#d97706' : subjectColor }}></div>
-                                        <div className="min-w-0 flex-1">
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            {isThisRealBreak && <span className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-tight">Break Slot</span>}
-                                            {!isThisRealBreak && classData.isBreak && <span className="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-tight">Special Slot</span>}
-                                            <h3 className={`text-lg font-bold dark:text-white truncate ${isThisRealBreak ? 'text-amber-900 dark:text-amber-400 not-italic' : ''}`}>{classData.subject}</h3>
-                                            {(classData.subject?.toUpperCase().includes("LAB") || 
-                                              classData.subject?.toUpperCase().includes("PRACTICAL") ||
-                                              classData.subject?.toUpperCase().endsWith("L") ||
-                                              classData.courseCode?.toUpperCase().endsWith("L")) && (
-                                              <span className="px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] font-black uppercase tracking-tight">Lab Session</span>
-                                            )}
+                              return (
+                                <div key={groupIdx} className={`flex flex-col xl:flex-row xl:items-center justify-between p-5 rounded-3xl border transition-all gap-6 ${
+                                  isRealBreakGroup 
+                                  ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-800/40 italic" 
+                                  : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm"
+                                }`}>
+                                  <div className="flex flex-col gap-4 flex-1 min-w-0">
+                                    {classes.map((classData, idx) => {
+                                      const isThisRealBreak = classData.isBreak && (classData.subject?.toUpperCase().includes("BREAK") || classData.subject?.toUpperCase().includes("LUNCH"));
+                                      const subjectColor = getSubjectColor(classData.subject, classData.subjectId);
+                                      
+                                      return (
+                                        <div key={classData.backendId || idx} className="flex items-start gap-4">
+                                          <div className="w-1.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: isThisRealBreak ? '#d97706' : subjectColor }}></div>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              {isThisRealBreak && <span className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-tight">Break Slot</span>}
+                                              {!isThisRealBreak && classData.isBreak && <span className="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-tight">Special Slot</span>}
+                                              <h3 className={`text-lg font-bold dark:text-white truncate ${isThisRealBreak ? 'text-amber-900 dark:text-amber-400 not-italic' : ''}`}>{classData.subject}</h3>
+                                              {(classData.subject?.toUpperCase().includes("LAB") || 
+                                                classData.subject?.toUpperCase().includes("PRACTICAL") ||
+                                                classData.subject?.toUpperCase().endsWith("L") ||
+                                                classData.courseCode?.toUpperCase().endsWith("L")) && (
+                                                <span className="px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] font-black uppercase tracking-tight">Lab Session</span>
+                                              )}
+                                            </div>
+                                            <p className="text-[13px] text-slate-500 font-bold flex items-center gap-2 mt-1 overflow-hidden">
+                                              <Clock size={13} className="flex-shrink-0" /> {slot.start} - {slot.end}
+                                              {!classData.isBreak && classData.professor && (
+                                                <>
+                                                  <span className="mx-0.5 opacity-30">•</span>
+                                                  <span className="truncate">{classData.professor}</span>
+                                                </>
+                                              )}
+                                              {!classData.isBreak && classData.room && (
+                                                <>
+                                                  <span className="mx-0.5 opacity-30">•</span>
+                                                  <span className="truncate">{classData.room}</span>
+                                                </>
+                                              )}
+                                              {classData.groupInfo && <span className="text-[10px] uppercase text-white px-2 py-0.5 rounded-lg ml-1 font-black shadow-sm" style={{ backgroundColor: subjectColor }}>{classData.groupInfo}</span>}
+                                            </p>
                                           </div>
-                                          <p className="text-[13px] text-slate-500 font-bold flex items-center gap-2 mt-1 overflow-hidden">
-                                            <Clock size={13} className="flex-shrink-0" /> {slot.start} - {slot.end}
-                                            {!classData.isBreak && classData.professor && (
-                                              <>
-                                                <span className="mx-0.5 opacity-30">•</span>
-                                                <span className="truncate">{classData.professor}</span>
-                                              </>
-                                            )}
-                                            {!classData.isBreak && classData.room && (
-                                              <>
-                                                <span className="mx-0.5 opacity-30">•</span>
-                                                <span className="truncate">{classData.room}</span>
-                                              </>
-                                            )}
-                                            {classData.groupInfo && <span className="text-[10px] uppercase text-white px-2 py-0.5 rounded-lg ml-1 font-black shadow-sm" style={{ backgroundColor: subjectColor }}>{classData.groupInfo}</span>}
-                                          </p>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {!isAnyBreak ? (
-                                  <div className="flex flex-col gap-2">
-                                    <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl gap-2 w-fit border border-slate-200 dark:border-slate-800 shadow-sm mx-auto xl:mx-0">
-                                      <button 
-                                        disabled={isAnyLoading}
-                                        onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "PRESENT")} 
-                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"}`}
-                                      >
-                                        <CheckCircle size={18} /> {isParallel ? "MARK PRESENT" : "PRESENT"}
-                                      </button>
-                                      <button 
-                                        disabled={isAnyLoading}
-                                        onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "ABSENT")} 
-                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"}`}
-                                      >
-                                        <X size={18} /> {isParallel ? "MARK ABSENT" : "ABSENT"}
-                                      </button>
-                                    </div>
-                                    {isMixed && <p className="text-[10px] font-bold text-amber-500 text-center xl:text-left animate-pulse tracking-wide uppercase">Mixed Status Detected</p>}
+                                      );
+                                    })}
                                   </div>
-                                ) : (
-                                  isRealBreakGroup ? (
-                                    <div className="px-6 py-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-2xl font-black text-xs uppercase tracking-widest border border-amber-200 dark:border-amber-800/50 text-center">
-                                      Enjoy your break!
+                                  
+                                  {!isAnyBreak ? (
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl gap-2 w-fit border border-slate-200 dark:border-slate-800 shadow-sm mx-auto xl:mx-0">
+                                        <button 
+                                          disabled={isAnyLoading}
+                                          onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "PRESENT")} 
+                                          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"}`}
+                                        >
+                                          <CheckCircle size={18} /> {isParallel ? "MARK PRESENT" : "PRESENT"}
+                                        </button>
+                                        <button 
+                                          disabled={isAnyLoading}
+                                          onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "ABSENT")} 
+                                          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"}`}
+                                        >
+                                          <X size={18} /> {isParallel ? "MARK ABSENT" : "ABSENT"}
+                                        </button>
+                                      </div>
+                                      {isMixed && <p className="text-[10px] font-bold text-amber-500 text-center xl:text-left animate-pulse tracking-wide uppercase">Mixed Status Detected</p>}
                                     </div>
                                   ) : (
-                                    <div className="px-4 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-center">
-                                      Special Session
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            );
-                          })
+                                    isRealBreakGroup ? (
+                                      <div className="px-6 py-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-2xl font-black text-xs uppercase tracking-widest border border-amber-200 dark:border-amber-800/50 text-center">
+                                        Enjoy your break!
+                                      </div>
+                                    ) : (
+                                      <div className="px-4 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-center">
+                                        Special Session
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </>
                         )}
                       </div>
                     </motion.div>
@@ -876,7 +948,7 @@ export default function Schedule() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1.5 border border-slate-200 dark:border-slate-700">
-                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 ml-2">Min. Target:</span>
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 ml-2">Min. Required:</span>
                     <input type="number" value={minPercentage} onChange={(e) => setMinPercentage(e.target.value)} className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-center text-sm font-semibold py-1 focus:outline-none focus:border-brand dark:text-white dark:[color-scheme:dark]" min="0" max="100"/>
                     <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">%</span>
                   </div>
@@ -885,12 +957,12 @@ export default function Schedule() {
                 {subjectAnalysis.length === 0 ? (
                   <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">No subject data available to analyze.</p>
                 ) : (
-                  <div className="h-64 mt-4 w-full">
+                  <div className="h-64 mt-4 w-full text-slate-700 dark:text-slate-200">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={subjectAnalysis} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.2)" />
-                        <XAxis dataKey="shortName" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                        <YAxis tickFormatter={(val) => `${val}%`} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                        <XAxis dataKey="shortName" tick={{ fill: 'currentColor', fontSize: 13, fontWeight: 900 }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={(val) => `${val}%`} tick={{ fill: 'currentColor', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} domain={[0, 100]} />
                         <Tooltip 
                           cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                           content={({ active, payload }) => {
@@ -1299,6 +1371,12 @@ export default function Schedule() {
           localStorage.removeItem("timetable_timeslots");
           loadBackendData();
         }}
+      />
+
+      <MarkAttendanceWizard
+        isOpen={showAttendanceWizard}
+        onClose={() => setShowAttendanceWizard(false)}
+        onComplete={() => loadBackendData(false)}
       />
     </div>
   );
