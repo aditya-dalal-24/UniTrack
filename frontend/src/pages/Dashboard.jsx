@@ -101,7 +101,7 @@ export default function Dashboard() {
 
       {/* Welcome Card with User Info */}
       {userData && (
-        <div className="max-w-6xl rounded-3xl bg-gradient-to-br from-brand/5 via-accent/5 to-purple-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border border-slate-200/60 dark:border-slate-800/60 p-6 shadow-sm overflow-hidden relative group/card">
+        <div className="w-full rounded-3xl bg-gradient-to-br from-brand/5 via-accent/5 to-purple-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border border-slate-200/60 dark:border-slate-800/60 p-6 shadow-sm overflow-hidden relative group/card">
           {/* Subtle background decoration */}
           <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-brand/5 dark:bg-brand/10 rounded-full blur-3xl transition-all group-hover/card:scale-110 duration-700" />
           
@@ -124,28 +124,7 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex flex-wrap gap-x-8 gap-y-5 mt-3">
-                    {userData.rollNumber && (
-                      <div className="flex items-center gap-5 bg-white/50 dark:bg-slate-800/30 px-8 py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-[190px]">
-                        <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex-shrink-0">
-                          <Hash className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">Roll Number</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">{userData.rollNumber}</p>
-                        </div>
-                      </div>
-                    )}
-                    {userData.course && (
-                      <div className="flex items-center gap-5 bg-white/50 dark:bg-slate-800/30 px-8 py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-[190px]">
-                        <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
-                          <BookOpen className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">Course</p>
-                          <p className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">{userData.course}</p>
-                        </div>
-                      </div>
-                    )}
+
                     {userData.semester && (
                       <div className="flex items-center gap-5 bg-white/50 dark:bg-slate-800/30 px-8 py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-[190px]">
                         <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
