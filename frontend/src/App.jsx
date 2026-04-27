@@ -1,8 +1,11 @@
-import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, lazy, Suspense } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Calculator } from "lucide-react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
 import LoadingSpinner from "./components/LoadingSpinner";
+import ThemeToggle from "./components/ThemeToggle";
+import FloatingCalculator from "./components/FloatingCalculator";
 
 // Lazy-loaded pages for better performance
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -107,12 +110,35 @@ function AppRoutes() {
   );
 }
 
+function AppContent() {
+  const [showCalculator, setShowCalculator] = useState(false);
+  const location = useLocation();
+  
+  const showCalculatorButton = ["/marks", "/fees", "/expenses"].includes(location.pathname);
+
+  return (
+    <DataProvider>
+      <div className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-[9999] flex items-center gap-3">
+        {showCalculatorButton && (
+          <button
+            onClick={() => setShowCalculator(!showCalculator)}
+            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-indigo-600 dark:text-indigo-400 transition-all hover:scale-110 active:scale-95"
+          >
+            <Calculator size={20} />
+          </button>
+        )}
+        <ThemeToggle />
+      </div>
+      <FloatingCalculator isOpen={showCalculator} onClose={() => setShowCalculator(false)} />
+      <AppRoutes />
+    </DataProvider>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <DataProvider>
-        <AppRoutes />
-      </DataProvider>
+      <AppContent />
     </AuthProvider>
   );
 }

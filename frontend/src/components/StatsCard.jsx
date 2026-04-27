@@ -14,16 +14,16 @@ export default function StatsCard({
 }) {
   const getColorClasses = (color) => {
     switch (color) {
-      case "brand": return "bg-slate-100 text-slate-800 dark:bg-white dark:text-black";
+      case "brand": return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
       case "emerald":
-      case "green": return "bg-slate-100 text-slate-800 dark:bg-white dark:text-black";
+      case "green": return "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400";
       case "red":
-      case "rose": return "bg-slate-100 text-slate-800 dark:bg-white dark:text-black";
+      case "rose": return "bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400";
       case "amber":
-      case "yellow": return "bg-slate-100 text-slate-800 dark:bg-white dark:text-black";
+      case "yellow": return "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
       case "accent":
-      case "pink": return "bg-slate-100 text-slate-800 dark:bg-white dark:text-black";
-      default: return "bg-slate-100 text-slate-700 dark:bg-white dark:text-black";
+      case "pink": return "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400";
+      default: return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
     }
   };
 

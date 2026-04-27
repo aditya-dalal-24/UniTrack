@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { Mail, Phone, MapPin, Calendar, User, Users, GraduationCap, Building2, Heart, Edit2, Save, X, Shield, BookOpen, Camera, Upload } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Edit2, Save, Camera, GraduationCap } from "lucide-react";
 import { api } from "../services/api";
 import { useData } from "../contexts/DataContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -17,20 +16,11 @@ const defaultProfileData = {
   phone: "",
   dob: "",
   age: "",
-  bloodGroup: "",
-  address: "",
   course: "",
   branch: "",
   semester: "",
   batch: "",
   college: "",
-  fatherName: "",
-  fatherPhone: "",
-  motherName: "",
-  motherPhone: "",
-  emergencyContactName: "",
-  emergencyContactPhone: "",
-  emergencyContactRelation: "",
   gender: "",
   enrolmentNumber: "",
 };
@@ -45,59 +35,25 @@ export default function Profile() {
   const [editData, setEditData] = useState(defaultProfileData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=student");
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [coverUrl, setCoverUrl] = useState(null);
-
-  const countryCodes = [
-    { code: "+1", label: "+1" },
-    { code: "+44", label: "+44" },
-    { code: "+91", label: "+91" },
-    { code: "+61", label: "+61" },
-    { code: "+86", label: "+86" },
-  ];
-
-  const handleImageUpload = (e, setter) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image must be smaller than 5MB");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setter(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const fetchProfile = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
     setError(null);
-    
     const avatarKey = `profile_avatar_${userId}`;
     const coverKey = `profile_cover_${userId}`;
-
-    // Retrieve visually persisted images to maintain UX
+    
     const savedAvatar = localStorage.getItem(avatarKey);
-    if (savedAvatar) {
-      setAvatarUrl(savedAvatar);
-    } else {
-      setAvatarUrl(null); 
-    }
+    if (savedAvatar) setAvatarUrl(savedAvatar);
     
     const savedCover = localStorage.getItem(coverKey);
-    if (savedCover) {
-      setCoverUrl(savedCover);
-    } else {
-      setCoverUrl(null);
-    }
+    if (savedCover) setCoverUrl(savedCover);
 
     const { data, error: apiError } = await api.getProfile();
-    if (apiError) {
-      setError(apiError);
-    } else if (data) {
-      const fetched = {
+    if (apiError) setError(apiError);
+    else if (data) {
+      setStudentData({
         name: data.name || "",
         rollNumber: data.rollNumber || data.enrolmentNumber || "",
         privateEmail: data.email || "",
@@ -105,105 +61,44 @@ export default function Profile() {
         phone: data.phone || "",
         dob: data.dob || "",
         age: data.age?.toString() || "",
-        bloodGroup: data.bloodGroup || "",
-        address: data.address || "",
         course: data.course || "",
         branch: data.branch || "",
         semester: data.semester || "",
         batch: data.batch || "",
         college: data.college || "",
-        fatherName: data.fatherName || "",
-        fatherPhone: data.fatherPhone || "",
-        motherName: data.motherName || "",
-        motherPhone: data.motherPhone || "",
-        emergencyContactName: data.emergencyContactName || "",
-        emergencyContactPhone: data.emergencyContactPhone || "",
-        emergencyContactRelation: data.emergencyContactRelation || "",
         gender: data.gender || "",
         enrolmentNumber: data.enrolmentNumber || "",
-      };
-      setStudentData(fetched);
+      });
     }
     if (showSpinner) setLoading(false);
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { fetchProfile(); }, []);
 
   const handleEdit = () => {
     setEditData(studentData);
     setIsEditing(true);
   };
 
-  useEffect(() => {
-    if (isEditing) {
-      // Do nothing, we let the user manually change it via Upload
-    }
-  }, [editData.gender, isEditing]);
-
   const handleSave = async () => {
-    const payload = {
-      phone: editData.phone,
-      universityEmail: editData.universityEmail,
-      rollNumber: editData.rollNumber || editData.enrolmentNumber,
-      course: editData.course,
-      semester: editData.semester,
-      dob: editData.dob || null,
-      gender: editData.gender || null,
-      bloodGroup: editData.bloodGroup,
-      address: editData.address,
-      college: editData.college,
-      branch: editData.branch,
-      batch: editData.batch,
-      enrolmentNumber: editData.enrolmentNumber || editData.rollNumber,
-      fatherName: editData.fatherName,
-      fatherPhone: editData.fatherPhone,
-      motherName: editData.motherName,
-      motherPhone: editData.motherPhone,
-      emergencyContactName: editData.emergencyContactName,
-      emergencyContactPhone: editData.emergencyContactPhone,
-      emergencyContactRelation: editData.emergencyContactRelation,
-    };
-
+    const payload = { ...editData, enrolmentNumber: editData.rollNumber };
     const avatarKey = `profile_avatar_${userId}`;
     const coverKey = `profile_cover_${userId}`;
 
     if (avatarUrl && avatarUrl.startsWith('data:image')) {
       localStorage.setItem(avatarKey, avatarUrl);
       updateAvatar(avatarUrl);
-    } else if (!avatarUrl) {
-      localStorage.removeItem(avatarKey);
-      updateAvatar(null);
     }
-
-    if (coverUrl) {
-      localStorage.setItem(coverKey, coverUrl);
-    } else {
-      localStorage.removeItem(coverKey);
+    
+    if (coverUrl && coverUrl.startsWith('data:image')) {
+        localStorage.setItem(coverKey, coverUrl);
     }
 
     const { error: apiError } = await api.updateProfile(payload);
-    if (apiError) {
-      alert(apiError);
-    }
+    if (apiError) alert(apiError);
     
     invalidateDashboard();
-
-    if (updateUserData) {
-      updateUserData({ 
-        name: editData.name, 
-        phone: editData.phone,
-        rollNumber: editData.rollNumber,
-        college: editData.college,
-        course: editData.course,
-        branch: editData.branch,
-        semester: editData.semester,
-        batch: editData.batch,
-        gender: editData.gender,
-      });
-    }
-
+    if (updateUserData) updateUserData({ ...editData });
     setStudentData(editData);
     setIsEditing(false);
   };
@@ -213,606 +108,140 @@ export default function Profile() {
     setIsEditing(false);
   };
 
-  const handleChange = (field, value) => {
-    setEditData({ ...editData, [field]: value });
+  const handleImageUpload = (e, setter) => {
+    const file = e.target.files[0];
+    if (file && file.size < 5 * 1024 * 1024) {
+      const reader = new FileReader();
+      reader.onloadend = () => setter(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
-  if (loading) return <LoadingSpinner message="Loading profile..." fullPage />;
+  if (loading) return <LoadingSpinner message="Loading Profile Data..." fullPage />;
   if (error) return <ErrorMessage message={error} onRetry={fetchProfile} />;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-8 pb-8"
-    >
+    <div className="w-full space-y-6 pb-12 font-sans">
       <PageHeader
         title="Student Profile"
-        description="View and manage your academic and personal information."
-        actions={
-          !isEditing ? (
-            <button
-              onClick={handleEdit}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-accent text-white px-5 py-2.5 text-sm font-semibold shadow-lg shadow-brand/20 hover:shadow-xl hover:shadow-brand/30 transition-all active:scale-95"
-            >
-              <Edit2 className="h-4 w-4" />
-              Edit Profile
-            </button>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleCancel}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
-              >
-                <X className="h-4 w-4" />
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-accent text-white px-5 py-2.5 text-sm font-semibold shadow-lg shadow-brand/20 hover:shadow-xl hover:shadow-brand/30 transition-all active:scale-95"
-              >
-                <Save className="h-4 w-4" />
-                Save Changes
-              </button>
-            </div>
-          )
-        }
+        description="Manage your academic credentials and personal details."
       />
 
-      {/* Cover and Header Info */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="relative rounded-[2rem] bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden"
-      >
-        {/* Cover Background */}
-        <div className="h-40 md:h-52 w-full bg-gradient-to-r from-brand via-purple-500 to-accent relative overflow-hidden group">
-          {coverUrl && <img src={coverUrl} alt="Cover" className="absolute inset-0 w-full h-full object-cover z-0" />}
-          {!coverUrl && (
-            <>
-              <div className="absolute inset-0 bg-white/10 dark:bg-black/20 backdrop-blur-[2px] z-0"></div>
-              {/* Decorative elements */}
-              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/20 blur-3xl transition-transform duration-1000 hover:scale-110 z-0"></div>
-              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-black/20 blur-3xl transition-transform duration-1000 hover:scale-110 z-0"></div>
-            </>
+      {/* COMPACT IDENTITY HEADER WITH BANNER */}
+      <div className="bg-white dark:bg-slate-900 rounded-[30px] border border-slate-200/60 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+        {/* Banner */}
+        <div className="h-44 w-full relative bg-slate-100 dark:bg-slate-800">
+          {coverUrl ? (
+            <img src={coverUrl} alt="Cover" className="w-full h-full object-cover opacity-90" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-indigo-500/10 to-brand/10 dark:from-indigo-500/20 dark:to-brand/20" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent z-10 opacity-60"></div>
-          
           {isEditing && (
-            <label className="absolute right-4 bottom-4 z-20 flex items-center gap-2 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white px-4 py-2 rounded-xl transition-all duration-300 cursor-pointer shadow-lg">
+            <label className="absolute top-6 right-6 z-20 flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-xl transition-all cursor-pointer shadow-sm text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:scale-105">
               <Camera className="h-4 w-4" />
-              <span className="text-xs font-semibold">Change Cover</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Change Cover</span>
               <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setCoverUrl)} />
             </label>
           )}
         </div>
 
-        {/* Profile Content */}
-        <div className="px-4 sm:px-6 md:px-10 pb-8 relative">
-          <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start -mt-20 md:-mt-24 relative z-10 w-full">
-            {/* Avatar */}
-            <div className="relative group flex-shrink-0 z-30">
-              <div className="absolute inset-0 rounded-[2rem] bg-brand/30 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100 duration-500"></div>
-              <UserAvatar 
-                name={studentData.name} 
-                userId={userId} 
-                src={avatarUrl}
-                className="w-40 h-40 md:w-48 md:h-48 text-5xl md:text-6xl rounded-[2rem] border-4 border-white dark:border-slate-900 shadow-2xl transition-transform duration-500"
-              />
-              {isEditing && (
-                <label className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 backdrop-blur-sm rounded-[2rem] transition-all duration-300 cursor-pointer">
-                  <Upload className="h-8 w-8 text-white mb-2" />
-                  <span className="text-white text-xs font-bold uppercase tracking-wider">Update Photo</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setAvatarUrl)} />
-                </label>
-              )}
-            </div>
-
-            {/* Title Details */}
-            <div className="flex-1 mt-4 md:mt-24 text-center md:text-left w-full min-w-0">
-              {isEditing ? (
-                <div className="space-y-3 flex flex-col items-center md:items-start w-full">
-                  <input
-                    type="text"
-                    value={editData.name}
-                    onChange={(e) => handleChange("name", e.target.value)}
-                    className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/80 border-2 border-brand/20 rounded-xl px-4 py-2.5 w-full max-w-lg focus:border-brand focus:ring-4 focus:ring-brand/20 transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                    placeholder="Student Name"
-                  />
-                </div>
-              ) : (
-                <>
-                  <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight truncate">{studentData.name || "Student Name"}</h1>
-                  <p className="text-lg text-slate-600 dark:text-slate-400 mt-1 font-medium italic">
-                    {studentData.college || "No University set"}
-                  </p>
-                </>
-              )}
-              
-              <div className="mt-4 inline-flex flex-wrap items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 shadow-sm">
-                <GraduationCap className="h-4 w-4 text-brand dark:text-brand-300" />
-                {studentData.course || "Course"} <span className="opacity-40">•</span> {studentData.branch || "Branch"} <span className="opacity-40">•</span> Semester {studentData.semester || "-"}
-              </div>
-
-              <div className="mt-6 sm:mt-8 flex flex-col xl:flex-row gap-4 items-center md:items-start justify-center md:justify-start w-full">
-                
-                {/* Email Section */}
-                <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 flex-1 bg-slate-50/80 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 hover:border-brand/30 dark:hover:border-brand/30 transition-colors">
-                    <div className="p-3 bg-brand/10 text-brand dark:text-brand-300 rounded-xl">
-                      <Mail className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col gap-3 w-full">
-                      <div className="flex flex-col w-full text-center sm:text-left">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Private Email</span>
-                        {isEditing ? (
-                          <input
-                            type="email"
-                            value={editData.privateEmail}
-                            onChange={(e) => handleChange("privateEmail", e.target.value)}
-                            className="bg-white dark:bg-slate-900 border-2 border-brand/20 rounded-lg px-3 py-1.5 text-sm font-medium focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none mt-1 w-full placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                            placeholder="Private email"
-                          />
-                        ) : (
-                          <span className="text-[15px] font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{studentData.privateEmail || "—"}</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col w-full text-center sm:text-left">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">University Email</span>
-                        {isEditing ? (
-                          <input
-                            type="email"
-                            value={editData.universityEmail}
-                            onChange={(e) => handleChange("universityEmail", e.target.value)}
-                            className="bg-white dark:bg-slate-900 border-2 border-brand/20 rounded-lg px-3 py-1.5 text-sm font-medium focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none mt-1 w-full placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                            placeholder="University email"
-                          />
-                        ) : (
-                          <span className="text-[15px] font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{studentData.universityEmail || "—"}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Phone Section */}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 flex-1 bg-slate-50/80 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 hover:border-brand/30 dark:hover:border-brand/30 transition-colors h-full">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-xl flex-shrink-0">
-                      <Phone className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col w-full text-center sm:text-left">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Phone Number</span>
-                      {isEditing ? (
-                        <div className="flex gap-1.5 mt-1 w-full">
-                          <select
-                            value={(() => {
-                              const phone = editData.phone || "";
-                              const found = countryCodes.find(c => phone.startsWith(c.code));
-                              return found ? found.code : "+91";
-                            })()}
-                            onChange={(e) => {
-                              const currentPhone = editData.phone || "";
-                              const found = countryCodes.find(c => currentPhone.startsWith(c.code));
-                              const numOnly = found ? currentPhone.slice(found.code.length).trim() : currentPhone.replace(/^\+\d+\s*/, "").trim();
-                              handleChange("phone", `${e.target.value} ${numOnly}`.trim());
-                            }}
-                            className="bg-white dark:bg-slate-900 border-2 border-brand/20 rounded-lg px-2 py-1.5 text-sm font-medium focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none w-[70px] cursor-pointer"
-                          >
-                            {countryCodes.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                          </select>
-                          <input
-                            type="tel"
-                            value={(() => {
-                              const phone = editData.phone || "";
-                              const found = countryCodes.find(c => phone.startsWith(c.code));
-                              return found ? phone.slice(found.code.length).trim() : phone.replace(/^\+\d+\s*/, "").trim();
-                            })()}
-                            onChange={(e) => {
-                              const currentPhone = editData.phone || "";
-                              const found = countryCodes.find(c => currentPhone.startsWith(c.code));
-                              const code = found ? found.code : "+91";
-                              const newVal = e.target.value.replace(/^\+\d+\s*/, "").trim();
-                              handleChange("phone", `${code} ${newVal}`.trim());
-                            }}
-                            className="bg-white dark:bg-slate-900 border-2 border-brand/20 rounded-lg px-3 py-1.5 text-sm font-medium focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none flex-1 min-w-0 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                            placeholder="Phone number"
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-[15px] font-semibold text-slate-800 dark:text-slate-100 mt-1">{studentData.phone || "—"}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Personal Information */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-4 sm:p-6 md:p-8 relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 blur-3xl rounded-full pointer-events-none"></div>
-        <div className="flex items-center gap-3 mb-6 relative z-10">
-          <div className="p-2.5 bg-brand/10 text-brand dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-            <User className="h-5 w-5" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            Personal Information
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-          <EditableInfoCard
-            icon={Calendar}
-            label="Date of Birth"
-            value={studentData.dob}
-            editValue={editData.dob}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("dob", val)}
-            type="date"
-          />
-          <EditableInfoCard
-            icon={User}
-            label="Age"
-            value={studentData.age ? `${studentData.age} years` : ""}
-            editValue={editData.age}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("age", val)}
-            type="number"
-          />
-          <EditableInfoCard
-            icon={Heart}
-            label="Blood Group"
-            value={studentData.bloodGroup}
-            editValue={editData.bloodGroup}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("bloodGroup", val)}
-          />
-          <EditableInfoCard
-            icon={User}
-            label="Gender"
-            value={studentData.gender}
-            editValue={editData.gender}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("gender", val)}
-            type="select"
-            options={[
-              { value: "Male", label: "Male" },
-              { value: "Female", label: "Female" },
-              { value: "Other", label: "Other" },
-              { value: "Prefer not to say", label: "Prefer not to say" }
-            ]}
-          />
-          <EditableInfoCard
-            icon={MapPin}
-            label="Address"
-            value={studentData.address}
-            editValue={editData.address}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("address", val)}
-            className="md:col-span-2"
-            multiline
-          />
-        </div>
-      </motion.div>
-
-      {/* Academic Details */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-4 sm:p-6 md:p-8 relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none"></div>
-        <div className="flex items-center gap-3 mb-6 relative z-10">
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-            <Building2 className="h-5 w-5" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            Academic Details
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-          <EditableInfoCard
-            icon={Building2}
-            label="College"
-            value={studentData.college}
-            editValue={editData.college}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("college", val)}
-          />
-          <EditableInfoCard
-            icon={BookOpen}
-            label="Course"
-            value={studentData.course}
-            editValue={editData.course}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("course", val)}
-          />
-          <EditableInfoCard
-            icon={GraduationCap}
-            label="Branch"
-            value={studentData.branch}
-            editValue={editData.branch}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("branch", val)}
-          />
-          <EditableInfoCard
-            icon={Calendar}
-            label="Current Semester"
-            value={studentData.semester}
-            editValue={editData.semester}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("semester", val)}
-          />
-          <EditableInfoCard
-            icon={Calendar}
-            label="Batch"
-            value={studentData.batch}
-            editValue={editData.batch}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("batch", val)}
-          />
-          <EditableInfoCard
-            icon={User}
-            label="Enrollment No."
-            value={studentData.rollNumber}
-            editValue={editData.rollNumber}
-            isEditing={isEditing}
-            onChange={(val) => handleChange("rollNumber", val)}
-          />
-        </div>
-      </motion.div>
-
-      {/* Parents/Guardian Information Wrapper */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Family Information */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 md:p-8 relative overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 blur-3xl rounded-full pointer-events-none"></div>
-          <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="p-2.5 bg-rose-50 text-rose-600 dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(244,63,94,0.2)]">
-              <Users className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Family Information
-            </h2>
+        {/* Content Row */}
+        <div className="px-8 pb-8 pt-0 flex flex-col sm:flex-row items-center sm:items-end gap-8 relative">
+          <div className="relative group shrink-0 -mt-16 z-10">
+            <UserAvatar 
+              name={studentData.name} 
+              src={avatarUrl}
+              className="w-32 h-32 rounded-[30px] shadow-xl border-4 border-white dark:border-slate-900 bg-white"
+            />
+            {isEditing && (
+              <label className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-sm rounded-[30px] opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
+                <Camera className="h-7 w-7 text-white" />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setAvatarUrl)} />
+              </label>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-            <EditableInfoCard
-              icon={User}
-              label="Father's Name"
-              value={studentData.fatherName}
-              editValue={editData.fatherName}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("fatherName", val)}
-            />
-            <EditableInfoCard
-              icon={Phone}
-              label="Father's Phone"
-              value={studentData.fatherPhone}
-              editValue={editData.fatherPhone}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("fatherPhone", val)}
-              type="tel"
-            />
-            <EditableInfoCard
-              icon={User}
-              label="Mother's Name"
-              value={studentData.motherName}
-              editValue={editData.motherName}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("motherName", val)}
-            />
-            <EditableInfoCard
-              icon={Phone}
-              label="Mother's Phone"
-              value={studentData.motherPhone}
-              editValue={editData.motherPhone}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("motherPhone", val)}
-              type="tel"
-            />
-          </div>
-        </motion.div>
-
-        {/* Emergency Contact */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 md:p-8 relative overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-3xl rounded-full pointer-events-none"></div>
-          <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="p-2.5 bg-amber-50 text-amber-600 dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm dark:shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-              <Shield className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Emergency Contact
-            </h2>
-          </div>
-
-          <div className="grid gap-5 grid-cols-1 md:grid-cols-2 relative z-10">
-            <EditableInfoCard
-              icon={User}
-              label="Contact Person Name"
-              value={studentData.emergencyContactName}
-              editValue={editData.emergencyContactName}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("emergencyContactName", val)}
-            />
-            <EditableInfoCard
-              icon={Phone}
-              label="Emergency Number"
-              value={studentData.emergencyContactPhone}
-              editValue={editData.emergencyContactPhone}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("emergencyContactPhone", val)}
-              type="tel"
-            />
-            <EditableInfoCard
-              icon={User}
-              label="Relation"
-              value={studentData.emergencyContactRelation}
-              editValue={editData.emergencyContactRelation}
-              isEditing={isEditing}
-              onChange={(val) => handleChange("emergencyContactRelation", val)}
-              className="md:col-span-2"
-            />
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
-  );
-}
-
-// Editable Info Card component
-function EditableInfoCard({ 
-  icon: Icon, 
-  label, 
-  value, 
-  editValue, 
-  isEditing, 
-  onChange, 
-  className = "", 
-  type = "text", 
-  multiline = false,
-  options = []
-}) {
-  return (
-    <div className={`group relative p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 hover:border-brand/40 dark:hover:border-brand/40 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)] overflow-hidden ${className}`}>
-      
-      {/* Decorative gradient blob */}
-      <div className="absolute -right-6 -top-6 w-24 h-24 bg-brand/5 rounded-full blur-2xl group-hover:bg-brand/10 transition-colors duration-500"></div>
-
-      <div className="flex flex-col gap-3 relative z-10">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-brand dark:group-hover:text-slate-200 group-hover:bg-brand/10 transition-colors duration-300 flex items-center justify-center flex-shrink-0">
-              <Icon className="h-4 w-4" />
-            </div>
-          )}
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-        </div>
-        
-        <div className="flex-1 min-w-0 pl-1">
+        <div className="flex-1 text-center sm:text-left space-y-1.5">
           {isEditing ? (
-            multiline ? (
-              <textarea
-                value={editValue}
-                onChange={(e) => onChange(e.target.value)}
-                rows="2"
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-4 py-2.5 resize-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              />
-            ) : type === "tel" ? (
-              <div className="flex gap-2 w-full mt-1.5">
-                <select
-                  value={(() => {
-                    const phone = editValue || "";
-                    const codes = ["+1", "+44", "+91", "+61", "+86"];
-                    const found = codes.find(c => phone.startsWith(c));
-                    return found || "+91";
-                  })()}
-                  onChange={(e) => {
-                    const currentPhone = editValue || "";
-                    const codes = ["+1", "+44", "+91", "+61", "+86"];
-                    const found = codes.find(c => currentPhone.startsWith(c));
-                    const numOnly = found ? currentPhone.slice(found.length).trim() : currentPhone.replace(/^\+\d+\s*/, "").trim();
-                    onChange(`${e.target.value} ${numOnly}`.trim());
-                  }}
-                  className="bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none w-20 focus:border-brand transition-all cursor-pointer"
-                >
-                  <option value="+1">+1</option>
-                  <option value="+44">+44</option>
-                  <option value="+91">+91</option>
-                  <option value="+61">+61</option>
-                  <option value="+86">+86</option>
-                </select>
-                <input
-                  type="tel"
-                  value={(() => {
-                    const phone = editValue || "";
-                    const codes = ["+1", "+44", "+91", "+61", "+86"];
-                    const found = codes.find(c => phone.startsWith(c));
-                    return found ? phone.slice(found.length).trim() : phone.replace(/^\+\d+\s*/, "").trim();
-                  })()}
-                  onChange={(e) => {
-                    const currentPhone = editValue || "";
-                    const codes = ["+1", "+44", "+91", "+61", "+86"];
-                    const found = codes.find(c => currentPhone.startsWith(c));
-                    const code = found || "+91";
-                    const newVal = e.target.value.replace(/^\+\d+\s*/, "").trim();
-                    onChange(`${code} ${newVal}`.trim());
-                  }}
-                  className="flex-1 w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-3 py-2.5 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-brand transition-all min-w-0"
-                  placeholder="Phone number"
-                />
-              </div>
-            ) : type === "select" ? (
-              <select
-                value={editValue}
-                onChange={(e) => onChange(e.target.value)}
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-4 py-2.5 mt-1.5 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none cursor-pointer appearance-none"
-              >
-                <option value="" disabled>Select {label}</option>
-                {options && options.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type={type}
-                value={editValue}
-                onChange={(e) => onChange(e.target.value)}
-                className="w-full text-sm font-semibold text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-900 border-2 border-brand/20 rounded-xl px-4 py-2.5 mt-1.5 focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              />
-            )
+             <input 
+                type="text" 
+                value={editData.name} 
+                onChange={(e) => setEditData({...editData, name: e.target.value})} 
+                className="text-3xl font-black bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-2 border border-slate-200 dark:border-slate-700 outline-none w-full max-w-md dark:text-white"
+                placeholder="Student Name"
+             />
           ) : (
-            <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-100 break-words leading-relaxed">{value || "—"}</p>
+             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">{studentData.name || "Student Node"}</h2>
           )}
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{studentData.rollNumber || "NO ID SET"}</p>
+        </div>
+
+        <div className="flex flex-col sm:items-end gap-4 shrink-0">
+           {!isEditing ? (
+             <button onClick={handleEdit} className="w-full sm:w-auto px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl transition-all hover:scale-105 flex justify-center items-center gap-2">
+               <Edit2 size={16} /> Edit Profile
+             </button>
+           ) : (
+             <div className="flex gap-3">
+               <button onClick={handleCancel} className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all">Abort</button>
+               <button onClick={handleSave} className="flex justify-center items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all hover:scale-105">
+                 <Save size={16} /> Commit
+               </button>
+             </div>
+           )}
+        </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-// Read-only Info Card component (used interchangeably conceptually, kept for strict legacy support if needed)
-function InfoCard({ icon: Icon, label, value, className = "" }) {
-  return (
-    <div className={`group relative p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 hover:border-brand/40 dark:hover:border-brand/40 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)] overflow-hidden ${className}`}>
-      
-      {/* Decorative gradient blob */}
-      <div className="absolute -right-6 -top-6 w-24 h-24 bg-brand/5 rounded-full blur-2xl group-hover:bg-brand/10 transition-colors duration-500"></div>
-
-      <div className="flex flex-col gap-3 relative z-10">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-brand dark:group-hover:text-slate-200 group-hover:bg-brand/10 transition-colors duration-300 flex items-center justify-center flex-shrink-0">
-              <Icon className="h-4 w-4" />
+      {/* COMPACT UNIFIED DATA CARD */}
+      <div className="bg-white dark:bg-slate-900 rounded-[30px] border border-slate-200/60 dark:border-slate-800 shadow-sm p-8 sm:p-10">
+         
+         {/* Academic Section */}
+         <div className="mb-10">
+            <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">Academic Details</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-6">
+                <DenseField label="Institution" value={studentData.college} isEditing={isEditing} editValue={editData.college} onChange={v => setEditData({...editData, college: v})} />
+                <DenseField label="Course" value={studentData.course} isEditing={isEditing} editValue={editData.course} onChange={v => setEditData({...editData, course: v})} />
+                <DenseField label="Branch" value={studentData.branch} isEditing={isEditing} editValue={editData.branch} onChange={v => setEditData({...editData, branch: v})} />
+                <DenseField label="Semester" value={studentData.semester} isEditing={isEditing} editValue={editData.semester} onChange={v => setEditData({...editData, semester: v})} />
+                <DenseField label="Batch" value={studentData.batch} isEditing={isEditing} editValue={editData.batch} onChange={v => setEditData({...editData, batch: v})} />
+                <DenseField label="Enrolment No" value={studentData.rollNumber} isEditing={isEditing} editValue={editData.rollNumber} onChange={v => setEditData({...editData, rollNumber: v})} />
             </div>
-          )}
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-        </div>
-        
-        <div className="flex-1 min-w-0 pl-1">
-          <p className="text-[15px] font-semibold text-slate-900 dark:text-slate-100 break-words leading-relaxed">{value || "—"}</p>
-        </div>
+         </div>
+
+         {/* Personal Section */}
+         <div>
+            <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">Personal & Contact</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-6">
+                <DenseField label="Date of Birth" value={studentData.dob} isEditing={isEditing} editValue={editData.dob} onChange={v => setEditData({...editData, dob: v})} type="date" />
+                <DenseField label="Gender" value={studentData.gender} isEditing={isEditing} editValue={editData.gender} onChange={v => setEditData({...editData, gender: v})} type="select" options={["Male", "Female", "Other", "Unknown"]} />
+                <DenseField label="Phone" value={studentData.phone} isEditing={isEditing} editValue={editData.phone} onChange={v => setEditData({...editData, phone: v})} />
+                <DenseField label="University Email" value={studentData.universityEmail} isEditing={isEditing} editValue={editData.universityEmail} onChange={v => setEditData({...editData, universityEmail: v})} />
+                <DenseField label="Private Email" value={studentData.privateEmail} isEditing={isEditing} editValue={editData.privateEmail} onChange={v => setEditData({...editData, privateEmail: v})} />
+            </div>
+         </div>
+
       </div>
     </div>
   );
 }
+
+function DenseField({ label, value, isEditing, editValue, onChange, type="text", options=[] }) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</label>
+        {isEditing ? (
+           type === "select" ? (
+            <select value={editValue} onChange={e => onChange(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-black text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all">
+              <option value="">Select</option>
+              {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          ) : (
+            <input type={type} value={editValue} onChange={e => onChange(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-black text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all" />
+          )
+        ) : (
+           <p className="text-base font-black text-slate-800 dark:text-slate-200 truncate tracking-tight">{value || "—"}</p>
+        )}
+      </div>
+    );
+  }

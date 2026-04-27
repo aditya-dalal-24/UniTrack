@@ -18,7 +18,6 @@ export default function AppLayout() {
         setMobileOpen={setMobileOpen}
       />
       <div className="flex flex-col flex-1 min-w-0 transition-all duration-300 overflow-y-auto">
-        <Topbar />
         {/* pb-20 on mobile to avoid content being hidden behind the bottom nav bar */}
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6 w-full flex flex-col gap-6">
           <Outlet />

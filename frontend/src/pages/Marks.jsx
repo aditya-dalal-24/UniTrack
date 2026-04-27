@@ -6,12 +6,16 @@ import {
   Calendar,
   BookOpen,
   Plus,
-  Calculator,
-  ChevronDown,
-  Edit2,
   Trash2,
   X,
   Save,
+  GraduationCap,
+  Target,
+  Layers,
+  Check,
+  Search,
+  Filter,
+  MoreVertical,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -32,37 +36,156 @@ const calculateGrade = (totalMarks) => {
 };
 
 const getGradeColor = (grade) => {
-  if (!grade || grade === "-") return "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-500 dark:border-slate-800";
-  
+  if (!grade || grade === "-") return "text-slate-400";
   const g = grade.toUpperCase();
   switch (g) {
-    case "O":
-      return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800/50";
-    case "A+":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50";
-    case "A":
-      return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/50";
-    case "B+":
-      return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50";
-    case "B":
-      return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50";
-    case "C":
-      return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800/50";
-    case "P":
-      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-800/50";
-    case "F":
-      return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50";
-    default:
-      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-800/50";
+    case "O": return "text-purple-500";
+    case "A+": return "text-emerald-500";
+    case "A": return "text-green-500";
+    case "B+": return "text-blue-500";
+    case "B": return "text-amber-500";
+    case "C": return "text-orange-500";
+    case "P": return "text-slate-500";
+    case "F": return "text-red-500";
+    default: return "text-slate-500";
   }
 };
 
-// Calculate final marks: 25% mid-sem + 25% internals + 50% end-sem
 const calculateFinalMarks = (midSem, internals, endSem) => {
   const midSemContribution = (midSem / 25) * 25;
   const internalsContribution = (internals / 25) * 25;
   const endSemContribution = (endSem / 100) * 50;
   return midSemContribution + internalsContribution + endSemContribution;
+};
+
+const LedgerRow = ({ mark, onUpdate, onDelete }) => {
+  const [localMarks, setLocalMarks] = useState({
+    midSem: mark.midSem ?? "",
+    internals: mark.internals ?? "",
+    endSem: mark.endSem ?? ""
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    setLocalMarks({
+      midSem: mark.midSem ?? "",
+      internals: mark.internals ?? "",
+      endSem: mark.endSem ?? ""
+    });
+    setHasChanges(false);
+  }, [mark]);
+
+  const handleInputChange = (field, value) => {
+    setLocalMarks(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  const handleQuickSave = async () => {
+    setIsSaving(true);
+    const midSemVal = parseFloat(localMarks.midSem) || 0;
+    const internalsVal = parseFloat(localMarks.internals) || 0;
+    const endSemVal = parseFloat(localMarks.endSem) || 0;
+    const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal);
+    const { grade, points } = calculateGrade(finalScore);
+
+    const payload = {
+      subjectName: mark.subjectName,
+      subjectCode: mark.subjectCode,
+      semester: mark.semester,
+      credits: mark.credits,
+      midSem: midSemVal,
+      internals: internalsVal,
+      endSem: endSemVal,
+      finalScore,
+      grade,
+      gradePoints: points
+    };
+
+    await onUpdate(mark.id, payload, mark.isNew);
+    setIsSaving(false);
+    setHasChanges(false);
+  };
+
+  const aggregateScore = calculateFinalMarks(
+    parseFloat(localMarks.midSem) || 0,
+    parseFloat(localMarks.internals) || 0,
+    parseFloat(localMarks.endSem) || 0
+  );
+  const { grade: localGrade } = calculateGrade(aggregateScore);
+
+  return (
+    <motion.tr 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="group border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all"
+    >
+      <td className="py-5 px-4 text-center">
+        <div className="flex flex-col items-center justify-center">
+            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{mark.subjectName}</p>
+            <p className="text-[10px] font-bold text-slate-400 truncate max-w-[150px]">{mark.subjectFullName || "General Node"}</p>
+        </div>
+      </td>
+      
+      <td className="py-5 px-4 text-center">
+        <span className="text-xs font-black text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/30 px-3 py-1 rounded-lg border border-pink-100 dark:border-pink-900/20">
+          {mark.credits}
+        </span>
+      </td>
+
+      {/* INLINE INPUTS */}
+      {["midSem", "internals", "endSem"].map((field) => (
+        <td key={field} className="py-5 px-4 text-center">
+          <div className="flex justify-center">
+            <input 
+              type="number"
+              value={localMarks[field]}
+              onChange={(e) => handleInputChange(field, e.target.value)}
+              className="w-16 bg-white dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-lg py-1.5 px-2 text-xs font-black text-center text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all shadow-sm"
+              placeholder="-"
+            />
+          </div>
+        </td>
+      ))}
+
+      <td className="py-5 px-4 text-center">
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+            {mark.isNew && !hasChanges ? "-" : aggregateScore.toFixed(1)}
+          </span>
+        </div>
+      </td>
+
+      <td className="py-5 px-4 text-center">
+        <div className="flex justify-center">
+            <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black text-base border-2 border-slate-100 dark:border-slate-800 ${getGradeColor(mark.isNew && !hasChanges ? "-" : localGrade)}`}>
+            {mark.isNew && !hasChanges ? "-" : localGrade}
+            </div>
+        </div>
+      </td>
+
+      <td className="py-5 px-4 text-center">
+        <div className="flex items-center justify-center gap-2">
+          {hasChanges ? (
+            <button
+              onClick={handleQuickSave}
+              disabled={isSaving}
+              className="h-9 px-4 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+            >
+              {isSaving ? <LoadingSpinner size="xs" /> : <><Save size={14} /> Commit</>}
+            </button>
+          ) : (
+            <button
+                onClick={() => onDelete(mark.id, mark.subjectName)}
+                className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all border border-slate-100 dark:border-slate-700 opacity-0 group-hover:opacity-100"
+            >
+                <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </td>
+    </motion.tr>
+  );
 };
 
 export default function Marks() {
@@ -71,7 +194,6 @@ export default function Marks() {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
     return parseInt(userData.semester) || 1;
   });
-  const [selectedExamType, setSelectedExamType] = useState("All");
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -80,11 +202,12 @@ export default function Marks() {
   
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [editingMark, setEditingMark] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [newMark, setNewMark] = useState({
     subjectName: "",
     subjectCode: "",
-    credits: "3", // Keep as string for consistent UX
+    credits: "3",
     midSem: "",
     internals: "",
     endSem: ""
@@ -148,6 +271,19 @@ export default function Marks() {
     fetchMarks();
   }, [selectedSemester]);
 
+  const handleUpdateInline = async (id, payload, isNew) => {
+    const { error: apiError } = isNew 
+      ? await api.addMarks(payload)
+      : await api.updateMarks(id, payload);
+
+    if (apiError) {
+      alert(apiError);
+      return;
+    }
+    await fetchMarks(false);
+    invalidateDashboard();
+  };
+
   const handleAddNewGlobalSubject = async () => {
     if (!globalSubjectTarget.name) return alert("Subject Name required");
     const { data, error } = await api.addSubject({ ...globalSubjectTarget, semester: selectedSemester });
@@ -162,30 +298,10 @@ export default function Marks() {
     }
   };
 
-  const handleDeleteMark = async (id, name) => {
-    if (!confirm(`Are you sure you want to delete the marks record for ${name}?`)) return;
-    const { error } = await api.deleteMarks(id);
-    if (error) {
-      alert(error);
-    } else {
-      fetchMarks(false);
-      invalidateDashboard();
-    }
-  };
-
-  const handleDeleteSubject = async (tempId, name) => {
-    if (!confirm(`Are you sure you want to remove "${name}" from the marks table? (It will not be deleted from the schedule)`)) return;
-    const subjectId = tempId.replace("new-", "");
-    const newHidden = [...hiddenSubjects, subjectId];
-    setHiddenSubjects(newHidden);
-    localStorage.setItem("hiddenMarksSubjects", JSON.stringify(newHidden));
-  };
-
   const saveMark = async () => {
     const midSemVal = parseFloat(newMark.midSem) || 0;
     const internalsVal = parseFloat(newMark.internals) || 0;
     const endSemVal = parseFloat(newMark.endSem) || 0;
-
     const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal);
     const { grade, points } = calculateGrade(finalScore);
 
@@ -202,33 +318,11 @@ export default function Marks() {
       gradePoints: points
     };
 
-    // Optimistic UI Update
-    const prevSummary = { ...marksSummary };
-    if (editingMark) {
-      setMarksSummary({
-        ...marksSummary,
-        marks: marksSummary.marks.map(m => m.id === editingMark.id ? { ...payload, id: editingMark.id } : m)
-      });
-    } else {
-      const tempId = Date.now();
-      const newMarksArray = [...(marksSummary?.marks || []), { ...payload, id: tempId, isOptimistic: true }];
-      setMarksSummary({
-        ...(marksSummary || {}),
-        marks: newMarksArray
-      });
-    }
-
-    let apiError;
-    if (editingMark) {
-      const resp = await api.updateMarks(editingMark.id, payload);
-      apiError = resp.error;
-    } else {
-      const resp = await api.addMarks(payload);
-      apiError = resp.error;
-    }
+    const { error: apiError } = editingMark 
+      ? await api.updateMarks(editingMark.id, payload)
+      : await api.addMarks(payload);
 
     if (apiError) {
-      setMarksSummary(prevSummary); // Rollback
       alert(apiError);
       return;
     }
@@ -240,36 +334,15 @@ export default function Marks() {
     setShowSubjectModal(false);
   };
 
-  const deleteMark = async (id) => {
-    if (confirm("Are you sure you want to delete this record?")) {
-      const prevSummary = { ...marksSummary };
-      setMarksSummary({
-        ...marksSummary,
-        marks: marksSummary.marks.filter(m => m.id !== id)
-      }); // Optimistic UI
-
-      const { error: apiError } = await api.deleteMarks(id);
-      if (apiError) {
-        setMarksSummary(prevSummary); // Rollback
-        alert(apiError);
-        return;
-      }
-      await fetchMarks(false);
-      invalidateDashboard();
+  const deleteMark = async (id, name) => {
+    if (!confirm(`Delete marks record for ${name}?`)) return;
+    const { error: apiError } = await api.deleteMarks(id);
+    if (apiError) {
+      alert(apiError);
+      return;
     }
-  };
-
-  const startEditMark = (mark) => {
-    setEditingMark(mark);
-    setNewMark({
-      subjectName: mark.subjectName,
-      subjectCode: mark.subjectCode || "",
-      credits: (mark.credits || 3).toString(),
-      midSem: (mark.midSem || "").toString(),
-      internals: (mark.internals || "").toString(),
-      endSem: (mark.endSem || "").toString(),
-    });
-    setShowSubjectModal(true);
+    await fetchMarks(false);
+    invalidateDashboard();
   };
 
   const cgpa = marksSummary?.cgpa || 0;
@@ -287,445 +360,360 @@ export default function Marks() {
       }
       return {
         ...m,
-        credits: ttCount || m.credits || 3
+        subjectFullName: matchedSub?.fullName || "",
+        credits: ttCount || m.credits || 3,
+        semester: selectedSemester
       };
     });
     
-    // Add missing subjects from the semester-specific subjects list
     if (Array.isArray(subjects)) {
       subjects.forEach(sub => {
         if (!sub.name) return;
-        const hasMark = existingMarks.some(m => 
-          (m.subjectName || "").trim().toLowerCase() === sub.name.trim().toLowerCase()
-        );
+        const hasMark = existingMarks.some(m => (m.subjectName || "").trim().toLowerCase() === sub.name.trim().toLowerCase());
         if (!hasMark && !hiddenSubjects.includes(sub.id.toString())) {
           const ttCount = timetableCredits[`id_${sub.id}`] || timetableCredits[`name_${sub.name.trim().toLowerCase()}`];
           result.push({
             id: `new-${sub.id}`,
             subjectName: sub.name,
+            subjectFullName: sub.fullName || "",
             subjectCode: sub.courseCode || "",
             credits: ttCount || 3, 
-            midSem: null,
-            internals: null,
-            endSem: null,
-            finalScore: 0,
-            grade: "-",
-            gradePoints: 0,
-            isNew: true
+            midSem: null, internals: null, endSem: null, finalScore: 0, grade: "-", gradePoints: 0, isNew: true,
+            semester: selectedSemester
           });
         }
       });
     }
-    
     return result.sort((a, b) => (a.subjectName || "").localeCompare(b.subjectName || ""));
-  }, [marksSummary, subjects, timetableCredits]);
+  }, [marksSummary, subjects, timetableCredits, selectedSemester]);
 
-  const marks = mergedMarks;
+  const filteredMarks = mergedMarks.filter(m => (m.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) || m.subjectCode.toLowerCase().includes(searchQuery.toLowerCase())));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-12 font-sans">
       <PageHeader
         title="Academic Performance"
-        description="Track marks, calculate grades, and monitor SGPA/CGPA."
+        description="Monitor your grades and trajectory with high-precision ledger cards."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => {
-                    setEditingMark(null);
-                    setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
-                    setShowSubjectModal(true);
-                  }}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Subject Marks
-                </button>
-          </div>
+          <button
+            onClick={() => {
+              setEditingMark(null);
+              setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
+              setShowSubjectModal(true);
+            }}
+            className="group relative inline-flex items-center gap-2 rounded-2xl bg-brand text-white px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 transition-all hover:scale-105 active:scale-95 overflow-hidden"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Subject Marks</span>
+          </button>
         }
       />
 
-      {loading && <LoadingSpinner message="Loading marks..." />}
+      {loading && <LoadingSpinner message="Decrypting Academic Node..." />}
       {error && <ErrorMessage message={error} onRetry={fetchMarks} />}
 
       {!loading && !error && (
-        <>
-          {/* SGPA/CGPA Summary */}
+        <div className="space-y-10">
+          {/* Summary Grid */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark dark:bg-none dark:bg-white p-6 shadow-lg text-white dark:text-slate-900 border border-transparent dark:border-slate-100"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-white/20 dark:bg-brand/10 flex items-center justify-center text-white dark:text-brand">
-                  <Award className="h-6 w-6" />
+            {[
+              { label: "Overall CGPA", value: cgpa.toFixed(2), icon: Award, color: "blue" },
+              { label: "Current SGPA", value: currentSgpa.toFixed(2), icon: TrendingUp, color: "emerald" },
+              { label: "Total Subjects", value: subjects.length, icon: Layers, color: "orange" },
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 transition-all hover:shadow-2xl"
+              >
+                <div className={`absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-20 group-hover:opacity-30 transition-all group-hover:scale-150
+                  ${stat.color === 'blue' ? 'bg-blue-500' : ''}
+                  ${stat.color === 'emerald' ? 'bg-emerald-500' : ''}
+                  ${stat.color === 'orange' ? 'bg-orange-500' : ''}
+                `} />
+                <div className="relative flex items-center gap-4">
+                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center shadow-inner border border-transparent
+                    ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/20' : ''}
+                    ${stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/20' : ''}
+                    ${stat.color === 'orange' ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/20' : ''}
+                  `}>
+                    <stat.icon className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{stat.label}</p>
+                    <p className={`text-2xl font-black 
+                      ${stat.color === 'blue' ? 'text-blue-600 dark:text-blue-400' : 
+                        stat.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : 
+                        stat.color === 'orange' ? 'text-orange-600 dark:text-orange-400' : 
+                        'text-slate-900 dark:text-white'}
+                    `}>
+                      {stat.value}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-white/80 dark:text-slate-500 font-medium">Overall CGPA</p>
-                  <p className="text-3xl font-bold">{(cgpa || 0).toFixed(2)}</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="rounded-2xl bg-gradient-to-br from-teal-600 to-blue-700 p-6 shadow-lg text-white"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm text-white/80 font-medium">Current SGPA</p>
-                  <p className="text-3xl font-bold">{(currentSgpa || 0).toFixed(2)}</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-accent/10 text-accent dark:text-accent-light flex items-center justify-center">
-                  <BookOpen className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Subjects</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                    {subjects.length}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            ))}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60"
+              className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900/80 backdrop-blur-sm p-4 shadow-sm border border-slate-200/60 dark:border-slate-700 transition-all hover:shadow-2xl flex flex-col justify-center"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
-                  <Calendar className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Semester</p>
-                  <select
-                    value={selectedSemester}
-                    onChange={(e) => setSelectedSemester(parseInt(e.target.value))}
-                    className="mt-1 bg-transparent border-none text-xl font-bold text-slate-900 dark:text-slate-100 focus:ring-0 p-0 cursor-pointer"
+              <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-5 bg-slate-400 dark:bg-white group-hover:scale-150 transition-all group-hover:opacity-10" />
+              <div className="flex justify-between items-center mb-3 px-1">
+                <p className="text-[12px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Timeline Bar</p>
+                <p className="text-[10px] font-black text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">SEM {selectedSemester}</p>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 relative">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                  <button
+                    key={sem}
+                    onClick={() => setSelectedSemester(sem)}
+                    className={`h-7 rounded-lg text-[10px] font-black transition-all ${
+                      selectedSemester === sem
+                        ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg scale-105"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border border-transparent dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                    }`}
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                      <option key={sem} value={sem} className="text-base text-slate-900 dark:text-slate-100">
-                        Semester {sem}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    S{sem}
+                  </button>
+                ))}
               </div>
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden"
-          >
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4 sm:mb-0">
-                Detailed Marks
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {["All", "Mid-Sem", "Internals", "End-Sem"].map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedExamType(type)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      selectedExamType === type
-                        ? "bg-brand text-white shadow-md shadow-brand/20"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
+          {/* CONTROL CENTER */}
+          <div className="flex flex-col md:flex-row gap-8 items-end justify-between px-2">
+            <div className="flex-[2] w-full space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-8 bg-slate-900 dark:bg-white rounded-full" />
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">
+                  Search By Subject Name
+                </h3>
+              </div>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <BookOpen className="h-5 w-5 text-slate-400 group-focus-within:text-brand transition-colors" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Filter by subject name or code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[20px] py-4 pl-14 pr-6 text-sm font-bold focus:border-brand focus:ring-0 transition-all dark:text-white shadow-sm hover:shadow-md"
+                />
               </div>
             </div>
 
-            <div className="overflow-x-auto -mx-0">
-              <table className="w-full text-left text-sm whitespace-nowrap min-w-[700px]">
-                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  <tr>
-                    <th className="px-6 py-4 font-bold text-sm">Subject</th>
-                    <th className="px-6 py-4 font-bold text-sm text-center">Credits</th>
-                    {(selectedExamType === "All" || selectedExamType === "Mid-Sem") && (
-                      <th className="px-6 py-4 font-bold text-sm text-center">Mid Sem (25)</th>
-                    )}
-                    {(selectedExamType === "All" || selectedExamType === "Internals") && (
-                      <th className="px-6 py-4 font-bold text-sm text-center">Internals (25)</th>
-                    )}
-                    {(selectedExamType === "All" || selectedExamType === "End-Sem") && (
-                      <th className="px-6 py-4 font-bold text-sm text-center">End Sem (50)</th>
-                    )}
-                    <th className="px-6 py-4 font-bold text-sm text-center">Total (100)</th>
-                    <th className="px-6 py-4 font-bold text-sm text-center">Grade</th>
-                    <th className="px-6 py-4 font-bold text-sm text-center">Points</th>
-                    <th className="px-6 py-4 font-bold text-sm text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {marks.length === 0 ? (
-                    <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center text-slate-500">
-                        <div className="flex flex-col items-center gap-4">
-                          <BookOpen className="h-12 w-12 text-slate-300 dark:text-slate-700" />
-                          <p>No marks recorded for this semester.</p>
-                          <button
-                            onClick={() => {
-                              setEditingMark(null);
-                              setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
-                              setShowSubjectModal(true);
-                            }}
-                            className="inline-flex items-center gap-2 rounded-xl bg-brand/10 text-brand px-4 py-2 text-sm font-semibold hover:bg-brand/20 transition-all"
-                          >
-                            <Plus size={16} />
-                            Add Your First Marks
-                          </button>
-                        </div>
-                       </td>
-                    </tr>
-                  ) : (
-                    marks.map((mark) => (
-                      <tr key={mark.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0">
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="font-bold text-slate-900 dark:text-white text-base">
-                              {mark.subjectName}
-                            </div>
-                            {mark.subjectCode && <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">{mark.subjectCode}</div>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-semibold text-center text-slate-700 dark:text-slate-300">{mark.credits}</td>
-                        {(selectedExamType === "All" || selectedExamType === "Mid-Sem") && (
-                          <td className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-300">{mark.midSem ?? "-"}</td>
-                        )}
-                        {(selectedExamType === "All" || selectedExamType === "Internals") && (
-                          <td className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-300">{mark.internals ?? "-"}</td>
-                        )}
-                        {(selectedExamType === "All" || selectedExamType === "End-Sem") && (
-                          <td className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-300">{mark.endSem ?? "-"}</td>
-                        )}
-                        <td className="px-6 py-4 font-black text-center text-brand dark:text-white text-base">{mark.isNew ? "-" : parseFloat(mark.finalScore || 0).toFixed(2)}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center justify-center rounded-lg px-3 py-1 text-sm font-black shadow-sm border ${getGradeColor(mark.grade)}`}>
-                            {mark.grade}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 font-bold text-center text-slate-700 dark:text-slate-300">{mark.isNew ? "-" : mark.gradePoints}</td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex gap-2 justify-end">
-                            <button 
-                              onClick={() => {
-                                if (mark.isNew) {
-                                  setEditingMark(null);
-                                  setNewMark({ 
-                                    subjectName: mark.subjectName || "", 
-                                    subjectCode: mark.subjectCode || "", 
-                                    credits: (mark.credits || 3).toString(), 
-                                    midSem: "", 
-                                    internals: "", 
-                                    endSem: "" 
-                                  });
-                                  setShowSubjectModal(true);
-                                } else {
-                                  startEditMark(mark);
-                                }
-                              }} 
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                              title={mark.isNew ? "Enter Marks" : "Edit Marks"}
-                            >
-                              {mark.isNew ? <Plus className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
-                            </button>
-                            <button onClick={() => mark.isNew ? handleDeleteSubject(mark.id, mark.subjectName) : handleDeleteMark(mark.id, mark.subjectName)} className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Delete">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="flex-1 w-full space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ledger Completion</p>
+                <p className="text-[10px] font-black text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                  {mergedMarks.filter(m => !m.isNew).length} / {mergedMarks.length} Records
+                </p>
+              </div>
+              <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner border border-slate-200/50 dark:border-slate-700">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(mergedMarks.filter(m => !m.isNew).length / Math.max(mergedMarks.length, 1)) * 100}%` }}
+                  className="h-full bg-slate-900 dark:bg-white rounded-full shadow-lg"
+                />
+              </div>
             </div>
-          </motion.div>
-        </>
+          </div>
+
+          {/* SINGLE CONSOLIDATED LEDGER TABLE */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 px-2">
+                <div className="h-10 w-10 rounded-2xl flex items-center justify-center border shadow-inner bg-indigo-500/10 border-indigo-500/20 text-indigo-500">
+                <Layers className="h-5 w-5" />
+                </div>
+                <div>
+                <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Academic Subject Ledger</h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Sem-0{selectedSemester} Records</p>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-[30px] border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/50 backdrop-blur-xl shadow-sm">
+                <table className="w-full text-left border-collapse">
+                <thead>
+                    <tr className="bg-slate-100/80 dark:bg-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Subject</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">CREDITS</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Mid (25)</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Int (25)</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">End (100)</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Agg</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Grade</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {filteredMarks.length === 0 ? (
+                        <tr>
+                            <td colSpan="8" className="py-20 text-center text-sm font-bold text-slate-400">
+                                No records found matching your search.
+                            </td>
+                        </tr>
+                    ) : (
+                        filteredMarks.map((mark, index) => (
+                            <LedgerRow key={mark.id} mark={mark} onUpdate={handleUpdateInline} onDelete={deleteMark} />
+                        ))
+                    )}
+                </tbody>
+                </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add/Edit Mark Modal */}
       <AnimatePresence>
         {showSubjectModal && (
-          <div 
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm"
-            onClick={() => setShowSubjectModal(false)}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800"
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {editingMark ? "Edit Marks" : "Add Marks"}
-                </h3>
+            <div className="rounded-[40px] bg-white dark:bg-slate-900 shadow-2xl border border-slate-200/60 dark:border-slate-800/60 p-10 overflow-hidden relative w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" 
+                style={{ backgroundImage: `radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)`, backgroundSize: '24px 24px' }} 
+              />
+              
+              <div className="flex items-center justify-between mb-10 relative">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                    {editingMark ? 'Update Marks' : 'Add Subject Marks'}
+                  </h3>
+                  <p className="text-sm font-bold text-slate-400">Input your academic performance for the ledger.</p>
+                </div>
                 <button
                   onClick={() => setShowSubjectModal(false)}
-                  className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                  className="p-4 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-6 w-6" />
                 </button>
               </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Subject Name *</label>
+              
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 relative">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Subject Node</label>
                   {!editingMark ? (
-                    <div className="flex gap-2">
-                       <select
-                         value={newMark.subjectName}
-                         onChange={(e) => {
-                           if (e.target.value === "__add_new__") {
-                             setShowGlobalSubjectModal(true);
-                           } else {
-                             const found = subjects.find(s => s.name === e.target.value);
-                             setNewMark({ ...newMark, subjectName: e.target.value, subjectCode: found ? (found.courseCode || "") : newMark.subjectCode });
-                           }
-                         }}
-                         className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white hover:cursor-pointer"
-                       >
-                         <option value="" disabled>Select a Subject</option>
-                         {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                         <option value="__add_new__" className="font-bold text-brand">+ Add New Subject</option>
-                       </select>
-                    </div>
-                  ) : (
-                    <input
-                      type="text"
+                    <select
                       value={newMark.subjectName}
-                      disabled
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-4 py-3 text-sm outline-none text-slate-500 dark:text-slate-400"
-                    />
+                      onChange={(e) => {
+                        if (e.target.value === "__add_new__") setShowGlobalSubjectModal(true);
+                        else {
+                          const found = subjects.find(s => s.name === e.target.value);
+                          setNewMark({ ...newMark, subjectName: e.target.value, subjectCode: found?.courseCode || "" });
+                        }
+                      }}
+                      className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 px-5 py-3 text-sm font-bold focus:border-brand focus:ring-0 transition-all dark:text-white"
+                    >
+                      <option value="" disabled>Select Subject</option>
+                      {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      <option value="__add_new__">+ Add New Node</option>
+                    </select>
+                  ) : (
+                    <input type="text" value={newMark.subjectName} disabled className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 px-5 py-3 text-sm font-bold text-slate-400" />
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Subject Code</label>
-                    <input
-                      type="text"
-                      value={newMark.subjectCode}
-                      onChange={(e) => setNewMark({ ...newMark, subjectCode: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
-                      placeholder="e.g. CS301"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Credits</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="6"
-                      value={newMark.credits}
-                      onChange={(e) => setNewMark({ ...newMark, credits: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
-                    />
-                  </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Subject Code</label>
+                  <input
+                    type="text"
+                    value={newMark.subjectCode}
+                    onChange={(e) => setNewMark({ ...newMark, subjectCode: e.target.value })}
+                    placeholder="e.g. CS101"
+                    className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 px-5 py-3 text-sm font-bold focus:border-brand focus:ring-0 transition-all dark:text-white"
+                  />
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mid-Sem</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="25"
-                      value={newMark.midSem}
-                      onChange={(e) => setNewMark({ ...newMark, midSem: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Internals</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="25"
-                      value={newMark.internals}
-                      onChange={(e) => setNewMark({ ...newMark, internals: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">End-Sem</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={newMark.endSem}
-                      onChange={(e) => setNewMark({ ...newMark, endSem: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all dark:text-white"
-                    />
-                  </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Credits</label>
+                  <input
+                    type="number"
+                    value={newMark.credits}
+                    onChange={(e) => setNewMark({ ...newMark, credits: e.target.value })}
+                    className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 px-5 py-3 text-sm font-bold focus:border-brand transition-all dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mid-Sem (25)</label>
+                  <input
+                    type="number"
+                    value={newMark.midSem}
+                    onChange={(e) => setNewMark({ ...newMark, midSem: e.target.value })}
+                    className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 px-5 py-3 text-sm font-bold focus:border-brand transition-all dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Internals (25)</label>
+                  <input
+                    type="number"
+                    value={newMark.internals}
+                    onChange={(e) => setNewMark({ ...newMark, internals: e.target.value })}
+                    className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 px-5 py-3 text-sm font-bold focus:border-brand transition-all dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">End-Sem (100)</label>
+                  <input
+                    type="number"
+                    value={newMark.endSem}
+                    onChange={(e) => setNewMark({ ...newMark, endSem: e.target.value })}
+                    className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 px-5 py-3 text-sm font-bold focus:border-brand transition-all dark:text-white"
+                  />
                 </div>
               </div>
 
-              <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+              <div className="flex justify-end gap-4 mt-12 relative">
                 <button
                   onClick={() => setShowSubjectModal(false)}
-                  className="px-4 py-2 font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                  className="px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                 >
-                  Cancel
+                  Abort
                 </button>
                 <button
                   onClick={saveMark}
-                  className="px-4 py-2 bg-brand text-white font-medium rounded-xl hover:bg-brand-dark transition-colors shadow-lg shadow-brand/20 flex items-center gap-2"
+                  className="px-10 py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  Save
+                  {editingMark ? 'Update Ledger' : 'Commit Ledger'}
                 </button>
               </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Global Add Subject Modal */}
       <AnimatePresence>
         {showGlobalSubjectModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowGlobalSubjectModal(false)}>
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <h3 className="text-lg font-bold dark:text-white">New Subject</h3>
-                <button onClick={() => setShowGlobalSubjectModal(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><X size={18} /></button>
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm" onClick={() => setShowGlobalSubjectModal(false)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">New Subject Node</h3>
+                <button onClick={() => setShowGlobalSubjectModal(false)} className="p-3 text-slate-400 hover:text-rose-500 rounded-2xl transition-all"><X size={20} /></button>
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">SUBJECT NAME</label>
-                  <input type="text" value={globalSubjectTarget.name} onChange={(e) => setGlobalSubjectTarget({...globalSubjectTarget, name: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand outline-none" placeholder="e.g. Database Systems" />
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Descriptor</label>
+                  <input type="text" value={globalSubjectTarget.name} onChange={(e) => setGlobalSubjectTarget({...globalSubjectTarget, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 dark:text-white rounded-2xl px-5 py-4 text-sm font-bold border-2 border-slate-100 dark:border-slate-800 focus:border-brand outline-none transition-all" placeholder="e.g. Quantum Physics" />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">COURSE CODE</label>
-                  <input type="text" value={globalSubjectTarget.courseCode} onChange={(e) => setGlobalSubjectTarget({...globalSubjectTarget, courseCode: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand outline-none" placeholder="e.g. CS401" />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Code</label>
+                  <input type="text" value={globalSubjectTarget.courseCode} onChange={(e) => setGlobalSubjectTarget({...globalSubjectTarget, courseCode: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-950 dark:text-white rounded-2xl px-5 py-4 text-sm font-bold border-2 border-slate-100 dark:border-slate-800 focus:border-brand outline-none transition-all" placeholder="e.g. PH101" />
                 </div>
-              </div>
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
-                <button onClick={() => setShowGlobalSubjectModal(false)} className="px-4 py-2 font-bold text-sm text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl">Cancel</button>
-                <button onClick={handleAddNewGlobalSubject} className="px-4 py-2 bg-brand text-white font-bold text-sm rounded-xl">Create</button>
+                <button onClick={handleAddNewGlobalSubject} className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl transition-all hover:scale-105">Create Node</button>
               </div>
             </motion.div>
           </div>

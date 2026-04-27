@@ -73,7 +73,7 @@ export default function LandingPage() {
                         <div className="p-1 rounded-xl group-hover:scale-110 transition-transform duration-300">
                             <img src="/unitrack-logo.png" alt="UniTrack Logo" className="h-9 w-9 object-contain" />
                         </div>
-                        <span className="font-black text-2xl tracking-tighter text-slate-900 dark:text-white">UNITRACK</span>
+                        <span className="font-black text-2xl tracking-tighter text-slate-900 dark:text-white">UniTrack</span>
                     </Link>
                 </div>
                 <div className="flex flex-1 justify-end items-center gap-2 sm:gap-4 md:gap-8">

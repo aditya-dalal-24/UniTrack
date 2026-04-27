@@ -204,7 +204,7 @@ export default function Dashboard() {
           className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border border-slate-200/60 dark:border-slate-800/60 cursor-pointer transition-transform duration-200"
         >
           <div className="flex items-center justify-between mb-6">
-            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-800 dark:bg-white dark:text-black">
+            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100">
               <CalendarCheck size={24} />
             </div>
             <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Attendance</div>
