@@ -16,8 +16,10 @@ import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 
 export default function ToDo() {
+  const { invalidateDashboard } = useData();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -101,6 +103,7 @@ export default function ToDo() {
 
     // Refresh tasks from backend to get new ID
     await fetchTasks();
+    invalidateDashboard();
     setNewTask({ title: "", description: "", dueDate: "", dueTime: "" });
     setShowModal(false);
   };
@@ -112,6 +115,7 @@ export default function ToDo() {
       alert(apiError);
       return;
     }
+    invalidateDashboard();
     setTasks(tasks.filter((t) => t.id !== id));
   };
 
@@ -136,6 +140,7 @@ export default function ToDo() {
     setTasks(
       tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
     );
+    invalidateDashboard();
   };
 
   // Start editing
@@ -160,6 +165,7 @@ export default function ToDo() {
     }
 
     setTasks(tasks.map((t) => (t.id === editingId ? editData : t)));
+    invalidateDashboard();
     setEditingId(null);
     setEditData({});
   };
@@ -196,6 +202,7 @@ export default function ToDo() {
                   if (!confirm("Are you sure you want to delete ALL tasks? This cannot be undone.")) return;
                   const { error: apiError } = await api.deleteAllTodos();
                   if (apiError) { alert(apiError); return; }
+                  invalidateDashboard();
                   setTasks([]);
                 }}
                 className="inline-flex items-center gap-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2.5 text-sm font-semibold hover:bg-red-500/20 transition-all active:scale-95"

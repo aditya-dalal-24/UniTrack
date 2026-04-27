@@ -502,6 +502,9 @@ export const api = {
   getExpenseBill: (date) =>
     request('get', '/expenses/bill', null, { date }),
 
+  getMonthlyExpenseBill: (month, year) =>
+    request('get', '/expenses/bill/monthly', null, { month, year }),
+
   // ==================== ADMIN ====================
   getAdminUsers: (page = null, size = null) => {
     const params = {};

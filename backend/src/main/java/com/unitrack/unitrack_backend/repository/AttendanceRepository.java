@@ -16,9 +16,10 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, Lo
     List<AttendanceRecord> findByUserOrderByDateDesc(User user);
     List<AttendanceRecord> findByUserAndDateBetweenOrderByDateAsc(User user, LocalDate start, LocalDate end);
     Optional<AttendanceRecord> findByUserAndDate(User user, LocalDate date);
-    Optional<AttendanceRecord> findByUserAndDateAndSubject(User user, LocalDate date, Subject subject);
-    Optional<AttendanceRecord> findByUserAndDateAndTimetableSlot(User user, LocalDate date, com.unitrack.unitrack_backend.entity.TimetableSlot timetableSlot);
-    Optional<AttendanceRecord> findByUserAndDateAndSubjectIsNull(User user, LocalDate date);
+    Optional<AttendanceRecord> findFirstByUserAndDateAndSubjectOrderByIdDesc(User user, LocalDate date, Subject subject);
+    List<AttendanceRecord> findAllByUserAndDateAndSubject(User user, LocalDate date, Subject subject);
+    Optional<AttendanceRecord> findFirstByUserAndDateAndTimetableSlotOrderByIdDesc(User user, LocalDate date, com.unitrack.unitrack_backend.entity.TimetableSlot timetableSlot);
+    Optional<AttendanceRecord> findFirstByUserAndDateAndSubjectIsNullOrderByIdDesc(User user, LocalDate date);
     List<AttendanceRecord> findByUserAndDate(User user, LocalDate date, org.springframework.data.domain.Sort sort);
     long countByUserAndStatus(User user, AttendanceStatus status);
     long countByUserAndStatusAndSubject(User user, AttendanceStatus status, Subject subject);

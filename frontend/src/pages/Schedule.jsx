@@ -223,16 +223,56 @@ export default function Schedule() {
       });
       
       const map = {};
+      // Build a subjectId -> record data index for cross-referencing slots
+      // { dateKey: { subjectId: { status, recordId } } }
+      const subjectIndex = {};
+
       (attRes.data.records || []).forEach(record => {
         if (!record.date) return;
         const dateKey = record.date; 
-        const subKey = record.timetableSlotId ? String(record.timetableSlotId) : 'general';
         if (!map[dateKey]) map[dateKey] = {};
-        map[dateKey][subKey] = {
-          status: record.status?.toUpperCase() || 'PRESENT',
-          recordId: record.id
-        };
+
+        // Primary key: timetableSlotId (if present)
+        if (record.timetableSlotId) {
+          map[dateKey][String(record.timetableSlotId)] = {
+            status: record.status?.toUpperCase() || 'PRESENT',
+            recordId: record.id
+          };
+        }
+
+        // Also index by subjectId so we can fill in other slots sharing the same subject
+        if (record.subjectId) {
+          if (!subjectIndex[dateKey]) subjectIndex[dateKey] = {};
+          subjectIndex[dateKey][String(record.subjectId)] = {
+            status: record.status?.toUpperCase() || 'PRESENT',
+            recordId: record.id
+          };
+        }
+
+        // Fallback for records with no slot and no subject
+        if (!record.timetableSlotId && !record.subjectId) {
+          map[dateKey]['general'] = {
+            status: record.status?.toUpperCase() || 'PRESENT',
+            recordId: record.id
+          };
+        }
       });
+
+      // Now populate map entries for ALL timetable slots that share a subject with a recorded attendance
+      // This ensures labs spanning multiple slots all show the same attendance status
+      if (slotRes.data) {
+        slotRes.data.forEach(slot => {
+          if (!slot.subjectId) return;
+          Object.entries(subjectIndex).forEach(([dateKey, subjMap]) => {
+            const subjectData = subjMap[String(slot.subjectId)];
+            if (subjectData && !map[dateKey]?.[String(slot.id)]) {
+              if (!map[dateKey]) map[dateKey] = {};
+              map[dateKey][String(slot.id)] = { ...subjectData };
+            }
+          });
+        });
+      }
+
       setAttendanceMap(map);
     }
     
@@ -445,14 +485,16 @@ export default function Schedule() {
           const subjectMap = new Map();
 
           validClasses.forEach(c => {
-            if (subjectMap.has(c.subject)) {
-              const existing = subjectMap.get(c.subject);
+            // Use subjectId as key to avoid merging different subjects with same abbreviation
+            const mergeKey = c.subjectId ? String(c.subjectId) : c.subject;
+            if (subjectMap.has(mergeKey)) {
+              const existing = subjectMap.get(mergeKey);
               if (c.groupInfo && existing.groupInfo && !existing.groupInfo.includes(c.groupInfo)) {
                 existing.groupInfo = `${existing.groupInfo}, ${c.groupInfo}`;
               }
             } else {
               const copy = { ...c };
-              subjectMap.set(c.subject, copy);
+              subjectMap.set(mergeKey, copy);
               mergedClasses.push(copy);
             }
           });
@@ -478,27 +520,38 @@ export default function Schedule() {
     setLoadingSlots(prev => ({ ...prev, ...loadingUpdates }));
     
     try {
-      const promises = ids.map(async (slotId) => {
+      const processedSubjects = new Set();
+      const errors = [];
+
+      for (const slotId of ids) {
+        // Find the subject for this slot to avoid duplicate API calls for labs
+        const subjectId = slotToSubjectMap[slotId];
+        if (subjectId && processedSubjects.has(subjectId)) {
+          // Same subject already processed (e.g., 2nd lab slot) — skip
+          continue;
+        }
+        if (subjectId) processedSubjects.add(subjectId);
+
         const existingRecord = dailyRecords[slotId];
+        let result;
         if (existingRecord && existingRecord.recordId) {
-          return api.updateAttendance(existingRecord.recordId, {
+          result = await api.updateAttendance(existingRecord.recordId, {
             date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
           });
         } else {
-          return api.markAttendance({
+          result = await api.markAttendance({
             date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
           });
         }
-      });
-
-      const results = await Promise.all(promises);
-      const errors = results.filter(r => r.error).map(r => r.error);
+        if (result.error) errors.push(result.error);
+      }
       
       if (errors.length > 0) {
         alert("Some updates failed: " + errors[0]);
       }
       
       loadBackendData(false);
+      invalidateDashboard();
     } catch (err) {
       alert("Error updating attendance: " + err.message);
     } finally {
@@ -511,9 +564,13 @@ export default function Schedule() {
   const markAllForSelectedDate = async (status) => {
     const lectures = getLecturesForDate();
     const allSlotIds = [];
+    const seenSubjects = new Set();
     lectures.forEach(({ classes }) => {
       classes.forEach(c => {
         if (!c.isBreak) {
+          // Deduplicate by subjectId — labs with same subject only need one API call
+          if (c.subjectId && seenSubjects.has(c.subjectId)) return;
+          if (c.subjectId) seenSubjects.add(c.subjectId);
           allSlotIds.push(c.backendId);
         }
       });
@@ -1369,6 +1426,7 @@ export default function Schedule() {
         onClose={() => setShowUploadModal(false)}
         onUploadSuccess={() => {
           localStorage.removeItem("timetable_timeslots");
+          invalidateDashboard();
           loadBackendData();
         }}
       />
@@ -1376,7 +1434,10 @@ export default function Schedule() {
       <MarkAttendanceWizard
         isOpen={showAttendanceWizard}
         onClose={() => setShowAttendanceWizard(false)}
-        onComplete={() => loadBackendData(false)}
+        onComplete={() => {
+          loadBackendData(false);
+          invalidateDashboard();
+        }}
       />
     </div>
   );

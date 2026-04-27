@@ -80,27 +80,34 @@ public class AttendanceService {
         AttendanceRecord record;
 
         if (request.getTimetableSlotId() != null) {
-            // Lecture-wise: find by user + date + timetableSlot
+            // Lecture-wise: find by user + date + subject (to handle labs spanning multiple slots)
             TimetableSlot slot = timetableRepository.findById(request.getTimetableSlotId())
                     .orElseThrow(() -> new ResourceNotFoundException("Timetable slot not found"));
-            record = attendanceRepository.findByUserAndDateAndTimetableSlot(user, request.getDate(), slot)
-                    .orElse(AttendanceRecord.builder().user(user).timetableSlot(slot).build());
-            record.setTimetableSlot(slot);
-            record.setSubject(slot.getSubject());
+            
+            if (slot.getSubject() != null) {
+                // Clean up any duplicates first, then find the keeper
+                cleanupDuplicates(user, request.getDate(), slot.getSubject());
+                record = attendanceRepository.findFirstByUserAndDateAndSubjectOrderByIdDesc(user, request.getDate(), slot.getSubject())
+                        .orElse(AttendanceRecord.builder().user(user).subject(slot.getSubject()).timetableSlot(slot).build());
+                record.setSubject(slot.getSubject());
+            } else {
+                record = attendanceRepository.findFirstByUserAndDateAndTimetableSlotOrderByIdDesc(user, request.getDate(), slot)
+                        .orElse(AttendanceRecord.builder().user(user).timetableSlot(slot).build());
+                record.setTimetableSlot(slot);
+            }
         } else if (request.getSubjectId() != null) {
             // Subject-wise: find by user + date + subject
             Subject subject = subjectRepository.findById(request.getSubjectId())
                     .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
-            record = attendanceRepository.findByUserAndDateAndSubject(user, request.getDate(), subject)
+            cleanupDuplicates(user, request.getDate(), subject);
+            record = attendanceRepository.findFirstByUserAndDateAndSubjectOrderByIdDesc(user, request.getDate(), subject)
                     .orElse(AttendanceRecord.builder().user(user).subject(subject).build());
             record.setSubject(subject);
-            record.setTimetableSlot(null);
         } else {
-            // General (no subject): find by user + date + null subject/slot
-            record = attendanceRepository.findByUserAndDateAndSubjectIsNull(user, request.getDate())
+            // General (no subject): find by user + date + null subject
+            record = attendanceRepository.findFirstByUserAndDateAndSubjectIsNullOrderByIdDesc(user, request.getDate())
                     .orElse(AttendanceRecord.builder().user(user).build());
             record.setSubject(null);
-            record.setTimetableSlot(null);
         }
 
         record.setDate(request.getDate());
@@ -109,6 +116,22 @@ public class AttendanceService {
 
         attendanceRepository.save(record);
         return mapToResponse(record);
+    }
+
+    /**
+     * Removes duplicate attendance records for the same (user, date, subject),
+     * keeping only the one with the highest ID.
+     */
+    private void cleanupDuplicates(User user, java.time.LocalDate date, Subject subject) {
+        List<AttendanceRecord> duplicates = attendanceRepository.findAllByUserAndDateAndSubject(user, date, subject);
+        if (duplicates.size() > 1) {
+            // Sort by ID descending, keep the first (latest), delete the rest
+            duplicates.sort((a, b) -> Long.compare(b.getId(), a.getId()));
+            for (int i = 1; i < duplicates.size(); i++) {
+                attendanceRepository.delete(duplicates.get(i));
+            }
+            attendanceRepository.flush();
+        }
     }
 
     @CacheEvict(value = "dashboard", key = "#principal.name")
@@ -164,8 +187,14 @@ public class AttendanceService {
         return slots.stream()
                 .filter(slot -> !Boolean.TRUE.equals(slot.getIsBreak()))
                 .map(slot -> {
-                    // Look up existing attendance for this slot today
-                    var existingRecord = attendanceRepository.findByUserAndDateAndTimetableSlot(user, today, slot);
+                    // Look up existing attendance by SUBJECT first (handles labs spanning multiple slots)
+                    // Falls back to slot-level lookup only when no subject is linked
+                    java.util.Optional<AttendanceRecord> existingRecord;
+                    if (slot.getSubject() != null) {
+                        existingRecord = attendanceRepository.findFirstByUserAndDateAndSubjectOrderByIdDesc(user, today, slot.getSubject());
+                    } else {
+                        existingRecord = attendanceRepository.findFirstByUserAndDateAndTimetableSlotOrderByIdDesc(user, today, slot);
+                    }
 
                     String resolvedName = slot.getSubjectName();
                     if ((resolvedName == null || resolvedName.isBlank()) && slot.getSubject() != null) {

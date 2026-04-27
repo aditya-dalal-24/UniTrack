@@ -66,4 +66,12 @@ public class ExpenseController {
         LocalDate localDate = LocalDate.parse(date);
         return ResponseEntity.ok(expenseService.getDailyBill(principal, localDate));
     }
+
+    @GetMapping("/bill/monthly")
+    public ResponseEntity<com.unitrack.unitrack_backend.dto.response.MonthlyExpenseBillResponse> getMonthlyBill(
+            Principal principal,
+            @RequestParam int month,
+            @RequestParam int year) {
+        return ResponseEntity.ok(expenseService.getMonthlyBill(principal, month, year));
+    }
 }

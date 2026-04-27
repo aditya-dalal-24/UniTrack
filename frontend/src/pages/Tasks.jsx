@@ -20,6 +20,7 @@ import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 import { TASK_STATUS, TASK_TYPE } from "../constants/enums";
 import Pagination from "../components/Pagination";
 
@@ -33,6 +34,7 @@ const TILE_COLORS = [
 ];
 
 export default function Tasks() {
+  const { invalidateDashboard } = useData();
   const [subjects, setSubjects] = useState([]);
   const userSemester = useMemo(() => {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -138,6 +140,7 @@ export default function Tasks() {
     }
 
     await fetchTasks(false); // Silent refresh without spinner
+    invalidateDashboard();
     setNewTask({ title: "", description: "", dueDate: "", dueTime: "00:00", type: activeTab, subject: "" });
     setShowModal(false);
   };
@@ -150,6 +153,7 @@ export default function Tasks() {
     
     const { error } = await api.deleteTask(id);
     setActionLoading(null);
+    invalidateDashboard();
     if (error) {
       alert(error);
       setTasks(prevTasks); // Revert on failure
@@ -172,6 +176,7 @@ export default function Tasks() {
 
     const { error } = await api.updateTask(task.id, { ...task, status: nextStatus });
     setActionLoading(null);
+    invalidateDashboard();
     if (error) {
       alert(error);
       setTasks(prevTasks); // Revert on failure
@@ -185,6 +190,7 @@ export default function Tasks() {
     
     const { error } = await api.updateTask(editingId, editData);
     setActionLoading(null);
+    invalidateDashboard();
     if (error) {
       alert(error);
       setTasks(prevTasks); // Revert on failure

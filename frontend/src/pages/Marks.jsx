@@ -17,6 +17,7 @@ import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 
 // Grade calculation function
 const calculateGrade = (totalMarks) => {
@@ -65,6 +66,7 @@ const calculateFinalMarks = (midSem, internals, endSem) => {
 };
 
 export default function Marks() {
+  const { invalidateDashboard } = useData();
   const [selectedSemester, setSelectedSemester] = useState(() => {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
     return parseInt(userData.semester) || 1;
@@ -167,6 +169,7 @@ export default function Marks() {
       alert(error);
     } else {
       fetchMarks(false);
+      invalidateDashboard();
     }
   };
 
@@ -231,6 +234,7 @@ export default function Marks() {
     }
 
     await fetchMarks(false);
+    invalidateDashboard();
     setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
     setEditingMark(null);
     setShowSubjectModal(false);
@@ -251,6 +255,7 @@ export default function Marks() {
         return;
       }
       await fetchMarks(false);
+      invalidateDashboard();
     }
   };
 

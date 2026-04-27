@@ -19,9 +19,11 @@ import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 import { FEES_STATUS } from "../constants/enums";
 
 export default function Fees() {
+  const { invalidateDashboard } = useData();
   const [selectedSemester, setSelectedSemester] = useState(() => {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
     return parseInt(userData.semester) || 1;
@@ -148,6 +150,7 @@ export default function Fees() {
     }
 
     await fetchFees(false);
+    invalidateDashboard();
     setNewFee({ category: "College", customCategory: "", amount: "", paid: "", dueDate: "", receiptData: null, receiptFileName: "" });
     setShowAddFee(false);
   };
@@ -167,6 +170,7 @@ export default function Fees() {
       alert(error);
     } else {
       fetchFees(false);
+      invalidateDashboard();
     }
   };
 

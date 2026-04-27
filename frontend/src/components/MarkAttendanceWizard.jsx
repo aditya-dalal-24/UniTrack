@@ -75,6 +75,18 @@ export default function MarkAttendanceWizard({ isOpen, onClose, onComplete }) {
       const lecture = lectures[currentStep];
       if (!lecture || saving) return;
 
+      // If this subject was already marked with the same status (e.g., 2nd lab slot),
+      // skip the API call and just advance
+      if (lecture.subjectId && lecture.status === status) {
+        if (currentStep < lectures.length - 1) {
+          setDirection(1);
+          setCurrentStep((s) => s + 1);
+        } else {
+          setCompleted(true);
+        }
+        return;
+      }
+
       setSaving(true);
       const todayISO = new Date().toISOString().split("T")[0];
 
@@ -90,13 +102,17 @@ export default function MarkAttendanceWizard({ isOpen, onClose, onComplete }) {
         return; // Keep user on this card to retry
       }
 
-      // Update local state with the saved status
+      // Update local state with the saved status for this lecture AND any others with the same subject
       setLectures((prev) =>
-        prev.map((l, i) =>
-          i === currentStep
-            ? { ...l, status, attendanceRecordId: data?.id || l.attendanceRecordId }
-            : l
-        )
+        prev.map((l, i) => {
+          if (i === currentStep) {
+            return { ...l, status, attendanceRecordId: data?.id || l.attendanceRecordId };
+          }
+          if (lecture.subjectId && l.subjectId === lecture.subjectId) {
+            return { ...l, status, attendanceRecordId: data?.id || l.attendanceRecordId };
+          }
+          return l;
+        })
       );
 
       setSaving(false);
@@ -118,16 +134,28 @@ export default function MarkAttendanceWizard({ isOpen, onClose, onComplete }) {
       setSaving(true);
       const todayISO = new Date().toISOString().split("T")[0];
 
-      const results = await Promise.all(
-        lectures.map((lecture) =>
-          api.markAttendance({
-            date: todayISO,
-            status,
-            timetableSlotId: lecture.slotId,
-            subjectId: lecture.subjectId || null,
-          })
-        )
-      );
+      const processedSubjects = new Map(); // subjectId -> attendanceRecordId
+      const results = [];
+
+      for (const lecture of lectures) {
+        if (lecture.subjectId && processedSubjects.has(lecture.subjectId)) {
+           // Already marked this subject in this loop
+           results.push({ data: { id: processedSubjects.get(lecture.subjectId) }, error: null });
+           continue;
+        }
+
+        const res = await api.markAttendance({
+          date: todayISO,
+          status,
+          timetableSlotId: lecture.slotId,
+          subjectId: lecture.subjectId || null,
+        });
+
+        if (lecture.subjectId && !res.error && res.data) {
+           processedSubjects.set(lecture.subjectId, res.data.id);
+        }
+        results.push(res);
+      }
 
       const hasError = results.some((r) => r.error);
       if (!hasError) {

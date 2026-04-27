@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Mail, Phone, MapPin, Calendar, User, Users, GraduationCap, Building2, Heart, Edit2, Save, X, Shield, BookOpen, Camera, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import PageHeader from "../components/PageHeader";
@@ -35,6 +36,7 @@ const defaultProfileData = {
 };
 
 export default function Profile() {
+  const { invalidateDashboard } = useData();
   const { userData, updateAvatar, updateUserData } = useAuth();
   const userId = userData?.userId || "default";
 
@@ -184,8 +186,9 @@ export default function Profile() {
     const { error: apiError } = await api.updateProfile(payload);
     if (apiError) {
       alert(apiError);
-      return;
     }
+    
+    invalidateDashboard();
 
     if (updateUserData) {
       updateUserData({ 

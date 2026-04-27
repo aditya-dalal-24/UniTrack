@@ -20,10 +20,12 @@ import {
   FileText,
   Download,
   Printer,
+  Calculator,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import MonthlyExpenseReportModal from "../components/MonthlyExpenseReportModal";
 import {
   PieChart,
   Pie,
@@ -33,6 +35,7 @@ import {
   Legend,
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
+import { useData } from "../contexts/DataContext";
 import { api } from "../services/api";
 
 const defaultCategories = [
@@ -55,11 +58,13 @@ const rainbowColors = [
 
 export default function Expenses() {
   const { isDark } = useAuth();
+  const { invalidateDashboard } = useData();
   const [categories, setCategories] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
+  const [showMonthlyReportModal, setShowMonthlyReportModal] = useState(false);
   const [billDate, setBillDate] = useState(new Date().toISOString().split("T")[0]);
   const [dailyBill, setDailyBill] = useState(null);
   const [fetchingBill, setFetchingBill] = useState(false);
@@ -202,6 +207,7 @@ export default function Expenses() {
     }
 
     await fetchExpensesAndCategories(false);
+    invalidateDashboard();
 
     // Reset form
     setNewExpense({
@@ -225,6 +231,7 @@ export default function Expenses() {
       return;
     }
     await fetchExpensesAndCategories(false);
+    invalidateDashboard();
   };
 
   const handleAddCategory = async () => {
@@ -241,6 +248,7 @@ export default function Expenses() {
     }
 
     await fetchExpensesAndCategories(false);
+    invalidateDashboard();
     setNewCategoryName("");
     setShowAddCategory(false);
   };
@@ -267,6 +275,7 @@ export default function Expenses() {
       return;
     }
     await fetchExpensesAndCategories(false);
+    invalidateDashboard();
   };
 
   const getCategoryIcon = (categoryName) => {
@@ -322,10 +331,17 @@ export default function Expenses() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowBillModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-indigo-700 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
             >
               <FileText className="h-4 w-4" />
               Daily Bill
+            </button>
+            <button
+              onClick={() => setShowMonthlyReportModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-blue-700 transition-all active:scale-95"
+            >
+              <Download className="h-4 w-4" />
+              Monthly Bill
             </button>
             <button
               onClick={() => setShowAddCategory(!showAddCategory)}
@@ -802,6 +818,14 @@ export default function Expenses() {
               className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col print:shadow-none print:max-w-none print:h-auto print:rounded-none"
               onClick={(e) => e.stopPropagation()}
             >
+              <style dangerouslySetInnerHTML={{ __html: `
+                @media print {
+                  .daily-bill-content {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                  }
+                }
+              ` }} />
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
                 <h3 className="text-xl font-bold">Daily Expense Bill</h3>
                 <button onClick={() => { setShowBillModal(false); setDailyBill(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
@@ -824,7 +848,7 @@ export default function Expenses() {
                     <button 
                       onClick={handleGenerateBill}
                       disabled={fetchingBill}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all"
                     >
                       {fetchingBill ? "Generating..." : "Generate"}
                     </button>
@@ -835,12 +859,12 @@ export default function Expenses() {
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }} 
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 print:border-solid print:p-0 print:border-none relative"
+                    className="daily-bill-content bg-white text-black rounded-2xl p-6 border-2 border-dashed border-slate-200 print:border-solid print:p-0 print:border-none relative"
                   >
                     {/* Receipt Header */}
-                    <div className="text-center mb-6 border-b border-dashed border-slate-200 dark:border-slate-800 print:border-black pb-4">
-                      <h4 className="text-2xl font-black tracking-tighter italic text-indigo-600 print:text-black">UNITRACK</h4>
-                      <p className="text-[10px] text-slate-500 font-mono uppercase print:text-black">Electronic Expense Statement</p>
+                    <div className="text-center mb-6 border-b border-dashed border-slate-200 print:border-black pb-4">
+                      <h4 className="text-2xl font-black tracking-tighter italic text-emerald-600 print:text-emerald-600">UNITRACK</h4>
+                      <p className="text-[10px] text-black font-mono uppercase print:text-black">Electronic Expense Statement</p>
                       <div className="mt-4 flex justify-between text-[10px] font-mono text-slate-400 print:text-black px-2">
                         <span>DATE: {dailyBill.date}</span>
                         <span>REF: #{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
@@ -869,12 +893,12 @@ export default function Expenses() {
                     {/* Summary */}
                     <div className="border-t-2 border-dashed border-slate-200 dark:border-slate-800 print:border-black pt-4 mt-6">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-slate-500 print:text-black font-bold uppercase">Total Items</span>
-                        <span className="font-mono text-sm print:text-black">{dailyBill.expenses.length}</span>
+                        <span className="text-xs text-black font-bold uppercase">Total Items</span>
+                        <span className="font-mono text-sm">{dailyBill.expenses.length}</span>
                       </div>
-                      <div className="flex justify-between items-center bg-indigo-600/5 dark:bg-indigo-400/5 print:bg-transparent print:border-t-2 print:border-black print:rounded-none p-3 rounded-xl mt-2">
-                        <span className="text-lg font-black uppercase text-indigo-600 print:text-black">Grand Total</span>
-                        <span className="text-xl font-mono font-black text-indigo-600 print:text-black">₹{dailyBill.totalAmount.toFixed(2)}</span>
+                      <div className="flex justify-between items-center bg-emerald-600/5 print:bg-emerald-50 print:border-t-2 print:border-black print:rounded-none p-3 rounded-xl mt-2">
+                        <span className="text-lg font-black uppercase text-emerald-600 print:text-emerald-600">Grand Total</span>
+                        <span className="text-xl font-mono font-black text-emerald-600 print:text-emerald-600">₹{dailyBill.totalAmount.toFixed(2)}</span>
                       </div>
                     </div>
 
@@ -912,6 +936,11 @@ export default function Expenses() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <MonthlyExpenseReportModal
+        isOpen={showMonthlyReportModal}
+        onClose={() => setShowMonthlyReportModal(false)}
+      />
     </div>
   );
 }

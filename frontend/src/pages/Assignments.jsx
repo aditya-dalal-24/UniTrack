@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { PlusCircle, CheckCircle, Clock, Trash2, Edit2, Save, X, ClipboardList } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../services/api";
+import { useData } from "../contexts/DataContext";
 import { ASSIGNMENT_STATUS } from "../constants/enums";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
 export default function Assignments() {
+  const { invalidateDashboard } = useData();
   const [showModal, setShowModal] = useState(false);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,7 @@ export default function Assignments() {
 
     // Refresh assignments from backend to get the new ID
     await fetchAssignments();
+    invalidateDashboard();
     setNewAssignment({ title: "", subject: "", due: "" });
     setShowModal(false);
   };
@@ -76,6 +79,7 @@ export default function Assignments() {
         alert(apiError);
         return;
       }
+      invalidateDashboard();
       setAssignments(assignments.filter((a) => a.id !== id));
     }
   };
@@ -101,6 +105,7 @@ export default function Assignments() {
     setAssignments(prev => 
       [...prev.map(a => a.id === editingId ? editData : a)].sort((a, b) => new Date(a.due) - new Date(b.due))
     );
+    invalidateDashboard();
     setEditingId(null);
     setEditData({});
   };
@@ -132,6 +137,7 @@ export default function Assignments() {
     setAssignments(assignments.map(a =>
       a.id === id ? { ...a, status: newStatus } : a
     ));
+    invalidateDashboard();
   };
 
 
@@ -150,6 +156,7 @@ export default function Assignments() {
                 if (!confirm("Are you sure you want to delete ALL assignments? This cannot be undone.")) return;
                 const { error: apiError } = await api.deleteAllAssignments();
                 if (apiError) { alert(apiError); return; }
+                invalidateDashboard();
                 setAssignments([]);
               }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30 ring-1 ring-inset ring-red-500/20 dark:ring-red-500/30 transition-all font-semibold shadow-sm"

@@ -173,4 +173,45 @@ public class ExpenseService {
                 .expenses(responses)
                 .build();
     }
+
+    public com.unitrack.unitrack_backend.dto.response.MonthlyExpenseBillResponse getMonthlyBill(Principal principal, int month, int year) {
+        User user = getUser(principal);
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+        
+        List<Expense> expenses = expenseRepository.findByUserAndDateBetweenOrderByDateAscTimeAsc(user, start, end);
+        
+        Map<LocalDate, List<Expense>> groupedByDate = expenses.stream()
+                .collect(Collectors.groupingBy(Expense::getDate));
+        
+        List<com.unitrack.unitrack_backend.dto.response.DailyGroup> dailyGroups = groupedByDate.entrySet().stream()
+                .map(entry -> {
+                    double dayTotal = entry.getValue().stream().mapToDouble(Expense::getAmount).sum();
+                    return com.unitrack.unitrack_backend.dto.response.DailyGroup.builder()
+                            .date(entry.getKey())
+                            .dayOfWeek(entry.getKey().getDayOfWeek().toString())
+                            .dailyTotal(Math.round(dayTotal * 100.0) / 100.0)
+                            .expenses(entry.getValue().stream().map(this::mapToResponse).collect(Collectors.toList()))
+                            .build();
+                })
+                .sorted((a, b) -> a.getDate().compareTo(b.getDate()))
+                .collect(Collectors.toList());
+
+        double totalSpent = expenses.stream().mapToDouble(Expense::getAmount).sum();
+        double avg = dailyGroups.isEmpty() ? 0 : totalSpent / start.lengthOfMonth();
+        
+        com.unitrack.unitrack_backend.dto.response.DailyGroup highestDay = dailyGroups.stream()
+                .max((a, b) -> Double.compare(a.getDailyTotal(), b.getDailyTotal()))
+                .orElse(null);
+
+        return com.unitrack.unitrack_backend.dto.response.MonthlyExpenseBillResponse.builder()
+                .month(start.getMonth().toString())
+                .year(year)
+                .totalSpent(Math.round(totalSpent * 100.0) / 100.0)
+                .averageDailySpend(Math.round(avg * 100.0) / 100.0)
+                .highestExpenseDay(highestDay != null ? highestDay.getDate() : null)
+                .highestExpenseAmount(highestDay != null ? highestDay.getDailyTotal() : 0.0)
+                .dailyGroups(dailyGroups)
+                .build();
+    }
 }

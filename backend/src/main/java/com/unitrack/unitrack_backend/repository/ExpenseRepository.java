@@ -15,6 +15,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     Page<Expense> findByUserOrderByDateDescTimeDesc(User user, Pageable pageable);
     
     List<Expense> findByUserAndDateBetweenOrderByDateDescTimeDesc(User user, LocalDate start, LocalDate end);
+    List<Expense> findByUserAndDateBetweenOrderByDateAscTimeAsc(User user, LocalDate start, LocalDate end);
     Page<Expense> findByUserAndDateBetweenOrderByDateDescTimeDesc(User user, LocalDate start, LocalDate end, Pageable pageable);
     
     List<Expense> findByUserAndDateOrderByTimeAsc(User user, LocalDate date);
