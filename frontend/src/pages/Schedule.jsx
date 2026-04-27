@@ -521,30 +521,50 @@ export default function Schedule() {
     
     try {
       const processedSubjects = new Set();
-      const errors = [];
+      const promises = [];
+      const optimisticDailyRecords = { ...dailyRecords };
+      const optimisticAttendanceMap = { ...attendanceMap };
+      if (!optimisticAttendanceMap[selectedDate]) {
+        optimisticAttendanceMap[selectedDate] = {};
+      }
 
       for (const slotId of ids) {
         // Find the subject for this slot to avoid duplicate API calls for labs
         const subjectId = slotToSubjectMap[slotId];
         if (subjectId && processedSubjects.has(subjectId)) {
-          // Same subject already processed (e.g., 2nd lab slot) — skip
+          // Same subject already processed (e.g., 2nd lab slot) — skip API call
+          // BUT still apply optimistic UI to all slots
+          optimisticDailyRecords[slotId] = { ...optimisticDailyRecords[slotId], status: newStatus };
+          optimisticAttendanceMap[selectedDate][slotId] = { ...optimisticAttendanceMap[selectedDate][slotId], status: newStatus };
           continue;
         }
         if (subjectId) processedSubjects.add(subjectId);
 
+        // Apply optimistic UI
+        optimisticDailyRecords[slotId] = { ...optimisticDailyRecords[slotId], status: newStatus };
+        optimisticAttendanceMap[selectedDate][slotId] = { ...optimisticAttendanceMap[selectedDate][slotId], status: newStatus };
+
         const existingRecord = dailyRecords[slotId];
-        let result;
+        let promise;
         if (existingRecord && existingRecord.recordId) {
-          result = await api.updateAttendance(existingRecord.recordId, {
+          promise = api.updateAttendance(existingRecord.recordId, {
             date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
           });
         } else {
-          result = await api.markAttendance({
+          promise = api.markAttendance({
             date: selectedDate, status: newStatus, timetableSlotId: slotId, note: ""
           });
         }
-        if (result.error) errors.push(result.error);
+        promises.push(promise);
       }
+      
+      // Update UI immediately (Optimistic)
+      setDailyRecords(optimisticDailyRecords);
+      setAttendanceMap(optimisticAttendanceMap);
+
+      // Await all API calls in parallel
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error).map(r => r.error);
       
       if (errors.length > 0) {
         alert("Some updates failed: " + errors[0]);
