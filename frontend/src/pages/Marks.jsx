@@ -328,7 +328,7 @@ export default function Marks() {
         title="Academic Performance"
         description="Track marks, calculate grades, and monitor SGPA/CGPA."
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => {
                     setEditingMark(null);
@@ -458,8 +458,8 @@ export default function Marks() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
+            <div className="overflow-x-auto -mx-0">
+              <table className="w-full text-left text-sm whitespace-nowrap min-w-[700px]">
                 <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                   <tr>
                     <th className="px-6 py-4 font-bold text-sm">Subject</th>
@@ -647,7 +647,7 @@ export default function Marks() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mid-Sem</label>
                     <input

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, User, Phone, Calendar, GraduationCap, BookOpen, Hash, Home } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User, Phone, Calendar, GraduationCap, BookOpen, Hash, Home, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "../services/api";
 import Particles from "../components/Particles";
@@ -272,6 +272,34 @@ export default function SignupPage({ onLogin }) {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
+          {/* Info Note for Quick Sign-up */}
+          <motion.div 
+            className="mb-4 p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-700/30 text-center"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ 
+              opacity: 1, 
+              y: 0,
+              boxShadow: isDark 
+                ? ["0 0 15px -5px rgba(16,185,129,0.2)", "0 0 30px -5px rgba(16,185,129,0.4)", "0 0 15px -5px rgba(16,185,129,0.2)"]
+                : ["0 0 10px -5px rgba(16,185,129,0.15)", "0 0 20px -5px rgba(16,185,129,0.3)", "0 0 10px -5px rgba(16,185,129,0.15)"]
+            }}
+            transition={{ 
+              opacity: { duration: 0.4, delay: 0.6 },
+              y: { duration: 0.4, delay: 0.6 },
+              boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+            }}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <span className="inline-flex items-center gap-1.5 text-[15px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap uppercase tracking-wider">
+                <Zap className="h-3.5 w-3.5 fill-current" />
+                Fast Track
+              </span>
+              <p className="text-[14px] font-medium text-emerald-600/80 dark:text-emerald-400/80 leading-relaxed max-w-[260px] mx-auto">
+                Sign up with Google to skip the form! Complete your university details later from your profile.
+              </p>
+            </div>
+          </motion.div>
+
           {/* Google Sign-Up Button */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -328,7 +356,7 @@ export default function SignupPage({ onLogin }) {
                 type="text"
                 name="fullName"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                placeholder="Mark Jason"
+                placeholder="Aditya Dalal"
                 value={formData.fullName}
                 onChange={handleChange}
               />

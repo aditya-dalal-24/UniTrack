@@ -38,7 +38,7 @@ function WordCycle({ isDark }) {
     }, [categories.length]);
 
     return (
-        <span className="inline-grid text-center min-w-[240px] sm:min-w-[380px] md:min-w-[480px]">
+        <span className="inline-grid text-center min-w-[200px] sm:min-w-[380px] md:min-w-[480px]">
             <AnimatePresence mode="wait">
                 <motion.span
                     key={categories[index].text}
@@ -118,7 +118,7 @@ export default function LandingPage() {
             </div>
 
             {/* Content Section */}
-            <main className="relative z-10 flex-1 flex flex-col items-center justify-start px-4 md:px-6 text-center pt-8 sm:pt-12">
+            <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 md:px-6 text-center pt-24 sm:pt-32 pb-8 sm:pb-12">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -135,9 +135,9 @@ export default function LandingPage() {
                         </span>
                     </motion.div>
 
-                    <h1 className="text-3xl sm:text-5xl md:text-[5rem] font-black mb-6 sm:mb-10 tracking-tighter leading-[1.1] text-black dark:text-white text-center drop-shadow-sm dark:drop-shadow-none">
-                        UniTrack helps you<br />
-                        manage your<br />
+                    <h1 className="text-4xl sm:text-5xl md:text-[5rem] font-black mb-6 sm:mb-10 tracking-tighter leading-[1.1] text-black dark:text-white text-center drop-shadow-sm dark:drop-shadow-none">
+                        <span className="inline-block">UniTrack helps you</span><br className="hidden sm:block" />
+                        <span className="inline-block"> manage your</span><br />
                         <WordCycle isDark={isDark} />
                     </h1>
 
@@ -177,7 +177,7 @@ export default function LandingPage() {
                         
                         <button
                             onClick={() => navigate("/login")}
-                            className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl text-slate-500 dark:text-slate-400 font-bold hover:text-brand dark:hover:text-white transition-colors"
+                            className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl text-slate-500 dark:text-slate-400 font-bold hover:text-brand dark:hover:text-white transition-colors w-full sm:w-auto"
                         >
                             Log in to dashboard
                         </button>

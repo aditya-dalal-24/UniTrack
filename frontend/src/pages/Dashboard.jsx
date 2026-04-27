@@ -123,10 +123,10 @@ export default function Dashboard() {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-x-8 gap-y-5 mt-3">
+                  <div className="flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-3 sm:gap-y-5 mt-3">
 
                     {userData.semester && (
-                      <div className="flex items-center gap-5 bg-white/50 dark:bg-slate-800/30 px-8 py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-[190px]">
+                      <div className="flex items-center gap-3 sm:gap-5 bg-white/50 dark:bg-slate-800/30 px-4 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-0 sm:min-w-[190px]">
                         <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
                           <GraduationCap className="h-5 w-5" />
                         </div>
@@ -137,7 +137,7 @@ export default function Dashboard() {
                       </div>
                     )}
                     {dashboardData?.subjects && (
-                      <div className="flex items-center gap-5 bg-white/50 dark:bg-slate-800/30 px-8 py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-[190px]">
+                      <div className="flex items-center gap-3 sm:gap-5 bg-white/50 dark:bg-slate-800/30 px-4 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/50 w-fit min-w-0 sm:min-w-[190px]">
                         <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex-shrink-0">
                           <BookOpen className="h-5 w-5" />
                         </div>
@@ -209,7 +209,7 @@ export default function Dashboard() {
             </div>
             <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Attendance</div>
           </div>
-          <div className="flex items-end justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2">
             <div>
               <div className="text-4xl font-extrabold text-slate-900 dark:text-slate-50">
                 {Math.round(attendance?.attendancePercentage || 0)}%
@@ -219,7 +219,7 @@ export default function Dashboard() {
               </div>
             </div>
             {attendance?.lastMonthPercentage !== undefined && (
-              <div className={`text-xs font-bold px-2 py-1 rounded-lg ${
+              <div className={`text-xs font-bold px-2 py-1 rounded-lg whitespace-normal ${
                 attendance.attendancePercentage >= attendance.lastMonthPercentage 
                 ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
               }`}>
@@ -356,21 +356,21 @@ export default function Dashboard() {
                 {((dashboardData?.marks?.cgpa) || 0).toFixed(2)}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-10 text-center">
+            <div className="grid grid-cols-2 gap-4 sm:gap-10 text-center">
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Current SGPA</p>
-                <p className="text-5xl font-bold text-slate-800 dark:text-slate-100">
+                <p className="text-3xl sm:text-5xl font-bold text-slate-800 dark:text-slate-100">
                   {((dashboardData?.marks?.currentSgpa) || 0).toFixed(2)}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Subjects</p>
-                <p className="text-5xl font-bold text-slate-900 dark:text-slate-100">
+                <p className="text-3xl sm:text-5xl font-bold text-slate-900 dark:text-slate-100">
                   {dashboardData?.marks?.totalSubjects || 0}
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-10 text-center border-t border-slate-100 dark:border-slate-800 pt-6 w-full max-w-lg">
+            <div className="grid grid-cols-2 gap-4 sm:gap-10 text-center border-t border-slate-100 dark:border-slate-800 pt-6 w-full max-w-lg">
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Tasks Pending</p>
                 <p className="text-3xl font-bold text-red-500 dark:text-red-400">

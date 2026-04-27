@@ -29,7 +29,7 @@ export default function PageHeader({ title, description, actions, className }) {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex items-center gap-3"
+          className="flex flex-wrap items-center gap-2 sm:gap-3"
         >
           {actions}
         </motion.div>

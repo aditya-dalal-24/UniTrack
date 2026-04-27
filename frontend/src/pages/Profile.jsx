@@ -331,16 +331,16 @@ export default function Profile() {
                 </>
               )}
               
-              <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 shadow-sm">
+              <div className="mt-4 inline-flex flex-wrap items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 shadow-sm">
                 <GraduationCap className="h-4 w-4 text-brand dark:text-brand-300" />
                 {studentData.course || "Course"} <span className="opacity-40">•</span> {studentData.branch || "Branch"} <span className="opacity-40">•</span> Semester {studentData.semester || "-"}
               </div>
 
-              <div className="mt-8 flex flex-col xl:flex-row gap-4 items-center md:items-start justify-center md:justify-start w-full">
+              <div className="mt-6 sm:mt-8 flex flex-col xl:flex-row gap-4 items-center md:items-start justify-center md:justify-start w-full">
                 
                 {/* Email Section */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 flex-1 bg-slate-50/80 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 hover:border-brand/30 dark:hover:border-brand/30 transition-colors">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 flex-1 bg-slate-50/80 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 hover:border-brand/30 dark:hover:border-brand/30 transition-colors">
                     <div className="p-3 bg-brand/10 text-brand dark:text-brand-300 rounded-xl">
                       <Mail className="h-5 w-5" />
                     </div>
@@ -377,7 +377,7 @@ export default function Profile() {
                   </div>
                   
                   {/* Phone Section */}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 flex-1 bg-slate-50/80 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 hover:border-brand/30 dark:hover:border-brand/30 transition-colors h-full">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 flex-1 bg-slate-50/80 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/50 hover:border-brand/30 dark:hover:border-brand/30 transition-colors h-full">
                     <div className="p-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-xl flex-shrink-0">
                       <Phone className="h-5 w-5" />
                     </div>

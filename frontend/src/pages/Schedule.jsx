@@ -703,12 +703,12 @@ export default function Schedule() {
               {/* Daily Attendance Summary Stats */}
               {displayStats && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-end px-2">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3 sm:gap-4 border-b dark:border-slate-800 pb-4">
                     <h2 className="text-xl font-bold dark:text-white">Attendance Summary</h2>
                     <select 
                       value={selectedAnalysisSubId} 
                       onChange={e => setSelectedAnalysisSubId(e.target.value)}
-                      className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-brand hover:cursor-pointer"
+                      className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-brand hover:cursor-pointer w-full sm:w-auto"
                     >
                       <option value="overall">Overall Analysis</option>
                       {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.professor ? `(${s.professor})` : ''}</option>)}
@@ -732,7 +732,7 @@ export default function Schedule() {
               )}
 
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b dark:border-slate-800 pb-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 border-b dark:border-slate-800 pb-4">
                     <div 
                       className="flex items-center gap-4 cursor-pointer group" 
                       onClick={() => setIsLecturesExpanded(!isLecturesExpanded)}
@@ -748,18 +748,18 @@ export default function Schedule() {
                       </h2>
                     </div>
                     
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap w-full sm:w-auto">
                       <button
                         onClick={() => setShowAttendanceWizard(true)}
-                        className="text-sm px-6 py-3 font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition flex items-center gap-2"
+                        className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition flex items-center gap-2 flex-1 sm:flex-initial justify-center"
                       >
-                        <CalendarPlus size={18}/> Mark Today's Attendance
+                        <CalendarPlus size={18}/> Mark Attendance
                       </button>
-                      <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-sm px-6 py-3 font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition">
+                      <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition flex-1 sm:flex-initial text-center">
                         {isCalendarExpanded ? "Hide Calendar" : "Show Calendar"}
                       </button>
-                      <button onClick={() => setShowAddHoliday(true)} className="text-sm px-6 py-3 font-bold rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition flex items-center gap-2"><Plus size={18}/> Holiday</button>
-                      <button onClick={() => setShowAddExam(true)} className="text-sm px-6 py-3 font-bold rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition flex items-center gap-2"><Plus size={18}/> Exam</button>
+                      <button onClick={() => setShowAddHoliday(true)} className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition flex items-center gap-2 flex-1 sm:flex-initial justify-center"><Plus size={18}/> Holiday</button>
+                      <button onClick={() => setShowAddExam(true)} className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition flex items-center gap-2 flex-1 sm:flex-initial justify-center"><Plus size={18}/> Exam</button>
                     </div>
                 </div>
 
@@ -971,21 +971,21 @@ export default function Schedule() {
                                   </div>
                                   
                                   {!isAnyBreak ? (
-                                    <div className="flex flex-col gap-2">
-                                      <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl gap-2 w-fit border border-slate-200 dark:border-slate-800 shadow-sm mx-auto xl:mx-0">
+                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                      <div className="flex bg-white dark:bg-slate-900 p-1 sm:p-1.5 rounded-2xl gap-1 sm:gap-2 w-full sm:w-fit border border-slate-200 dark:border-slate-800 shadow-sm mx-auto xl:mx-0">
                                         <button 
                                           disabled={isAnyLoading}
                                           onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "PRESENT")} 
-                                          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"}`}
+                                          className={`flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex-1 sm:flex-initial ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"}`}
                                         >
-                                          <CheckCircle size={18} /> {isParallel ? "MARK PRESENT" : "PRESENT"}
+                                          <CheckCircle size={18} /> {isParallel ? "PRESENT" : "PRESENT"}
                                         </button>
                                         <button 
                                           disabled={isAnyLoading}
                                           onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "ABSENT")} 
-                                          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black transition-all ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"}`}
+                                          className={`flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex-1 sm:flex-initial ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"}`}
                                         >
-                                          <X size={18} /> {isParallel ? "MARK ABSENT" : "ABSENT"}
+                                          <X size={18} /> {isParallel ? "ABSENT" : "ABSENT"}
                                         </button>
                                       </div>
                                       {isMixed && <p className="text-[10px] font-bold text-amber-500 text-center xl:text-left animate-pulse tracking-wide uppercase">Mixed Status Detected</p>}

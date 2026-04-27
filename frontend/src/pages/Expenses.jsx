@@ -328,7 +328,7 @@ export default function Expenses() {
         title="Expense Tracker"
         description="Track your daily expenses and manage spending by category."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowBillModal(true)}
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
@@ -410,7 +410,7 @@ export default function Expenses() {
                     </button>
                   </div>
                   
-                  <div className="flex gap-4 mb-6">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
                     <input
                       type="text"
                       value={newCategoryName}
@@ -735,11 +735,11 @@ export default function Expenses() {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
                       <tr>
-                        <th className="px-6 py-4">Date</th>
-                        <th className="px-6 py-4">Category</th>
-                        <th className="px-6 py-4">Note</th>
-                        <th className="px-6 py-4 text-right">Amount</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
+                        <th className="px-3 sm:px-6 py-4">Date</th>
+                        <th className="px-3 sm:px-6 py-4">Category</th>
+                        <th className="px-3 sm:px-6 py-4 hidden sm:table-cell">Note</th>
+                        <th className="px-3 sm:px-6 py-4 text-right">Amount</th>
+                        <th className="px-3 sm:px-6 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -756,7 +756,7 @@ export default function Expenses() {
                           key={exp.id}
                           className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-4">
                             <div className="text-slate-900 dark:text-slate-100 font-medium">
                               {isValidDate ? expDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
                             </div>
@@ -764,7 +764,7 @@ export default function Expenses() {
                               {isValidDate ? expDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-4">
                             <div className="flex items-center gap-2">
                               <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                                 {getCategoryIcon(exp.categoryName || categories.find(c => String(c.id) === String(exp.categoryId))?.name)}
@@ -774,13 +774,13 @@ export default function Expenses() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
+                          <td className="px-3 sm:px-6 py-4 text-slate-600 dark:text-slate-400 hidden sm:table-cell">
                             {exp.note || "-"}
                           </td>
-                          <td className="px-6 py-4 text-right font-bold text-slate-900 dark:text-slate-100">
+                          <td className="px-3 sm:px-6 py-4 text-right font-bold text-slate-900 dark:text-slate-100">
                             ₹{exp.amount.toLocaleString()}
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-3 sm:px-6 py-4 text-right">
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
                               className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 dark:hover:text-white rounded-lg transition-colors inline-block"
@@ -833,8 +833,8 @@ export default function Expenses() {
                 </button>
               </div>
 
-              <div className="p-6 flex-1 overflow-y-auto">
-                <div className="flex gap-4 mb-8 print:hidden">
+              <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 print:hidden">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Date</label>
                     <input 

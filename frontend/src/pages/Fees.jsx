@@ -446,18 +446,18 @@ export default function Fees() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto -mx-0">
+                <table className="w-full text-left text-sm whitespace-nowrap min-w-[800px]">
                   <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
                     <tr>
-                      <th className="px-6 py-4 text-center">Category</th>
-                      <th className="px-6 py-4 text-center">Total Amount</th>
-                      <th className="px-6 py-4 text-center">Paid Amount</th>
-                      <th className="px-6 py-4 text-center">Pending</th>
-                      <th className="px-6 py-4 text-center">Status</th>
-                      <th className="px-6 py-4 text-center">Due Date</th>
-                      <th className="px-6 py-4 text-center">Receipt</th>
-                      <th className="px-6 py-4 text-center">Actions</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Category</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Total Amount</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Paid Amount</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Pending</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Status</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Due Date</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Receipt</th>
+                      <th className="px-4 sm:px-6 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -477,7 +477,7 @@ export default function Fees() {
                           transition={{ delay: 0.5 + index * 0.05 }}
                           className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 sm:px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <div className={`h-8 w-8 rounded-lg flex items-center justify-center bg-brand/10 text-brand dark:text-brand-400`}>
                                 {getCategoryIcon(fee.category)}
@@ -487,13 +487,13 @@ export default function Fees() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400">
+                          <td className="px-4 sm:px-6 py-4 text-center text-slate-600 dark:text-slate-400">
                             ₹{fee.totalAmount?.toLocaleString() || 0}
                           </td>
-                          <td className="px-6 py-4 text-center text-emerald-600 dark:text-emerald-400 font-medium">
+                          <td className="px-4 sm:px-6 py-4 text-center text-emerald-600 dark:text-emerald-400 font-medium">
                             ₹{fee.paidAmount?.toLocaleString() || 0}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 sm:px-6 py-4 text-center">
                             {pending > 0 ? (
                               <span className="text-red-600 dark:text-red-400 font-medium">
                                 ₹{pending.toLocaleString()}
@@ -502,15 +502,15 @@ export default function Fees() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 sm:px-6 py-4 text-center">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}>
                               {fee.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 text-xs">
+                          <td className="px-4 sm:px-6 py-4 text-center text-slate-500 dark:text-slate-400 text-xs">
                             {fee.dueDate}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 sm:px-6 py-4 text-center">
                             {fee.receiptData ? (
                               <button 
                                 onClick={() => setViewingReceipt(fee)}
@@ -523,7 +523,7 @@ export default function Fees() {
                               <span className="text-slate-300 dark:text-slate-700">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 sm:px-6 py-4 text-center">
                             <button
                               onClick={() => handleDeleteFee(fee.id)}
                               className="p-2 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors"

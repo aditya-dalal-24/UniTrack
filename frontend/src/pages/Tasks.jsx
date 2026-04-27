@@ -310,7 +310,7 @@ export default function Tasks() {
       {!loading && !error && (
         <div className="space-y-4">
           {/* Filters */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {["all", "active", "completed"].map((f) => (
               <button
                 key={f}
@@ -371,7 +371,7 @@ export default function Tasks() {
                               <Circle className="h-6 w-6 text-slate-300 hover:text-brand transition-colors" />
                             )}
                           </button>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <button onClick={() => { setEditingId(task.id); setEditData(task); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400">
                               <Edit2 size={20} />
                             </button>
@@ -381,13 +381,13 @@ export default function Tasks() {
                           </div>
                         </div>
 
-                        <h3 className={`text-lg font-bold mb-2 ${task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                        <h3 className={`text-lg font-bold mb-2 break-words ${task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                           {task.title}
                         </h3>
                         
                         {task.type === TASK_TYPE.ASSIGNMENT && task.subject && (
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-brand dark:text-slate-200 bg-brand/5 dark:bg-brand/20 w-fit px-2 py-1 rounded-lg mb-3">
-                            <BookOpen size={22} /> {task.subject}
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-brand dark:text-slate-200 bg-brand/5 dark:bg-brand/20 w-fit max-w-full px-2 py-1 rounded-lg mb-3">
+                            <BookOpen size={16} className="flex-shrink-0" /> <span className="truncate">{task.subject}</span>
                           </div>
                         )}
 
@@ -397,7 +397,7 @@ export default function Tasks() {
 
                         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                           <div className={`flex items-center gap-1.5 text-xs font-medium ${isOverdue(task.dueDate, task.dueTime, task.status) ? 'text-red-500' : 'text-slate-400'}`}>
-                            <Calendar size={25} />
+                            <Calendar size={16} className="flex-shrink-0" />
                             {new Date(task.dueDate).toLocaleDateString()}
                           </div>
                           {isOverdue(task.dueDate, task.dueTime, task.status) && (
