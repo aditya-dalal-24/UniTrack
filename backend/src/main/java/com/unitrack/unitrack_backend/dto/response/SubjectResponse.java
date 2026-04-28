@@ -14,4 +14,5 @@ public class SubjectResponse {
     private String professor;
     private String roomNumber;
     private String color;
+    private Integer semester;
 }

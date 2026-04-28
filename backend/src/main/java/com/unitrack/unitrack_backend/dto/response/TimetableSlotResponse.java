@@ -19,4 +19,5 @@ public class TimetableSlotResponse {
     private String groupInfo;
     private Long subjectId;
     private Boolean isBreak = false;
+    private Integer semester;
 }

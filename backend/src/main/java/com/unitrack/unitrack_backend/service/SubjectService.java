@@ -42,6 +42,7 @@ public class SubjectService {
                 .professor(subject.getProfessor())
                 .roomNumber(subject.getRoomNumber())
                 .color(subject.getColor())
+                .semester(subject.getSemester())
                 .build();
     }
 

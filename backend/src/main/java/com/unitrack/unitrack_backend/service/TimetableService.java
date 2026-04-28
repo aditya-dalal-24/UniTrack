@@ -55,6 +55,7 @@ public class TimetableService {
                 .groupInfo(slot.getGroupInfo())
                 .subjectId(slot.getSubject() != null ? slot.getSubject().getId() : null)
                 .isBreak(slot.getIsBreak())
+                .semester(slot.getSubject() != null ? slot.getSubject().getSemester() : null)
                 .build();
     }
 
