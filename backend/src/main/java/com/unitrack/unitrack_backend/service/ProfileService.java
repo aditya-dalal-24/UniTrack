@@ -77,6 +77,14 @@ public class ProfileService {
         profile.setRollNumber(request.getRollNumber());
         profile.setCourse(request.getCourse());
         profile.setSemester(request.getSemester());
+        // Sync semester to User entity (used by TimetableService and SubjectService)
+        if (request.getSemester() != null) {
+            try {
+                user.setSemester(Integer.parseInt(request.getSemester()));
+            } catch (NumberFormatException ignored) {
+                // Keep existing User.semester if the profile value isn't a valid number
+            }
+        }
         profile.setProfilePicUrl(request.getProfilePicUrl());
         profile.setDob(request.getDob());
         profile.setBloodGroup(request.getBloodGroup());
