@@ -258,17 +258,23 @@ export default function Marks() {
   };
 
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-    if (!userData.semester) {
-      api.getProfile().then(({ data }) => {
+    const loadData = async () => {
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      if (!userData.semester) {
+        const { data } = await api.getProfile();
         if (data && data.semester) {
           userData.semester = data.semester;
           localStorage.setItem("userData", JSON.stringify(userData));
-          if (selectedSemester === 1) setSelectedSemester(parseInt(data.semester));
+          const profileSemester = parseInt(data.semester);
+          if (selectedSemester !== profileSemester) {
+            setSelectedSemester(profileSemester);
+            return; // useEffect will re-run with the correct semester
+          }
         }
-      });
-    }
-    fetchMarks();
+      }
+      fetchMarks();
+    };
+    loadData();
   }, [selectedSemester]);
 
   const handleUpdateInline = async (id, payload, isNew) => {
