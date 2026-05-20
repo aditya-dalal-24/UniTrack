@@ -15,6 +15,7 @@ import {
   Upload,
   Trash2,
   Pencil,
+  CheckCircle,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -39,16 +40,14 @@ export default function Fees() {
     category: "College",
     customCategory: "",
     amount: "",
-    paid: "",
+    isPaid: false,
     dueDate: "",
     receiptData: null,
     receiptFileName: "",
   });
 
   const [viewingReceipt, setViewingReceipt] = useState(null);
-  const [settlingFee, setSettlingFee] = useState(null);
   const [editingFee, setEditingFee] = useState(null);
-  const [settleAmount, setSettleAmount] = useState("");
 
   const getCategoryIcon = (category) => {
     switch (category) {
@@ -117,13 +116,8 @@ export default function Fees() {
     }
 
     const totalAmount = parseFloat(newFee.amount);
-    const paidAmount = parseFloat(newFee.paid) || 0;
-    let status = FEES_STATUS.PENDING;
-    if (paidAmount >= totalAmount) {
-      status = FEES_STATUS.PAID;
-    } else if (paidAmount > 0) {
-      status = FEES_STATUS.PARTIAL;
-    }
+    const paidAmount = newFee.isPaid ? totalAmount : 0;
+    const status = newFee.isPaid ? FEES_STATUS.PAID : FEES_STATUS.PENDING;
 
     const payload = {
       semester: selectedSemester,
@@ -131,7 +125,7 @@ export default function Fees() {
       totalAmount,
       paidAmount,
       dueDate: newFee.dueDate,
-      paidDate: paidAmount > 0 ? new Date().toISOString().split('T')[0] : null,
+      paidDate: newFee.isPaid ? new Date().toISOString().split('T')[0] : null,
       status,
       receiptData: newFee.receiptData,
       receiptFileName: newFee.receiptFileName,
@@ -163,7 +157,7 @@ export default function Fees() {
 
     await fetchFees(false);
     invalidateDashboard();
-    setNewFee({ category: "College", customCategory: "", amount: "", paid: "", dueDate: "", receiptData: null, receiptFileName: "" });
+    setNewFee({ category: "College", customCategory: "", amount: "", isPaid: false, dueDate: "", receiptData: null, receiptFileName: "" });
     setShowAddFee(false);
     setEditingFee(null);
   };
@@ -174,7 +168,7 @@ export default function Fees() {
       category: ["College", "Hostel", "Library"].includes(fee.category) ? fee.category : "Other",
       customCategory: ["College", "Hostel", "Library"].includes(fee.category) ? "" : fee.category,
       amount: fee.totalAmount.toString(),
-      paid: fee.paidAmount.toString(),
+      isPaid: fee.status === FEES_STATUS.PAID,
       dueDate: fee.dueDate,
       receiptData: fee.receiptData,
       receiptFileName: fee.receiptFileName || ""
@@ -201,35 +195,21 @@ export default function Fees() {
     }
   };
 
-  const handleSettleFee = async () => {
-    if (!settleAmount || parseFloat(settleAmount) <= 0) {
-      alert("Please enter a valid amount.");
-      return;
-    }
-
-    const amount = parseFloat(settleAmount);
-    const newPaidAmount = settlingFee.paidAmount + amount;
-    
-    let status = FEES_STATUS.PARTIAL;
-    if (newPaidAmount >= settlingFee.totalAmount) {
-      status = FEES_STATUS.PAID;
-    }
+  const handleSettleFee = async (fee) => {
 
     const payload = {
-      ...settlingFee,
-      paidAmount: newPaidAmount,
-      status,
+      ...fee,
+      paidAmount: fee.totalAmount,
+      status: FEES_STATUS.PAID,
       paidDate: new Date().toISOString().split('T')[0]
     };
 
-    const { error } = await api.updateFee(settlingFee.id, payload);
+    const { error } = await api.updateFee(fee.id, payload);
     if (error) {
       alert(error);
     } else {
-      fetchFees(false);
+      await fetchFees(false);
       invalidateDashboard();
-      setSettlingFee(null);
-      setSettleAmount("");
     }
   };
 
@@ -411,16 +391,17 @@ export default function Fees() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Processed</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-                        <input
-                          type="number"
-                          value={newFee.paid}
-                          onChange={(e) => setNewFee({ ...newFee, paid: e.target.value })}
-                          className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 pl-8 pr-5 py-3 text-sm font-bold focus:border-brand transition-all dark:text-white"
-                        />
-                      </div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Payment Status</label>
+                      <button
+                        onClick={() => setNewFee({ ...newFee, isPaid: !newFee.isPaid })}
+                        className={`w-full h-[48px] rounded-2xl border-2 transition-all flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest ${
+                          newFee.isPaid 
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {newFee.isPaid ? 'Fully Paid' : 'Mark as Paid'}
+                      </button>
                     </div>
 
                     <div className="space-y-2">
@@ -533,9 +514,9 @@ export default function Fees() {
                           <div>
                             <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">{fee.category}</h4>
                             <div className="flex items-center gap-1.5 mt-1">
-                              <div className={`h-1.5 w-1.5 rounded-full ${statusColors[fee.status]}`} />
+                              <div className={`h-1.5 w-1.5 rounded-full ${statusColors[fee.status] || 'bg-slate-500'}`} />
                               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                                {fee.status} Node
+                                {fee.status === FEES_STATUS.PAID ? 'Settled' : 'Unpaid'} Node
                               </p>
                             </div>
                           </div>
@@ -559,53 +540,48 @@ export default function Fees() {
                         </div>
                       </div>
 
-                      {pending > 0 && (
-                        <div className="mb-8 space-y-3">
-                          <div className="flex justify-between items-end">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Balance Pending</p>
-                            <p className="text-sm font-black text-rose-500">₹{pending.toLocaleString()}</p>
-                          </div>
-                          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
-                            <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(pending/fee.totalAmount)*100}%` }} />
-                          </div>
-                        </div>
-                      )}
 
-                      <div className="flex items-stretch gap-3 relative">
-                        {pending > 0 && (
+                      <div className="flex flex-col gap-3 mt-4">
+                        {fee.status !== FEES_STATUS.PAID && (
                           <button
-                            onClick={() => {
-                              setSettlingFee(fee);
-                              setSettleAmount("");
-                            }}
-                            className="flex-[3] h-12 flex items-center justify-center bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-sm font-black uppercase tracking-tight shadow-xl hover:scale-[1.03] active:scale-95 transition-all px-4"
+                            onClick={() => handleSettleFee(fee)}
+                            className="w-full h-12 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-sm font-black uppercase tracking-tight shadow-xl hover:scale-[1.01] active:scale-95 transition-all"
                           >
-                            Settle ₹{pending.toLocaleString()}
+                            <CheckCircle className="h-5 w-5" />
+                            <span>Settle Fully</span>
                           </button>
                         )}
-                        <div className={`flex gap-2 ${pending > 0 ? 'flex-1 justify-end' : 'w-full'}`}>
+                        <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => handleEditInit(fee)}
-                            className="h-12 w-12 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-slate-100 transition-all shadow-sm"
+                            className="flex flex-col items-center justify-center gap-1 p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-sm"
                             title="Edit Record"
                           >
                             <Pencil className="h-4 w-4" />
+                            <span className="text-[9px] font-black uppercase tracking-tighter">Modify</span>
                           </button>
-                          {fee.receiptData && (
-                            <button
-                              onClick={() => setViewingReceipt(fee)}
-                              className="h-12 w-12 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-100 dark:border-slate-700 hover:bg-slate-100 transition-all shadow-sm"
-                              title="View Proof"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          )}
+                          
+                          <button
+                            onClick={() => setViewingReceipt(fee)}
+                            disabled={!fee.receiptData}
+                            className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-2xl border transition-all shadow-sm ${
+                              fee.receiptData 
+                                ? 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700' 
+                                : 'bg-slate-50/50 dark:bg-slate-900/50 text-slate-300 dark:text-slate-600 border-transparent cursor-not-allowed opacity-50'
+                            }`}
+                            title={fee.receiptData ? "View Digital Proof" : "No Proof Available"}
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span className="text-[9px] font-black uppercase tracking-tighter">Proof</span>
+                          </button>
+
                           <button
                             onClick={() => handleDeleteFee(fee.id)}
-                            className="h-12 w-12 flex items-center justify-center text-slate-400 hover:text-rose-500 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 transition-all shadow-sm"
+                            className="flex flex-col items-center justify-center gap-1 p-2.5 bg-rose-50 dark:bg-rose-900/10 text-rose-500 rounded-2xl border border-rose-100 dark:border-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all shadow-sm"
                             title="Delete Record"
                           >
                             <Trash2 className="h-4 w-4" />
+                            <span className="text-[9px] font-black uppercase tracking-tighter">Erase</span>
                           </button>
                         </div>
                       </div>
@@ -616,79 +592,6 @@ export default function Fees() {
             )}
           </div>
 
-          <AnimatePresence>
-            {settlingFee && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"
-                onClick={() => setSettlingFee(null)}
-              >
-                <motion.div
-                  initial={{ scale: 0.9, y: 20 }}
-                  animate={{ scale: 1, y: 0 }}
-                  exit={{ scale: 0.9, y: 20 }}
-                  className="bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl max-w-md w-full p-8 border border-white/10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="text-center mb-8">
-                    <div className="h-16 w-16 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4">
-                      <IndianRupee className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase">Quick Settle</h3>
-                    <p className="text-xs font-bold text-slate-400 mt-1">
-                      Outstanding for {settlingFee.category}: <span className="text-rose-500">₹{settlingFee.pendingAmount.toLocaleString()}</span>
-                    </p>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Payment Amount</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-                        <input
-                          type="number"
-                          value={settleAmount}
-                          onChange={(e) => setSettleAmount(e.target.value)}
-                          placeholder="0.00"
-                          className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 pl-8 pr-5 py-4 text-lg font-black focus:border-emerald-500 transition-all dark:text-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setSettleAmount(settlingFee.pendingAmount.toString())}
-                        className="py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all"
-                      >
-                        Settle Full
-                      </button>
-                      <button
-                        onClick={() => setSettleAmount((settlingFee.pendingAmount / 2).toString())}
-                        className="py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all"
-                      >
-                        Half Pay
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={handleSettleFee}
-                      className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-widest shadow-xl transition-all hover:scale-[1.02] active:scale-95"
-                    >
-                      Process Transaction
-                    </button>
-                    <button
-                      onClick={() => setSettlingFee(null)}
-                      className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <AnimatePresence>
             {viewingReceipt && (

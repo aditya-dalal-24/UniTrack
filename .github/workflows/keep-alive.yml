@@ -1,0 +1,25 @@
+name: Keep Alive Ping
+
+on:
+  schedule:
+    # Runs every 10 minutes to prevent the server from sleeping
+    - cron: "*/10 * * * *"
+  workflow_dispatch: # Allows manual triggering from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend API
+        run: |
+          echo "Pinging backend health endpoint..."
+          # We use --connect-timeout and --max-time to give Render enough time to spin up (which can take 30-50s)
+          # We also retry up to 3 times to handle temporary gateway timeouts during spin-up
+          RESPONSE=$(curl -s --connect-timeout 60 --max-time 60 --retry 3 --retry-delay 5 "https://unitrack-api-s4v9.onrender.com/actuator/health")
+          echo "Response received: $RESPONSE"
+          if [[ "$RESPONSE" == *"UP"* ]]; then
+            echo "Backend is alive and healthy!"
+          else
+            echo "Error: Backend did not return UP status."
+            exit 1
+          fi
