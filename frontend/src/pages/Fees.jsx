@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CreditCard,
@@ -24,6 +25,8 @@ import { api } from "../services/api";
 import { useData } from "../contexts/DataContext";
 import { FEES_STATUS } from "../constants/enums";
 
+import { recordAction, getSmartDefaults, getFeeSuggestions } from "../utils/behaviorEngine";
+
 export default function Fees() {
   const { invalidateDashboard } = useData();
   const [selectedSemester, setSelectedSemester] = useState(() => {
@@ -31,10 +34,40 @@ export default function Fees() {
     return parseInt(userData.semester) || 1;
   });
   const [showAddFee, setShowAddFee] = useState(false);
+  const [showReceiptUpload, setShowReceiptUpload] = useState(false);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [importing, setImporting] = useState(false);
   const [feesSummary, setFeesSummary] = useState(null);
+
+  const handleImportPrevious = async () => {
+    if (selectedSemester <= 1 || importing) return;
+    setImporting(true);
+    try {
+      const { data: summary, error } = await api.getFees(selectedSemester - 1);
+      if (error || !summary || !summary.fees || summary.fees.length === 0) {
+        alert("No fees found in previous semester to import.");
+        setImporting(false);
+        return;
+      }
+      
+      for (const fee of summary.fees) {
+        await api.addFee({
+          semester: selectedSemester,
+          category: fee.category,
+          totalAmount: fee.totalAmount,
+          paidAmount: 0,
+          dueDate: null,
+          status: 'PENDING'
+        });
+      }
+      fetchFees();
+    } catch (e) {
+      console.error(e);
+    }
+    setImporting(false);
+  };
 
   const [newFee, setNewFee] = useState({
     category: "College",
@@ -89,6 +122,38 @@ export default function Fees() {
     };
     loadData();
   }, [selectedSemester]);
+
+  // Handle command palette / navigation openAdd
+  const location = useLocation();
+  useEffect(() => {
+    if (location.state?.openAdd) {
+      const defaults = getSmartDefaults("fees", "add_fee");
+      setNewFee(prev => ({ ...prev, ...defaults }));
+      setShowAddFee(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.openAdd) setShowAddFee(true);
+    };
+    window.addEventListener("unitrack:command", handler);
+    return () => window.removeEventListener("unitrack:command", handler);
+  }, []);
+
+  // Smart due-date warnings
+  const urgentFees = useMemo(() => {
+    if (!feesSummary?.fees) return [];
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return feesSummary.fees.filter(fee => {
+      if (fee.status === FEES_STATUS.PAID) return false;
+      if (!fee.dueDate) return false;
+      const due = new Date(fee.dueDate);
+      return due <= sevenDaysFromNow;
+    }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  }, [feesSummary]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -155,12 +220,60 @@ export default function Fees() {
       return;
     }
 
+    recordAction("fees", "add_fee", { category: payload.category, amount: payload.totalAmount });
+
     await fetchFees(false);
     invalidateDashboard();
     setNewFee({ category: "College", customCategory: "", amount: "", isPaid: false, dueDate: "", receiptData: null, receiptFileName: "" });
     setShowAddFee(false);
+    setShowReceiptUpload(false);
     setEditingFee(null);
   };
+
+  const handleImportPreviousSem = async () => {
+    if (selectedSemester <= 1) {
+      alert("You are currently in Semester 1. No previous semester exists.");
+      return;
+    }
+    if (!confirm(`Import recurring fees (College/Hostel/Library) from Semester ${selectedSemester - 1}?`)) return;
+    
+    setLoading(true);
+    const { data: prevSemData, error } = await api.getFees(selectedSemester - 1);
+    if (error || !prevSemData || !prevSemData.fees.length) {
+      alert("No fees found in previous semester.");
+      setLoading(false);
+      return;
+    }
+    
+    const recurringFees = prevSemData.fees.filter(f => ["College", "Hostel", "Library"].includes(f.category));
+    if (recurringFees.length === 0) {
+      alert("No core recurring fees found in the previous semester.");
+      setLoading(false);
+      return;
+    }
+
+    for (const fee of recurringFees) {
+       const oldDate = new Date(fee.dueDate);
+       const newDueDate = new Date(oldDate.setMonth(oldDate.getMonth() + 6)).toISOString().split('T')[0];
+       
+       await api.addFee({
+         semester: selectedSemester,
+         category: fee.category,
+         totalAmount: fee.totalAmount,
+         paidAmount: 0,
+         dueDate: newDueDate,
+         paidDate: null,
+         status: FEES_STATUS.PENDING,
+         receiptData: null,
+         receiptFileName: null,
+       });
+    }
+    
+    await fetchFees(true);
+    invalidateDashboard();
+  };
+
+
 
   const handleEditInit = (fee) => {
     setEditingFee(fee);
@@ -195,13 +308,13 @@ export default function Fees() {
     }
   };
 
-  const handleSettleFee = async (fee) => {
-
+  const handleToggleFeeStatus = async (fee) => {
+    const isPaid = fee.status === FEES_STATUS.PAID;
     const payload = {
       ...fee,
-      paidAmount: fee.totalAmount,
-      status: FEES_STATUS.PAID,
-      paidDate: new Date().toISOString().split('T')[0]
+      paidAmount: isPaid ? 0 : fee.totalAmount,
+      status: isPaid ? FEES_STATUS.PENDING : FEES_STATUS.PAID,
+      paidDate: isPaid ? null : new Date().toISOString().split('T')[0]
     };
 
     const { error } = await api.updateFee(fee.id, payload);
@@ -216,7 +329,7 @@ export default function Fees() {
   const totalFees = feesSummary?.totalFees || 0;
   const totalPaid = feesSummary?.totalPaid || 0;
   const totalPending = feesSummary?.totalPending || 0;
-  const currentSemesterFees = feesSummary?.fees || [];
+  const currentSemesterFees = [...(feesSummary?.fees || [])].sort((a, b) => a.id - b.id);
 
   return (
     <div className="space-y-8 pb-12 font-sans">
@@ -224,16 +337,33 @@ export default function Fees() {
         title="Financial Hub"
         description="Monitor your academic investments and payment statuses."
         actions={
-          <button
-            onClick={() => setShowAddFee(true)}
-            className="group relative inline-flex items-center gap-2 rounded-2xl bg-brand text-white px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 transition-all hover:scale-105 active:scale-95 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Plus className="h-5 w-5" />
-            <span>New Transaction</span>
-          </button>
+          <div className="flex gap-2">
+            {selectedSemester > 1 && (
+               <button
+                 onClick={handleImportPreviousSem}
+                 className="group relative inline-flex items-center gap-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-6 py-3 text-sm font-black shadow-sm transition-all hover:scale-105 active:scale-95 overflow-hidden border border-slate-200 dark:border-slate-700"
+               >
+                 <Download className="h-5 w-5" />
+                 <span>Import Last Sem</span>
+               </button>
+            )}
+            <button
+              onClick={() => {
+                const defaults = getSmartDefaults("fees", "add_fee");
+                setNewFee(prev => ({ ...prev, ...defaults }));
+                setShowAddFee(true);
+              }}
+              className="group relative inline-flex items-center gap-2 rounded-2xl bg-brand text-white px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 transition-all hover:scale-105 active:scale-95 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Plus className="h-5 w-5" />
+              <span>New Fee Record</span>
+            </button>
+          </div>
         }
       />
+
+
 
       {loading && <LoadingSpinner message="Accessing Financial Core..." />}
       {error && <ErrorMessage message={error} onRetry={fetchFees} />}
@@ -320,6 +450,39 @@ export default function Fees() {
             </motion.div>
           </div>
 
+          {/* Predictive Insights Panel */}
+          {urgentFees.length > 0 && (
+            <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden">
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 dark:bg-white/10 blur-2xl" />
+              <div className="flex items-center gap-3 mb-4 relative z-10">
+                <AlertCircle className="h-5 w-5 text-brand dark:text-white" />
+                <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
+                {urgentFees.map((fee, idx) => {
+                  const due = new Date(fee.dueDate);
+                  const now = new Date();
+                  const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+                  const isOverdue = daysLeft < 0;
+                  
+                  return (
+                    <div key={idx} className={`flex items-center gap-4 p-4 rounded-2xl border ${isOverdue ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'}`}>
+                      <div className={`p-2 rounded-xl ${isOverdue ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'}`}>
+                        {getCategoryIcon(fee.category)}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                          {fee.category} Fee is {isOverdue ? 'overdue by ' + Math.abs(daysLeft) + ' days' : 'due in ' + daysLeft + ' days'}.
+                        </p>
+                        <p className="text-xs font-black text-slate-500 mt-1">₹{fee.totalAmount?.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <AnimatePresence>
             {showAddFee && (
               <motion.div
@@ -351,7 +514,7 @@ export default function Fees() {
                   
                   <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Classification</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Classification</label>
                       <select
                         value={newFee.category}
                         onChange={(e) => setNewFee({ ...newFee, category: e.target.value })}
@@ -366,7 +529,7 @@ export default function Fees() {
 
                     {newFee.category === "Other" && (
                       <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Descriptor</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Descriptor</label>
                         <input
                           type="text"
                           value={newFee.customCategory}
@@ -378,9 +541,9 @@ export default function Fees() {
                     )}
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Quota (Total)</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Quota (Total)</label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold">₹</span>
                         <input
                           type="number"
                           value={newFee.amount}
@@ -391,7 +554,7 @@ export default function Fees() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Payment Status</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Payment Status</label>
                       <button
                         onClick={() => setNewFee({ ...newFee, isPaid: !newFee.isPaid })}
                         className={`w-full h-[48px] rounded-2xl border-2 transition-all flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest ${
@@ -405,7 +568,7 @@ export default function Fees() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Deadline</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Deadline</label>
                       <input
                         type="date"
                         value={newFee.dueDate}
@@ -415,28 +578,42 @@ export default function Fees() {
                     </div>
 
                     <div className="sm:col-span-2 space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Digital Receipt</label>
-                      <div className="relative group">
-                        <input
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={handleFileChange}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
-                        <div className={`w-full h-[48px] rounded-2xl border-2 border-dashed flex items-center justify-center gap-3 transition-all ${newFee.receiptFileName ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-200 dark:border-slate-800 hover:border-brand/50 bg-slate-50/30'}`}>
-                          {newFee.receiptFileName ? (
-                            <>
-                              <FileText className="h-5 w-5 text-emerald-500" />
-                              <span className="text-xs font-black text-emerald-600 truncate max-w-[200px]">{newFee.receiptFileName}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-5 w-5 text-slate-400" />
-                              <span className="text-xs font-bold text-slate-400">Click to link digital proof</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
+                      {!showReceiptUpload && !newFee.receiptFileName ? (
+                        <button
+                          onClick={() => setShowReceiptUpload(true)}
+                          className="w-full h-[48px] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2 text-xs font-bold text-slate-400 hover:text-brand hover:border-brand/30 transition-all bg-slate-50/30 dark:bg-slate-900/30"
+                        >
+                          <Plus className="h-4 w-4" /> Add Receipt (Optional)
+                        </button>
+                      ) : (
+                        <>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1 flex justify-between">
+                            Digital Receipt
+                            <button onClick={() => { setShowReceiptUpload(false); setNewFee(prev => ({...prev, receiptData: null, receiptFileName: ""}))}} className="text-rose-400 hover:text-rose-500">Remove</button>
+                          </label>
+                          <div className="relative group">
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              onChange={handleFileChange}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div className={`w-full h-[48px] rounded-2xl border-2 border-dashed flex items-center justify-center gap-3 transition-all ${newFee.receiptFileName ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-200 dark:border-slate-800 hover:border-brand/50 bg-slate-50/30'}`}>
+                              {newFee.receiptFileName ? (
+                                <>
+                                  <FileText className="h-5 w-5 text-emerald-500" />
+                                  <span className="text-xs font-black text-emerald-600 truncate max-w-[200px]">{newFee.receiptFileName}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="h-5 w-5 text-slate-400 group-hover:text-brand transition-colors" />
+                                  <span className="text-xs font-bold text-slate-400 group-hover:text-brand transition-colors">Select or drop file</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -479,12 +656,23 @@ export default function Fees() {
                 </div>
                 <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase mb-2">No Records Detected</h4>
                 <p className="text-sm font-bold text-slate-400 mb-8 max-w-xs mx-auto text-balance">This financial node is currently empty for the selected semester timeline.</p>
-                <button
-                  onClick={() => setShowAddFee(true)}
-                  className="px-8 py-3 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                >
-                  Initiate first entry
-                </button>
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <button
+                    onClick={() => setShowAddFee(true)}
+                    className="px-8 py-3 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                  >
+                    Initiate first entry
+                  </button>
+                  {selectedSemester > 1 && (
+                    <button
+                      onClick={handleImportPrevious}
+                      disabled={importing}
+                      className="px-8 py-3 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
+                    >
+                      {importing ? "Importing..." : "Auto-Import Previous Semester"}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -512,7 +700,7 @@ export default function Fees() {
                             {getCategoryIcon(fee.category)}
                           </div>
                           <div>
-                            <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">{fee.category}</h4>
+                            <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">{fee.category} <span className="text-slate-400 ml-1">₹{fee.totalAmount.toLocaleString()}</span></h4>
                             <div className="flex items-center gap-1.5 mt-1">
                               <div className={`h-1.5 w-1.5 rounded-full ${statusColors[fee.status] || 'bg-slate-500'}`} />
                               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
@@ -529,28 +717,24 @@ export default function Fees() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 mb-8">
-                        <div className="bg-slate-50/80 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50 group-hover:border-slate-200 dark:group-hover:border-slate-700 transition-colors">
-                          <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">Target Quota</p>
-                          <p className="text-lg font-black text-slate-900 dark:text-white">₹{fee.totalAmount.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.02] p-4 rounded-2xl border border-emerald-500/10 group-hover:border-emerald-500/20 transition-colors">
-                          <p className="text-[9px] font-black text-emerald-500/80 uppercase mb-1 tracking-widest">Processed</p>
-                          <p className="text-lg font-black text-emerald-600 dark:text-emerald-500">₹{fee.paidAmount.toLocaleString()}</p>
-                        </div>
-                      </div>
-
-
-                      <div className="flex flex-col gap-3 mt-4">
-                        {fee.status !== FEES_STATUS.PAID && (
-                          <button
-                            onClick={() => handleSettleFee(fee)}
-                            className="w-full h-12 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-sm font-black uppercase tracking-tight shadow-xl hover:scale-[1.01] active:scale-95 transition-all"
-                          >
-                            <CheckCircle className="h-5 w-5" />
-                            <span>Settle Fully</span>
-                          </button>
+                      <button
+                        onClick={() => handleToggleFeeStatus(fee)}
+                        className={`w-full py-6 rounded-[24px] flex items-center justify-center transition-all mb-6 border-2 group ${
+                          fee.status === FEES_STATUS.PAID 
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-500 shadow-lg shadow-emerald-500/20' 
+                            : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-brand/50 hover:text-brand'
+                        }`}
+                      >
+                        {fee.status === FEES_STATUS.PAID ? (
+                           <CheckCircle className="w-12 h-12 scale-110" />
+                        ) : (
+                           <div className="flex flex-col items-center gap-2">
+                             <CheckCircle className="w-8 h-8 opacity-50 group-hover:scale-110 transition-transform" />
+                             <span className="text-[10px] font-black uppercase tracking-widest">Mark as Paid</span>
+                           </div>
                         )}
+                      </button>
+                      <div className="flex flex-col gap-3">
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => handleEditInit(fee)}

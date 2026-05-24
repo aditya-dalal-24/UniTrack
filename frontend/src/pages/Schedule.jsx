@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from "framer-motion";
 import {
   Plus,
   X,
@@ -20,7 +20,8 @@ import {
   User,
   MapPin,
   Users,
-  CalendarPlus
+  CalendarPlus,
+  Sparkles,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { api } from "../services/api";
@@ -29,6 +30,9 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import TimetableUploadModal from "../components/TimetableUploadModal";
 import MarkAttendanceWizard from "../components/MarkAttendanceWizard";
+import { useUndoToast } from "../components/UndoToast";
+import { recordAction, getAttendanceBehavior, isAllPresentDay } from "../utils/behaviorEngine";
+
 
 // const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -108,7 +112,7 @@ export default function Schedule() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [overallSummary, setOverallSummary] = useState(null); // to store percentages
-  const [minPercentage, setMinPercentage] = useState("75");
+  const [minPercentage, setMinPercentage] = useState(() => localStorage.getItem("minAttendanceCap") || "75");
   const [selectedAnalysisSubId, setSelectedAnalysisSubId] = useState("overall");
   
   const [holidays, setHolidays] = useState(() => {
@@ -130,10 +134,13 @@ export default function Schedule() {
 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAttendanceWizard, setShowAttendanceWizard] = useState(false);
+  const [smartBannerDismissed, setSmartBannerDismissed] = useState(false);
+  const { showUndo, UndoToastComponent } = useUndoToast();
 
   useEffect(() => { localStorage.setItem("timetable_timeslots", JSON.stringify(timeSlots)); }, [timeSlots]);
   useEffect(() => { localStorage.setItem("uniTrackHolidays", JSON.stringify(holidays)); }, [holidays]);
   useEffect(() => { localStorage.setItem("uniTrackExams", JSON.stringify(exams)); }, [exams]);
+  useEffect(() => { localStorage.setItem("minAttendanceCap", minPercentage); }, [minPercentage]);
 
   const loadBackendData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -598,8 +605,56 @@ export default function Schedule() {
 
     if (allSlotIds.length > 0) {
       await toggleAttendanceStatus(allSlotIds, status);
+      // Record behavior
+      const dayOfWeek = new Date(selectedDate).getDay();
+      recordAction("attendance", status === "PRESENT" ? "mark_all_present" : "mark_all_absent", { dow: dayOfWeek });
     }
   };
+
+  // Smart attendance: detect if user usually marks all present on this day
+  const smartAttendanceSuggestion = useMemo(() => {
+    const selectedDateObj = new Date(selectedDate);
+    const dow = selectedDateObj.getDay();
+    const lectures = getLecturesForDate();
+    const unmarkedLectures = lectures.filter(({ classes }) => {
+      return !classes.some(c => c.isBreak) && classes.some(c => !dailyRecords[c.backendId]?.status);
+    });
+    
+    if (unmarkedLectures.length === 0) return null;
+    
+    const behavior = getAttendanceBehavior();
+    const dayPreference = isAllPresentDay(dow);
+    
+    if (behavior === "mostly_present" || dayPreference) {
+      return {
+        type: "all_present",
+        count: lectures.filter(({ classes }) => !classes.some(c => c.isBreak)).length,
+        unmarked: unmarkedLectures.length,
+      };
+    }
+    return null;
+  }, [selectedDate, dailyRecords, timetable, timeSlots, days]);
+
+  // One-tap smart mark with undo
+  const handleSmartMarkAll = useCallback(() => {
+    const prevRecords = { ...dailyRecords };
+    const prevMap = { ...attendanceMap };
+    
+    markAllForSelectedDate("PRESENT");
+    setSmartBannerDismissed(true);
+    
+    showUndo({
+      message: `Marked all lectures present`,
+      duration: 5000,
+      onUndo: () => {
+        // Revert optimistic updates
+        setDailyRecords(prevRecords);
+        setAttendanceMap(prevMap);
+        loadBackendData(false);
+      },
+      onExpire: () => { /* Already committed */ },
+    });
+  }, [dailyRecords, attendanceMap, markAllForSelectedDate, showUndo]);
 
   const changeDate = (offset) => {
     const d = new Date(selectedDate);
@@ -700,6 +755,54 @@ export default function Schedule() {
           {activeTab === "daily" ? (
             <motion.div key="daily" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-6">
               
+              {/* Predictive Insights Panel */}
+              <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden mb-6">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 dark:bg-white/10 blur-2xl" />
+                <div className="flex items-center gap-3 mb-4 relative z-10">
+                  <Sparkles className="h-5 w-5 text-brand dark:text-white" />
+                  <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                  {subjectAnalysis.filter(s => s.percentage < parseInt(minPercentage)).length > 0 ? (
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800">
+                      <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                        {subjectAnalysis.filter(s => s.percentage < parseInt(minPercentage)).length} subjects are currently below the {minPercentage}% threshold.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800">
+                      <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        You're safely above the {minPercentage}% threshold in all subjects!
+                      </p>
+                    </div>
+                  )}
+                  {subjectAnalysis.map(s => {
+                    if (s.total === 0) return null;
+                    const requiredTotal = Math.ceil((s.present * 100) / parseInt(minPercentage));
+                    const safeToMiss = Math.max(0, s.total - requiredTotal);
+                    if (safeToMiss > 0) {
+                      return (
+                        <div key={s.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-white dark:border-slate-800">
+                          <div className="p-2 rounded-xl bg-brand/10 text-brand">
+                            <BookOpen className="h-5 w-5" />
+                          </div>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                            You can safely miss <span className="text-brand dark:text-white">{safeToMiss} more classes</span> in {s.shortName}.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }).filter(Boolean).slice(0, 2)}
+                </div>
+              </div>
+
               {/* Daily Attendance Summary Stats */}
               {displayStats && (
                 <div className="space-y-4">
@@ -731,16 +834,140 @@ export default function Schedule() {
                 </div>
               )}
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 border-b dark:border-slate-800 pb-4">
+              {/* Attendance Activity Heatmap */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden mb-6 overflow-x-auto custom-scrollbar">
+                <div className="flex items-center justify-between mb-4 min-w-[500px]">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Activity Heatmap</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">12-Week Trajectory</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4 self-end pr-2">
+                    <span>Less</span>
+                    <div className="flex gap-1">
+                      <div className="w-[14px] h-[14px] rounded-[3px] bg-slate-100 dark:bg-slate-800/80"></div>
+                      <div className="w-[14px] h-[14px] rounded-[3px] bg-slate-300 dark:bg-slate-600"></div>
+                      <div className="w-[14px] h-[14px] rounded-[3px] bg-slate-500 dark:bg-slate-400"></div>
+                      <div className="w-[14px] h-[14px] rounded-[3px] bg-slate-700 dark:bg-slate-200"></div>
+                      <div className="w-[14px] h-[14px] rounded-[3px] bg-slate-900 dark:bg-white"></div>
+                    </div>
+                    <span>More</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 min-w-[500px]">
+                  {/* Day Labels */}
+                  <div className="flex flex-col gap-[4px] text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-[22px] pr-2 justify-between py-[2px]">
+                    <span className="invisible">Sun</span>
+                    <span>Mon</span>
+                    <span className="invisible">Tue</span>
+                    <span>Wed</span>
+                    <span className="invisible">Thu</span>
+                    <span>Fri</span>
+                    <span className="invisible">Sat</span>
+                  </div>
+
+                  {/* Heatmap Grid container */}
+                  <div className="flex-1 flex gap-[4px] pt-4">
+                    {(() => {
+                      // Generate GitHub-style grid (columns = weeks, rows = days Sun-Sat)
+                      const today = new Date();
+                      const endDate = new Date(today);
+                      const startDate = new Date(today);
+                      startDate.setDate(today.getDate() - (12 * 7)); // 12 weeks back
+                      startDate.setDate(startDate.getDate() - startDate.getDay()); // Snap to Sunday
+
+                      const days = [];
+                      let currDate = new Date(startDate);
+                      while (currDate <= endDate) {
+                        days.push(toISODate(currDate));
+                        currDate.setDate(currDate.getDate() + 1);
+                      }
+
+                      // Group into weeks
+                      const weeks = [];
+                      for (let i = 0; i < days.length; i += 7) {
+                        weeks.push(days.slice(i, i + 7));
+                      }
+                      
+                      return weeks.map((weekDays, weekIdx) => {
+                         let isMonthStart = false;
+                         let monthLabelText = "";
+
+                         // Check if this week contains the 1st of any month
+                         const firstDayOfMonthStr = weekDays.find(d => new Date(d).getDate() === 1);
+                         
+                         if (firstDayOfMonthStr) {
+                           isMonthStart = true;
+                           monthLabelText = new Date(firstDayOfMonthStr).toLocaleDateString('en-US', { month: 'short' });
+                         } else if (weekIdx === 0) {
+                           // For the very first column, label it with the current month, 
+                           // UNLESS the 1st of the NEXT month appears in the next 2 weeks (to prevent merging).
+                           const nextMonthTooClose = weeks.slice(1, 3).some(w => w.some(d => new Date(d).getDate() === 1));
+                           if (!nextMonthTooClose) {
+                             isMonthStart = true;
+                             monthLabelText = new Date(weekDays[0]).toLocaleDateString('en-US', { month: 'short' });
+                           }
+                         }
+
+                         return (
+                           <div key={weekIdx} className="flex flex-col gap-[4px] relative">
+                             {isMonthStart && (
+                               <span className="absolute bottom-full mb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                                 {monthLabelText}
+                               </span>
+                             )}
+                             
+                             {weekDays.map(dateKey => {
+                                const dayRecords = attendanceMap[dateKey] || {};
+                                let presentCount = 0;
+                                Object.values(dayRecords).forEach(r => {
+                                  if (r.status === 'PRESENT') presentCount++;
+                                });
+                                
+                                let colorClass = "bg-slate-100 dark:bg-slate-800/80"; // Level 0
+                                if (presentCount === 1) colorClass = "bg-slate-300 dark:bg-slate-600";
+                                else if (presentCount === 2) colorClass = "bg-slate-500 dark:bg-slate-400";
+                                else if (presentCount === 3) colorClass = "bg-slate-700 dark:bg-slate-200";
+                                else if (presentCount >= 4) colorClass = "bg-slate-900 dark:bg-white shadow-sm";
+                                
+                                const dObj = new Date(dateKey);
+                                const isFuture = dObj > today;
+                                
+                                // Make future/inactive days the same as Level 0
+                                if (isFuture) colorClass = "bg-slate-100 dark:bg-slate-800/80";
+
+                                return (
+                                  <div key={dateKey} className="group relative">
+                                    <div className={`w-[14px] h-[14px] rounded-[3px] transition-all hover:ring-2 hover:ring-offset-1 hover:ring-offset-white dark:hover:ring-offset-slate-900 hover:ring-slate-400 dark:hover:ring-slate-500 hover:scale-110 cursor-pointer ${colorClass}`} />
+                                    {!isFuture && (
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity shadow-xl">
+                                        {dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        <br/>
+                                        <span className="text-slate-300">{presentCount} Lectures Attended</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                             })}
+                           </div>
+                         );
+                      });
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+              <div className="xl:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden">
+                <div className="flex flex-col items-center mb-4 sm:mb-6 gap-4 border-b dark:border-slate-800 pb-4">
                     <div 
-                      className="flex items-center gap-4 cursor-pointer group" 
+                      className="flex items-center gap-3 cursor-pointer group" 
                       onClick={() => setIsLecturesExpanded(!isLecturesExpanded)}
                     >
                       <div className="p-2 bg-brand/10 dark:bg-brand/20 rounded-xl text-brand dark:text-brand-400 group-hover:bg-brand/20 transition-colors">
                         <Calendar className="w-5 h-5"/>
                       </div>
-                      <h2 className="text-xl font-bold dark:text-white flex items-center gap-2">
+                      <h2 className="text-lg sm:text-xl font-bold dark:text-white flex items-center gap-2">
                         {isCalendarExpanded ? 'Month View' : "Today's Lectures"}
                         {!isCalendarExpanded && (
                           isLecturesExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />
@@ -748,18 +975,18 @@ export default function Schedule() {
                       </h2>
                     </div>
                     
-                    <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                    <div className="flex gap-2 flex-wrap w-full justify-center">
                       <button
                         onClick={() => setShowAttendanceWizard(true)}
-                        className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition flex items-center gap-2 flex-1 sm:flex-initial justify-center"
+                        className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition flex items-center gap-1.5 flex-1 sm:flex-initial justify-center whitespace-nowrap"
                       >
-                        <CalendarPlus size={18}/> Mark Attendance
+                        <CalendarPlus size={16}/> <span className="hidden sm:inline">Mark Attendance</span><span className="sm:hidden">Mark</span>
                       </button>
-                      <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition flex-1 sm:flex-initial text-center">
+                      <button onClick={() => setIsCalendarExpanded(!isCalendarExpanded)} className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition flex-1 sm:flex-initial text-center whitespace-nowrap">
                         {isCalendarExpanded ? "Hide Calendar" : "Show Calendar"}
                       </button>
-                      <button onClick={() => setShowAddHoliday(true)} className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition flex items-center gap-2 flex-1 sm:flex-initial justify-center"><Plus size={18}/> Holiday</button>
-                      <button onClick={() => setShowAddExam(true)} className="text-sm px-4 sm:px-6 py-2.5 sm:py-3 font-bold rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition flex items-center gap-2 flex-1 sm:flex-initial justify-center"><Plus size={18}/> Exam</button>
+                      <button onClick={() => setShowAddHoliday(true)} className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 font-bold rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition flex items-center gap-1.5 flex-1 sm:flex-initial justify-center"><Plus size={16}/> Holiday</button>
+                      <button onClick={() => setShowAddExam(true)} className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 font-bold rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition flex items-center gap-1.5 flex-1 sm:flex-initial justify-center"><Plus size={16}/> Exam</button>
                     </div>
                 </div>
 
@@ -772,11 +999,8 @@ export default function Schedule() {
                       className="overflow-hidden"
                     >
                       {!isCalendarExpanded && (
-                        <div className="flex flex-col xl:flex-row items-center justify-between mb-6 gap-6">
-                            {/* Empty div for perfect centering of date selector on xl screens */}
-                            <div className="hidden xl:block flex-1"></div>
-                            
-                            <div className="flex flex-col items-center gap-2 w-full max-w-sm shrink-0 mx-auto xl:mx-0">
+                        <div className="mb-6 flex justify-center">
+                            <div className="flex flex-col items-center gap-2 w-full max-w-sm">
                                 {(() => {
                                   const dayName = new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long" });
                                   const dayStyles = {
@@ -796,24 +1020,11 @@ export default function Schedule() {
                                   );
                                 })()}
                                 <div className="flex items-center justify-between w-full">
-                                    <button onClick={() => changeDate(-1)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronLeft size={20}/></button>
-                                    <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="font-bold text-lg bg-transparent border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl outline-none flex-1 mx-3 text-center dark:text-white dark:[color-scheme:dark]" />
-                                    <button onClick={() => changeDate(1)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronRight size={20}/></button>
+                                    <button onClick={() => changeDate(-1)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronLeft size={18}/></button>
+                                    <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="font-bold text-sm bg-transparent border border-slate-200 dark:border-slate-700 px-2 py-1.5 rounded-xl outline-none flex-1 mx-2 text-center dark:text-white dark:[color-scheme:dark]" />
+                                    <button onClick={() => changeDate(1)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:text-white transition"><ChevronRight size={18}/></button>
                                 </div>
-                                <button onClick={() => setSelectedDate(toISODate(new Date()))} className="w-full px-4 py-2 font-black rounded-xl transition bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-300 dark:hover:bg-brand/30">Today</button>
-                            </div>
-                            
-                            <div className="flex-1 w-full flex justify-center xl:justify-center">
-                                {getLecturesForDate().length > 1 && !isHoliday(new Date(selectedDate).toDateString()) && !isExam(new Date(selectedDate).toDateString()) && (
-                                  <div className="flex flex-row gap-3 w-full justify-center xl:justify-center">
-                                    <button onClick={() => markAllForSelectedDate('PRESENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm text-center leading-tight">
-                                      <CheckCircle size={22} className="mb-0.5" /> <span>Mark All<br/>Present</span>
-                                    </button>
-                                    <button onClick={() => markAllForSelectedDate('ABSENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors border border-red-200/60 dark:border-red-800/40 shadow-sm text-center leading-tight">
-                                      <X size={22} className="mb-0.5" /> <span>Mark All<br/>Absent</span>
-                                    </button>
-                                  </div>
-                                )}
+                                <button onClick={() => setSelectedDate(toISODate(new Date()))} className="w-full px-3 py-1.5 text-sm font-black rounded-xl transition bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-300 dark:hover:bg-brand/30">Today</button>
                             </div>
                         </div>
                       )}
@@ -879,8 +1090,8 @@ export default function Schedule() {
                         )}
                       </AnimatePresence>
 
-                      {/* Lecture Render Zone */}
-                      <div className="space-y-4">
+                      {/* ===== COMPACT ATTENDANCE GRID ===== */}
+                      <div>
                         {isHoliday(new Date(selectedDate).toDateString()) ? (
                            <div className="text-center py-12 bg-amber-50 dark:bg-amber-900/10 rounded-3xl border border-amber-300 dark:border-amber-800/50">
                               <div className="text-amber-500 mb-2">🌴</div>
@@ -898,113 +1109,92 @@ export default function Schedule() {
                             No lectures scheduled for this day.
                           </div>
                         ) : (
-                          <>
-                            {isCalendarExpanded && getLecturesForDate().length > 1 && (
-                              <div className="flex flex-row justify-end gap-3 mb-2 px-2">
-                                <button onClick={() => markAllForSelectedDate('PRESENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm text-center leading-tight">
-                                  <CheckCircle size={22} className="mb-0.5" /> <span>Mark All<br/>Present</span>
-                                </button>
-                                <button onClick={() => markAllForSelectedDate('ABSENT')} className="w-[90px] aspect-square flex flex-col items-center justify-center gap-1.5 text-xs font-bold rounded-2xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors border border-red-200/60 dark:border-red-800/40 shadow-sm text-center leading-tight">
-                                  <X size={22} className="mb-0.5" /> <span>Mark All<br/>Absent</span>
-                                </button>
+                          <div className="rounded-2xl border border-slate-200 dark:border-slate-700/60 overflow-hidden">
+                            {/* Compact header with bulk actions */}
+                            {getLecturesForDate().filter(({ classes }) => !classes.some(c => c.isBreak)).length > 1 && (
+                              <div className="flex items-center justify-between px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/60">
+                                <span className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                  {getLecturesForDate().filter(({ classes }) => !classes.some(c => c.isBreak)).length} Lectures
+                                </span>
+                                <div className="grid grid-cols-2 gap-2 w-[220px]">
+                                  <button 
+                                    onClick={() => markAllForSelectedDate('PRESENT')}
+                                    className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors border border-emerald-200/60 dark:border-emerald-800/40"
+                                  >
+                                    <CheckCircle size={14} /> All Present
+                                  </button>
+                                  <button 
+                                    onClick={() => markAllForSelectedDate('ABSENT')}
+                                    className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold rounded-xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors border border-red-200/60 dark:border-red-800/40"
+                                  >
+                                    <X size={14} /> All Absent
+                                  </button>
+                                </div>
                               </div>
                             )}
-                            {getLecturesForDate().map(({ slot, classes }, groupIdx) => {
-                              const isAnyBreak = classes.some(c => c.isBreak);
-                              const realBreaks = classes.filter(c => c.isBreak && (c.subject?.toUpperCase().includes("BREAK") || c.subject?.toUpperCase().includes("LUNCH")));
-                              const isRealBreakGroup = realBreaks.length > 0;
-                              const isParallel = classes.length > 1;
-                              
-                              // Check if all classes in group have same status
-                              const statuses = classes.map(c => dailyRecords[c.backendId]?.status);
-                              const isAllPresent = statuses.every(s => s === "PRESENT");
-                              const isAllAbsent = statuses.every(s => s === "ABSENT");
-                              const isMixed = !isAllPresent && !isAllAbsent && statuses.some(s => s);
-                              const isAnyLoading = classes.some(c => loadingSlots[c.backendId]);
 
-                              return (
-                                <div key={groupIdx} className={`flex flex-col xl:flex-row xl:items-center justify-between p-5 rounded-3xl border transition-all gap-6 ${
-                                  isRealBreakGroup 
-                                  ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-800/40 italic" 
-                                  : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm"
-                                }`}>
-                                  <div className="flex flex-col gap-4 flex-1 min-w-0">
-                                    {classes.map((classData, idx) => {
-                                      const isThisRealBreak = classData.isBreak && (classData.subject?.toUpperCase().includes("BREAK") || classData.subject?.toUpperCase().includes("LUNCH"));
-                                      const subjectColor = getSubjectColor(classData.subject, classData.subjectId);
-                                      
-                                      return (
-                                        <div key={classData.backendId || idx} className="flex items-start gap-4">
-                                          <div className="w-1.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: isThisRealBreak ? '#d97706' : subjectColor }}></div>
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              {isThisRealBreak && <span className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-tight">Break Slot</span>}
-                                              {!isThisRealBreak && classData.isBreak && <span className="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-tight">Special Slot</span>}
-                                              <h3 className={`text-lg font-bold dark:text-white truncate ${isThisRealBreak ? 'text-amber-900 dark:text-amber-400 not-italic' : ''}`}>{classData.subject}</h3>
-                                              {(classData.subject?.toUpperCase().includes("LAB") || 
-                                                classData.subject?.toUpperCase().includes("PRACTICAL") ||
-                                                classData.subject?.toUpperCase().endsWith("L") ||
-                                                classData.courseCode?.toUpperCase().endsWith("L")) && (
-                                                <span className="px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] font-black uppercase tracking-tight">Lab Session</span>
-                                              )}
-                                            </div>
-                                            <p className="text-[13px] text-slate-500 font-bold flex items-center gap-2 mt-1 overflow-hidden">
-                                              <Clock size={13} className="flex-shrink-0" /> {slot.start} - {slot.end}
-                                              {!classData.isBreak && classData.professor && (
-                                                <>
-                                                  <span className="mx-0.5 opacity-30">•</span>
-                                                  <span className="truncate">{classData.professor}</span>
-                                                </>
-                                              )}
-                                              {!classData.isBreak && classData.room && (
-                                                <>
-                                                  <span className="mx-0.5 opacity-30">•</span>
-                                                  <span className="truncate">{classData.room}</span>
-                                                </>
-                                              )}
-                                              {classData.groupInfo && <span className="text-[10px] uppercase text-white px-2 py-0.5 rounded-lg ml-1 font-black shadow-sm" style={{ backgroundColor: subjectColor }}>{classData.groupInfo}</span>}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  
-                                  {!isAnyBreak ? (
-                                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                                      <div className="flex bg-white dark:bg-slate-900 p-1 sm:p-1.5 rounded-2xl gap-1 sm:gap-2 w-full sm:w-fit border border-slate-200 dark:border-slate-800 shadow-sm mx-auto xl:mx-0">
-                                        <button 
-                                          disabled={isAnyLoading}
-                                          onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "PRESENT")} 
-                                          className={`flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex-1 sm:flex-initial ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllPresent ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"}`}
-                                        >
-                                          <CheckCircle size={18} /> {isParallel ? "PRESENT" : "PRESENT"}
-                                        </button>
-                                        <button 
-                                          disabled={isAnyLoading}
-                                          onClick={() => toggleAttendanceStatus(classes.map(c => c.backendId), "ABSENT")} 
-                                          className={`flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex-1 sm:flex-initial ${isAnyLoading ? 'opacity-50 cursor-not-allowed' : ''} ${isAllAbsent ? "bg-red-500 text-white shadow-md shadow-red-500/20" : "text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"}`}
-                                        >
-                                          <X size={18} /> {isParallel ? "ABSENT" : "ABSENT"}
-                                        </button>
+                            {/* Lecture rows — swipe enabled on touch devices */}
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                              {getLecturesForDate().map(({ slot, classes }, groupIdx) => {
+                                const isAnyBreak = classes.some(c => c.isBreak);
+                                const realBreaks = classes.filter(c => c.isBreak && (c.subject?.toUpperCase().includes("BREAK") || c.subject?.toUpperCase().includes("LUNCH")));
+                                const isRealBreakGroup = realBreaks.length > 0;
+                                
+                                const statuses = classes.map(c => dailyRecords[c.backendId]?.status);
+                                const isAllPresent = statuses.every(s => s === "PRESENT");
+                                const isAllAbsent = statuses.every(s => s === "ABSENT");
+                                const isMixed = !isAllPresent && !isAllAbsent && statuses.some(s => s);
+                                const isAnyLoading = classes.some(c => loadingSlots[c.backendId]);
+
+                                if (isRealBreakGroup) {
+                                  return (
+                                    <div key={groupIdx} className="flex items-center gap-4 px-5 py-3 bg-amber-50/50 dark:bg-amber-900/10">
+                                      <div className="w-1.5 h-7 rounded-full bg-amber-400 flex-shrink-0"></div>
+                                      <div className="flex flex-1 items-center justify-between pr-4">
+                                        <span className="text-sm font-bold text-amber-700 dark:text-amber-400 italic">{classes[0]?.subject || "Break"}</span>
+                                        <span className="text-xs font-bold text-amber-600/60 dark:text-amber-500/60">{slot.start} – {slot.end}</span>
                                       </div>
-                                      {isMixed && <p className="text-[10px] font-bold text-amber-500 text-center xl:text-left animate-pulse tracking-wide uppercase">Mixed Status Detected</p>}
+                                      <div className="w-[220px] flex-shrink-0"></div>
                                     </div>
-                                  ) : (
-                                    isRealBreakGroup ? (
-                                      <div className="px-6 py-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-2xl font-black text-xs uppercase tracking-widest border border-amber-200 dark:border-amber-800/50 text-center">
-                                        Enjoy your break!
+                                  );
+                                }
+                                
+                                if (isAnyBreak && !isRealBreakGroup) {
+                                  return (
+                                    <div key={groupIdx} className="flex items-center gap-4 px-5 py-3 bg-slate-50/50 dark:bg-slate-800/30">
+                                      <div className="w-1.5 h-7 rounded-full bg-slate-300 dark:bg-slate-600 flex-shrink-0"></div>
+                                      <div className="flex flex-1 items-center justify-between pr-4">
+                                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">{classes[0]?.subject || "Special"}</span>
+                                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{slot.start} – {slot.end}</span>
                                       </div>
-                                    ) : (
-                                      <div className="px-4 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-center">
-                                        Special Session
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </>
+                                      <div className="w-[220px] flex-shrink-0"></div>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <SwipeableLectureRow
+                                    key={groupIdx}
+                                    classes={classes}
+                                    slot={slot}
+                                    isAllPresent={isAllPresent}
+                                    isAllAbsent={isAllAbsent}
+                                    isMixed={isMixed}
+                                    isAnyLoading={isAnyLoading}
+                                    getSubjectColor={getSubjectColor}
+                                    onMarkPresent={() => {
+                                      toggleAttendanceStatus(classes.map(c => c.backendId), "PRESENT");
+                                      recordAction("attendance", "mark_present", { subject: classes[0]?.subject });
+                                    }}
+                                    onMarkAbsent={() => {
+                                      toggleAttendanceStatus(classes.map(c => c.backendId), "ABSENT");
+                                      recordAction("attendance", "mark_absent", { subject: classes[0]?.subject });
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </motion.div>
@@ -1012,104 +1202,123 @@ export default function Schedule() {
                 </AnimatePresence>
               </div>
 
-              {/* ============ SUBJECT ANALYSIS GRAPH ============ */}
-              <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm mt-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center flex-shrink-0">
-                      <BarChart2 className="h-5 w-5 text-brand dark:text-brand-400" />
+              {/* RIGHT COLUMN: GRAPH + HOLIDAYS/EXAMS */}
+              <div className="xl:col-span-2 flex flex-col gap-4">
+                {/* ============ SUBJECT ANALYSIS GRAPH ============ */}
+                <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col">
+                  <div className="flex items-center justify-between mb-4 gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-lg bg-brand/10 dark:bg-brand/20 flex items-center justify-center flex-shrink-0">
+                        <BarChart2 className="h-4 w-4 text-brand dark:text-brand-400" />
+                      </div>
+                      <h2 className="text-base font-bold dark:text-white">Subject Analysis</h2>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold dark:text-white">Subject Analysis</h2>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Attendance distribution across your subjects</p>
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1.5">Min:</span>
+                      <input type="number" value={minPercentage} onChange={(e) => setMinPercentage(e.target.value)} className="w-12 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-center text-xs font-bold py-0.5 focus:outline-none focus:border-brand dark:text-white dark:[color-scheme:dark]" min="0" max="100"/>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">%</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1.5 border border-slate-200 dark:border-slate-700">
-                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 ml-2">Min. Required:</span>
-                    <input type="number" value={minPercentage} onChange={(e) => setMinPercentage(e.target.value)} className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-center text-sm font-semibold py-1 focus:outline-none focus:border-brand dark:text-white dark:[color-scheme:dark]" min="0" max="100"/>
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">%</span>
-                  </div>
-                </div>
 
-                {subjectAnalysis.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">No subject data available to analyze.</p>
-                ) : (
-                  <div className="h-64 mt-4 w-full text-slate-700 dark:text-slate-200">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={subjectAnalysis} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.2)" />
-                        <XAxis dataKey="shortName" tick={{ fill: 'currentColor', fontSize: 13, fontWeight: 900 }} tickLine={false} axisLine={false} />
-                        <YAxis tickFormatter={(val) => `${val}%`} tick={{ fill: 'currentColor', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} domain={[0, 100]} />
-                        <Tooltip 
-                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              const isDanger = data.percentage < (parseFloat(minPercentage) || 0);
+                  {subjectAnalysis.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">No subject data available to analyze.</p>
+                  ) : (
+                    <div className="h-48 mt-2 w-full text-slate-700 dark:text-slate-200">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={subjectAnalysis} margin={{ top: 20, right: 10, left: -20, bottom: 60 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.2)" />
+                          <XAxis 
+                            dataKey="shortName" 
+                            tickLine={false} 
+                            axisLine={false} 
+                            interval={0}
+                            tickMargin={8}
+                            tick={(props) => {
+                              const words = props.payload.value.split(" ");
                               return (
-                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
-                                  <p className="font-bold text-sm mb-1 text-slate-900 dark:text-slate-100">{data.name}</p>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-bold text-lg ${isDanger ? 'text-red-500' : 'text-emerald-500'}`}>{data.percentage}%</span>
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">({data.present}/{data.total} days)</span>
-                                  </div>
-                                </div>
+                                <g transform={`translate(${props.x},${props.y + 8})`}>
+                                  <text x={0} y={0} dy={0} textAnchor="middle" fill="currentColor" fontSize={11} fontWeight={900}>
+                                    {words.map((word, index) => (
+                                      <tspan key={index} x={0} dy={index === 0 ? 0 : 12}>{word}</tspan>
+                                    ))}
+                                  </text>
+                                </g>
                               );
-                            }
-                            return null;
-                          }}
-                        />
-                        <ReferenceLine y={parseFloat(minPercentage) || 0} stroke="#ef4444" strokeDasharray="3 3" />
-                        <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={60}>
-                          {subjectAnalysis.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.percentage >= (parseFloat(minPercentage) || 0) ? '#10b981' : '#ef4444'} />
+                            }}
+                          />
+                          <YAxis tickFormatter={(val) => `${val}%`} tick={{ fill: 'currentColor', fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                          <Tooltip 
+                            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                const isDanger = data.percentage < (parseFloat(minPercentage) || 0);
+                                return (
+                                  <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                                    <p className="font-bold text-sm mb-1 text-slate-900 dark:text-slate-100">{data.name}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`font-bold text-lg ${isDanger ? 'text-red-500' : 'text-emerald-500'}`}>{data.percentage}%</span>
+                                      <span className="text-xs text-slate-500 dark:text-slate-400">({data.present}/{data.total} days)</span>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <ReferenceLine y={parseFloat(minPercentage) || 0} stroke="#ef4444" strokeDasharray="3 3" />
+                          <Bar dataKey="percentage" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                            {subjectAnalysis.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.percentage >= (parseFloat(minPercentage) || 0) ? '#10b981' : '#ef4444'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+
+                {/* ============ HOLIDAYS & EXAMS SUMMARY ============ */}
+                <div className="flex flex-col gap-4">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+                    <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Upcoming Holidays</h3>
+                    {holidays.length === 0 ? (
+                      <p className="text-xs font-bold text-slate-400 dark:text-slate-500 py-2">No holidays added.</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                          {holidays.slice().sort((a,b) => new Date(a.date) - new Date(b.date)).map((h, i) => (
+                            <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
+                                <div>
+                                  <p className="font-bold text-amber-800 dark:text-amber-500 text-sm">{h.name}</p>
+                                  <p className="text-xs font-bold text-amber-700/70 dark:text-amber-500/70 mt-0.5">{new Date(h.date).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}</p>
+                                </div>
+                                <button onClick={() => deleteHoliday(h.date)} className="p-2 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition"><Trash2 size={16} /></button>
+                            </div>
                           ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+                    <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Upcoming Exams</h3>
+                    {exams.length === 0 ? (
+                      <p className="text-xs font-bold text-slate-400 dark:text-slate-500 py-2">No exams scheduled.</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                          {exams.slice().sort((a,b) => new Date(a.date) - new Date(b.date)).map((e, i) => (
+                            <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/50">
+                                <div>
+                                  <p className="font-bold text-purple-700 dark:text-purple-500 text-sm">{e.subject}</p>
+                                  <p className="text-xs font-bold text-purple-600/70 dark:text-purple-500/70 mt-0.5">{new Date(e.date).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})} &bull; {e.startTime}</p>
+                                </div>
+                                <button onClick={() => deleteExam(e.date)} className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl transition"><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              {/* ============ HOLIDAYS & EXAMS SUMMARY ============ */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                  <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Upcoming Holidays</h3>
-                  {holidays.length === 0 ? (
-                     <p className="text-xs font-bold text-slate-400 dark:text-slate-500 py-2">No holidays added.</p>
-                  ) : (
-                     <div className="space-y-3">
-                        {holidays.slice().sort((a,b) => new Date(a.date) - new Date(b.date)).map((h, i) => (
-                           <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
-                              <div>
-                                 <p className="font-bold text-amber-800 dark:text-amber-500 text-sm">{h.name}</p>
-                                 <p className="text-xs font-bold text-amber-700/70 dark:text-amber-500/70 mt-0.5">{new Date(h.date).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}</p>
-                              </div>
-                              <button onClick={() => deleteHoliday(h.date)} className="p-2 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition"><Trash2 size={16} /></button>
-                           </div>
-                        ))}
-                     </div>
-                  )}
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                  <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Upcoming Exams</h3>
-                  {exams.length === 0 ? (
-                     <p className="text-xs font-bold text-slate-400 dark:text-slate-500 py-2">No exams scheduled.</p>
-                  ) : (
-                     <div className="space-y-3">
-                        {exams.slice().sort((a,b) => new Date(a.date) - new Date(b.date)).map((e, i) => (
-                           <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/50">
-                              <div>
-                                 <p className="font-bold text-purple-700 dark:text-purple-500 text-sm">{e.subject}</p>
-                                 <p className="text-xs font-bold text-purple-600/70 dark:text-purple-500/70 mt-0.5">{new Date(e.date).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})} &bull; {e.startTime}</p>
-                              </div>
-                              <button onClick={() => deleteExam(e.date)} className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl transition"><Trash2 size={16} /></button>
-                           </div>
-                        ))}
-                     </div>
-                  )}
-                </div>
               </div>
             </motion.div>
           ) : (
@@ -1459,6 +1668,142 @@ export default function Schedule() {
           invalidateDashboard();
         }}
       />
+
+      {/* Undo Toast */}
+      {UndoToastComponent}
+    </div>
+  );
+}
+
+/**
+ * SwipeableLectureRow — Individual lecture row with swipe-to-mark gesture.
+ * Swipe right = Present (green), Swipe left = Absent (red).
+ * Falls back to button toggles on desktop.
+ */
+function SwipeableLectureRow({
+  classes,
+  slot,
+  isAllPresent,
+  isAllAbsent,
+  isMixed,
+  isAnyLoading,
+  getSubjectColor,
+  onMarkPresent,
+  onMarkAbsent,
+}) {
+  const x = useMotionValue(0);
+  const [swipeAction, setSwipeAction] = useState(null);
+  
+  // Color transforms based on drag direction
+  const bgColor = useTransform(x, [-100, -50, 0, 50, 100], [
+    "rgba(239, 68, 68, 0.15)",
+    "rgba(239, 68, 68, 0.08)",
+    "rgba(0, 0, 0, 0)",
+    "rgba(16, 185, 129, 0.08)",
+    "rgba(16, 185, 129, 0.15)",
+  ]);
+  
+  const handleDragEnd = useCallback((_, info) => {
+    const threshold = 80;
+    if (info.offset.x > threshold && !isAnyLoading) {
+      setSwipeAction("present");
+      onMarkPresent();
+      setTimeout(() => setSwipeAction(null), 600);
+    } else if (info.offset.x < -threshold && !isAnyLoading) {
+      setSwipeAction("absent");
+      onMarkAbsent();
+      setTimeout(() => setSwipeAction(null), 600);
+    }
+  }, [isAnyLoading, onMarkPresent, onMarkAbsent]);
+
+  const subjectColor = getSubjectColor(classes[0]?.subject, classes[0]?.subjectId);
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Swipe hint backgrounds */}
+      <div className="absolute inset-0 flex items-center justify-between pointer-events-none px-6">
+        <div className={`flex items-center gap-2 text-red-500/60 transition-opacity ${swipeAction === 'absent' ? 'opacity-100' : 'opacity-30'}`}>
+          <X size={18} />
+          <span className="text-xs font-bold">Absent</span>
+        </div>
+        <div className={`flex items-center gap-2 text-emerald-500/60 transition-opacity ${swipeAction === 'present' ? 'opacity-100' : 'opacity-30'}`}>
+          <span className="text-xs font-bold">Present</span>
+          <CheckCircle size={18} />
+        </div>
+      </div>
+
+      <motion.div
+        style={{ x, backgroundColor: bgColor }}
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.3}
+        onDragEnd={handleDragEnd}
+        className={`relative flex items-center gap-4 px-5 py-3 transition-colors cursor-grab active:cursor-grabbing touch-pan-y ${
+          isAllPresent ? 'bg-emerald-50/40 dark:bg-emerald-900/10' :
+          isAllAbsent ? 'bg-red-50/40 dark:bg-red-900/10' :
+          'bg-white dark:bg-slate-900/40'
+        }`}
+      >
+        {/* Color bar */}
+        <div className="w-1.5 self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: subjectColor }} />
+        
+        {/* Subject info */}
+        <div className="flex-1 min-w-0 flex items-center justify-between pr-4">
+          <div className="min-w-0 flex-1 pr-2">
+            <div className="flex items-center gap-2">
+              {classes.map((classData, idx) => (
+                <h3 key={classData.backendId || idx} className="text-[15px] font-bold text-slate-900 dark:text-white truncate">
+                  {idx > 0 && <span className="text-slate-300 dark:text-slate-600 mx-1">/</span>}
+                  {classData.subject}
+                </h3>
+              ))}
+              {classes.some(c => c.subject?.toUpperCase().includes("LAB") ||
+                c.subject?.toUpperCase().includes("PRACTICAL") ||
+                c.subject?.toUpperCase().endsWith("L") ||
+                c.courseCode?.toUpperCase().endsWith("L")) && (
+                <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] font-black uppercase flex-shrink-0">Lab</span>
+              )}
+              {isMixed && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0 animate-pulse" title="Mixed status" />}
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-0.5 truncate">
+              {classes[0]?.professor && <span>{classes[0].professor}</span>}
+              {classes[0]?.room && <span>{(classes[0]?.professor) ? ' • ' : ''}{classes[0].room}</span>}
+              {classes[0]?.groupInfo && <span>{(classes[0]?.professor || classes[0]?.room) ? ' • ' : ''}{classes[0].groupInfo}</span>}
+            </p>
+          </div>
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 flex-shrink-0 whitespace-nowrap">
+            {slot.start} – {slot.end}
+          </span>
+        </div>
+
+        {/* Toggle buttons (visible on desktop, hidden on small touch) */}
+        <div className="grid grid-cols-2 gap-2 w-[220px] flex-shrink-0">
+          <button 
+            disabled={isAnyLoading}
+            onClick={onMarkPresent}
+            className={`w-full py-2 flex items-center justify-center gap-1.5 rounded-xl transition-all text-xs font-bold border ${isAnyLoading ? 'opacity-40 cursor-not-allowed' : ''} ${
+              isAllPresent 
+                ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 hover:border-emerald-200 dark:hover:border-emerald-800/50"
+            }`}
+            title="Mark Present"
+          >
+            <CheckCircle size={14} strokeWidth={isAllPresent ? 3 : 2} /> Present
+          </button>
+          <button 
+            disabled={isAnyLoading}
+            onClick={onMarkAbsent}
+            className={`w-full py-2 flex items-center justify-center gap-1.5 rounded-xl transition-all text-xs font-bold border ${isAnyLoading ? 'opacity-40 cursor-not-allowed' : ''} ${
+              isAllAbsent 
+                ? "bg-red-500 border-red-500 text-white shadow-sm shadow-red-500/20" 
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 hover:border-red-200 dark:hover:border-red-800/50"
+            }`}
+            title="Mark Absent"
+          >
+            <X size={14} strokeWidth={isAllAbsent ? 3 : 2} /> Absent
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }

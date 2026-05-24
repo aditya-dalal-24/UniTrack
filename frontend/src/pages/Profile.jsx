@@ -23,6 +23,7 @@ const defaultProfileData = {
   college: "",
   gender: "",
   enrolmentNumber: "",
+  semesterChangeDate: "06-01",
 };
 
 export default function Profile() {
@@ -68,6 +69,7 @@ export default function Profile() {
         college: data.college || "",
         gender: data.gender || "",
         enrolmentNumber: data.enrolmentNumber || "",
+        semesterChangeDate: localStorage.getItem(`semester_change_date_${userId}`) || "06-01",
       });
     }
     if (showSpinner) setLoading(false);
@@ -82,6 +84,8 @@ export default function Profile() {
 
   const handleSave = async () => {
     const payload = { ...editData, enrolmentNumber: editData.rollNumber };
+    delete payload.semesterChangeDate; // Don't send custom field to backend
+    
     const avatarKey = `profile_avatar_${userId}`;
     const coverKey = `profile_cover_${userId}`;
 
@@ -93,6 +97,8 @@ export default function Profile() {
     if (coverUrl && coverUrl.startsWith('data:image')) {
         localStorage.setItem(coverKey, coverUrl);
     }
+    
+    localStorage.setItem(`semester_change_date_${userId}`, editData.semesterChangeDate || "06-01");
 
     const { error: apiError } = await api.updateProfile(payload);
     if (apiError) alert(apiError);
@@ -204,6 +210,7 @@ export default function Profile() {
                 <DenseField label="Course" value={studentData.course} isEditing={isEditing} editValue={editData.course} onChange={v => setEditData({...editData, course: v})} />
                 <DenseField label="Branch" value={studentData.branch} isEditing={isEditing} editValue={editData.branch} onChange={v => setEditData({...editData, branch: v})} />
                 <DenseField label="Semester" value={studentData.semester} isEditing={isEditing} editValue={editData.semester} onChange={v => setEditData({...editData, semester: v})} />
+                <DenseField label="Semester Change Date" value={studentData.semesterChangeDate} isEditing={isEditing} editValue={editData.semesterChangeDate} onChange={v => setEditData({...editData, semesterChangeDate: v})} type="monthday" />
                 <DenseField label="Batch" value={studentData.batch} isEditing={isEditing} editValue={editData.batch} onChange={v => setEditData({...editData, batch: v})} />
                 <DenseField label="Enrolment No" value={studentData.rollNumber} isEditing={isEditing} editValue={editData.rollNumber} onChange={v => setEditData({...editData, rollNumber: v})} />
             </div>
@@ -236,11 +243,32 @@ function DenseField({ label, value, isEditing, editValue, onChange, type="text",
               <option value="">Select</option>
               {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
+          ) : type === "monthday" ? (
+            <div className="flex gap-2">
+              <select 
+                value={(editValue || "06-01").split('-')[0]} 
+                onChange={e => onChange(`${e.target.value}-${(editValue || "06-01").split('-')[1]}`)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-black text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+              >
+                {Array.from({length: 12}, (_, i) => String(i+1).padStart(2, '0')).map(m => <option key={m} value={m}>{new Date(2000, parseInt(m)-1, 1).toLocaleString('default', { month: 'short' })}</option>)}
+              </select>
+              <select 
+                value={(editValue || "06-01").split('-')[1]} 
+                onChange={e => onChange(`${(editValue || "06-01").split('-')[0]}-${e.target.value}`)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-black text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+              >
+                {Array.from({length: 31}, (_, i) => String(i+1).padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
           ) : (
             <input type={type} value={editValue} onChange={e => onChange(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-black text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all" />
           )
         ) : (
-           <p className="text-base font-black text-slate-800 dark:text-slate-200 truncate tracking-tight">{value || "—"}</p>
+           <p className="text-base font-black text-slate-800 dark:text-slate-200 truncate tracking-tight">
+             {type === "monthday" && value 
+               ? new Date(2000, parseInt(value.split('-')[0] || 6)-1, parseInt(value.split('-')[1] || 1)).toLocaleString('default', { month: 'short', day: 'numeric' }) 
+               : (value || "—")}
+           </p>
         )}
       </div>
     );

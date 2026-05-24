@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
+import CommandPalette from "../components/CommandPalette.jsx";
 
 export default function AppLayout() {
   const { isDark } = useAuth();
@@ -23,6 +24,8 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+      {/* Global Command Palette — Ctrl+K / Cmd+K */}
+      <CommandPalette />
     </div>
   );
 }

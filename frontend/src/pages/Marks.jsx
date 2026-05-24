@@ -16,12 +16,29 @@ import {
   Search,
   Filter,
   MoreVertical,
+  Settings,
+  AlertCircle,
+  Zap,
+  ChevronDown,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+
 import { api } from "../services/api";
 import { useData } from "../contexts/DataContext";
+import { useAuth } from "../contexts/AuthContext";
+import { recordAction, getSmartDefaults, getMarksSuggestions } from "../utils/behaviorEngine";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 
 // Grade calculation function
 const calculateGrade = (totalMarks) => {
@@ -51,15 +68,22 @@ const getGradeColor = (grade) => {
   }
 };
 
-const calculateFinalMarks = (midSem, internals, endSem) => {
-  const midSemContribution = (midSem / 25) * 25;
-  const internalsContribution = (internals / 25) * 25;
-  const endSemContribution = (endSem / 100) * 50;
+const calculateFinalMarks = (midSem, internals, endSem, examConfig) => {
+  const config = examConfig || {
+    mid: { max: 25, weight: 25 },
+    int: { max: 25, weight: 25 },
+    end: { max: 100, weight: 50 }
+  };
+  const midSemContribution = config.mid.max > 0 ? (midSem / config.mid.max) * config.mid.weight : 0;
+  const internalsContribution = config.int.max > 0 ? (internals / config.int.max) * config.int.weight : 0;
+  const endSemContribution = config.end.max > 0 ? (endSem / config.end.max) * config.end.weight : 0;
   return midSemContribution + internalsContribution + endSemContribution;
 };
 
-const LedgerRow = ({ mark, onUpdate, onDelete }) => {
+const LedgerRow = ({ mark, onUpdate, onDelete, examConfig }) => {
   const [localMarks, setLocalMarks] = useState({
+    subjectName: mark.subjectName ?? "",
+    credits: mark.credits ?? "",
     midSem: mark.midSem ?? "",
     internals: mark.internals ?? "",
     endSem: mark.endSem ?? ""
@@ -69,6 +93,8 @@ const LedgerRow = ({ mark, onUpdate, onDelete }) => {
 
   useEffect(() => {
     setLocalMarks({
+      subjectName: mark.subjectName ?? "",
+      credits: mark.credits ?? "",
       midSem: mark.midSem ?? "",
       internals: mark.internals ?? "",
       endSem: mark.endSem ?? ""
@@ -86,14 +112,15 @@ const LedgerRow = ({ mark, onUpdate, onDelete }) => {
     const midSemVal = parseFloat(localMarks.midSem) || 0;
     const internalsVal = parseFloat(localMarks.internals) || 0;
     const endSemVal = parseFloat(localMarks.endSem) || 0;
-    const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal);
+    const creditsVal = parseInt(localMarks.credits) || 0;
+    const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal, examConfig);
     const { grade, points } = calculateGrade(finalScore);
 
     const payload = {
-      subjectName: mark.subjectName,
+      subjectName: localMarks.subjectName,
       subjectCode: mark.subjectCode,
       semester: mark.semester,
-      credits: mark.credits,
+      credits: creditsVal,
       midSem: midSemVal,
       internals: internalsVal,
       endSem: endSemVal,
@@ -103,6 +130,7 @@ const LedgerRow = ({ mark, onUpdate, onDelete }) => {
     };
 
     await onUpdate(mark.id, payload, mark.isNew);
+    recordAction("marks", "save_marks", { subject: localMarks.subjectName, semester: mark.semester });
     setIsSaving(false);
     setHasChanges(false);
   };
@@ -110,7 +138,8 @@ const LedgerRow = ({ mark, onUpdate, onDelete }) => {
   const aggregateScore = calculateFinalMarks(
     parseFloat(localMarks.midSem) || 0,
     parseFloat(localMarks.internals) || 0,
-    parseFloat(localMarks.endSem) || 0
+    parseFloat(localMarks.endSem) || 0,
+    examConfig
   );
   const { grade: localGrade } = calculateGrade(aggregateScore);
 
@@ -122,15 +151,27 @@ const LedgerRow = ({ mark, onUpdate, onDelete }) => {
     >
       <td className="py-5 px-4 text-center">
         <div className="flex flex-col items-center justify-center">
-            <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{mark.subjectName}</p>
-            <p className="text-[10px] font-bold text-slate-400 truncate max-w-[150px]">{mark.subjectFullName || "General Node"}</p>
+            <input 
+              type="text"
+              value={localMarks.subjectName}
+              onChange={(e) => handleInputChange("subjectName", e.target.value)}
+              className="w-32 bg-white dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-lg py-1.5 px-2 text-xs font-black text-center text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all shadow-sm"
+              placeholder="Subject Name"
+            />
+            <p className="text-[10px] font-bold text-slate-400 truncate max-w-[150px] mt-1">{mark.subjectFullName || "General Node"}</p>
         </div>
       </td>
       
       <td className="py-5 px-4 text-center">
-        <span className="text-xs font-black text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/30 px-3 py-1 rounded-lg border border-pink-100 dark:border-pink-900/20">
-          {mark.credits}
-        </span>
+        <div className="flex justify-center">
+            <input 
+              type="number"
+              value={localMarks.credits}
+              onChange={(e) => handleInputChange("credits", e.target.value)}
+              className="w-16 bg-white dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-lg py-1.5 px-2 text-xs font-black text-center text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all shadow-sm text-pink-600 dark:text-pink-400"
+              placeholder="Cr"
+            />
+        </div>
       </td>
 
       {/* INLINE INPUTS */}
@@ -203,6 +244,21 @@ export default function Marks() {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [editingMark, setEditingMark] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isInsightsOpen, setIsInsightsOpen] = useState(true);
+  
+  const [examConfig, setExamConfig] = useState(() => {
+    try {
+      const data = localStorage.getItem("examStructureConfig");
+      if (data) return JSON.parse(data);
+    } catch (e) {}
+    return {
+      mid: { max: 25, weight: 25 },
+      int: { max: 25, weight: 25 },
+      end: { max: 100, weight: 50 }
+    };
+  });
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [tempConfig, setTempConfig] = useState(examConfig);
 
   const [newMark, setNewMark] = useState({
     subjectName: "",
@@ -308,7 +364,7 @@ export default function Marks() {
     const midSemVal = parseFloat(newMark.midSem) || 0;
     const internalsVal = parseFloat(newMark.internals) || 0;
     const endSemVal = parseFloat(newMark.endSem) || 0;
-    const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal);
+    const finalScore = calculateFinalMarks(midSemVal, internalsVal, endSemVal, examConfig);
     const { grade, points } = calculateGrade(finalScore);
 
     const payload = {
@@ -395,6 +451,88 @@ export default function Marks() {
 
   const filteredMarks = mergedMarks.filter(m => (m.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) || m.subjectCode.toLowerCase().includes(searchQuery.toLowerCase())));
 
+  const gradeDistribution = useMemo(() => {
+    const counts = { "O": 0, "A+": 0, "A": 0, "B+": 0, "B": 0, "C": 0, "P": 0, "F": 0 };
+    filteredMarks.forEach(m => {
+      const g = (m.grade || "").toUpperCase();
+      if (counts[g] !== undefined && !m.isNew) counts[g]++;
+    });
+    return Object.keys(counts).map(key => ({
+      name: key,
+      count: counts[key],
+      color: getGradeColor(key).replace('text-', 'bg-').split('-')[1] // rough mapping, will use hardcoded colors in chart
+    }));
+  }, [filteredMarks]);
+
+  const { isDark } = useAuth();
+
+
+
+  // "What-If" Predictive Intelligence
+  const predictiveInsights = useMemo(() => {
+     const insights = [];
+     const config = examConfig || { mid: { max: 25, weight: 25 }, int: { max: 25, weight: 25 }, end: { max: 100, weight: 50 } };
+     
+     mergedMarks.forEach(s => {
+       // Only skip if End Sem is explicitly filled out with a valid number/score
+       // (If the user hasn't added marks yet, s.endSem is null/empty string)
+       if (s.endSem !== null && s.endSem !== undefined && s.endSem !== "" && !s.isNew) return;
+       
+       const midScore = parseFloat(s.midSem) || 0;
+       const intScore = parseFloat(s.internals) || 0;
+       
+       const midContribution = config.mid.max > 0 ? (midScore / config.mid.max) * config.mid.weight : 0;
+       const intContribution = config.int.max > 0 ? (intScore / config.int.max) * config.int.weight : 0;
+       const currentTotal = midContribution + intContribution;
+       
+       // Check if they have logged ANY internals
+       const hasLoggedInternals = (s.midSem !== null && s.midSem !== "") || (s.internals !== null && s.internals !== "");
+       
+       // Calculate required marks for next grades
+       const targetGrades = [
+         { g: 'O', min: 80 },
+         { g: 'A+', min: 70 },
+         { g: 'A', min: 60 },
+         { g: 'B+', min: 55 },
+         { g: 'B', min: 50 },
+         { g: 'C', min: 45 },
+         { g: 'P', min: 40 }
+       ];
+       
+       const getArticle = (grade) => ['O', 'A+', 'A', 'F'].includes(grade) ? 'an' : 'a';
+       
+       let targetStr = "";
+       let isAtRisk = false;
+       
+       for (const target of targetGrades) {
+          const pointsNeeded = target.min - currentTotal;
+          if (pointsNeeded <= 0) {
+            targetStr = `Already secured ${getArticle(target.g)} '${target.g}' in ${s.subjectName}.`;
+            break;
+          }
+          if (config.end.weight === 0) continue;
+          
+          const endSemMarksNeeded = (pointsNeeded / config.end.weight) * config.end.max;
+          if (endSemMarksNeeded <= config.end.max) {
+             targetStr = `Need ${Math.ceil(endSemMarksNeeded)}/${config.end.max} in End-Sem to secure ${getArticle(target.g)} '${target.g}' in ${s.subjectName}.`;
+             break;
+          }
+       }
+       
+       if (!targetStr) {
+         // Mathematically cannot pass
+         targetStr = `Mathematically unable to pass P grade (40%) in ${s.subjectName}.`;
+         isAtRisk = true;
+       } else if (hasLoggedInternals && currentTotal < (config.mid.weight + config.int.weight) * 0.4) {
+         isAtRisk = true;
+       }
+       
+       insights.push({ subject: s.subjectName || s.subjectFullName || "Subject", text: targetStr, isAtRisk });
+     });
+     
+     return insights;
+  }, [mergedMarks, examConfig]);
+
   return (
     <div className="space-y-8 pb-12 font-sans">
       <PageHeader
@@ -404,7 +542,8 @@ export default function Marks() {
           <button
             onClick={() => {
               setEditingMark(null);
-              setNewMark({ subjectName: "", subjectCode: "", credits: "3", midSem: "", internals: "", endSem: "" });
+              const defaults = getSmartDefaults("marks", "add_subject");
+              setNewMark({ subjectName: "", subjectCode: "", credits: defaults.credits || "3", midSem: "", internals: "", endSem: "" });
               setShowSubjectModal(true);
             }}
             className="group relative inline-flex items-center gap-2 rounded-2xl bg-brand text-white px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 transition-all hover:scale-105 active:scale-95 overflow-hidden"
@@ -420,6 +559,7 @@ export default function Marks() {
 
       {!loading && !error && (
         <div className="space-y-10">
+          
           {/* Summary Grid */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -515,18 +655,31 @@ export default function Marks() {
             </div>
 
             <div className="flex-1 w-full space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ledger Completion</p>
-                <p className="text-[10px] font-black text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                  {mergedMarks.filter(m => !m.isNew).length} / {mergedMarks.length} Records
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-8 bg-slate-900 dark:bg-white rounded-full" />
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">
+                  Exam Weightage
+                </h3>
               </div>
-              <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner border border-slate-200/50 dark:border-slate-700">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(mergedMarks.filter(m => !m.isNew).length / Math.max(mergedMarks.length, 1)) * 100}%` }}
-                  className="h-full bg-slate-900 dark:bg-white rounded-full shadow-lg"
-                />
+              <div className="h-[60px] w-full bg-slate-50 dark:bg-slate-900/50 rounded-[20px] flex items-center justify-between px-4 border-2 border-slate-100 dark:border-slate-800 transition-all hover:border-brand">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 flex items-center justify-center">
+                    <Settings className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900 dark:text-white">Configure Structure</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mid/Int/End Sem Limits</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setTempConfig(examConfig);
+                    setShowConfigModal(true);
+                  }}
+                  className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-brand hover:text-white dark:hover:bg-brand text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Edit
+                </button>
               </div>
             </div>
           </div>
@@ -543,15 +696,99 @@ export default function Marks() {
                 </div>
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+              <div className="lg:col-span-4 rounded-[30px] border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/50 backdrop-blur-xl shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Grade Distribution</h4>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sem {selectedSemester}</p>
+                </div>
+                <div className="h-48 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={gradeDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: 'bold' }}
+                      />
+                      <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
+                      <Tooltip 
+                        cursor={{ fill: 'transparent' }}
+                        contentStyle={{ 
+                          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                          color: isDark ? '#f8fafc' : '#0f172a',
+                          borderRadius: '12px', 
+                          border: 'none', 
+                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
+                        }}
+                        itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a', fontWeight: 'bold' }}
+                        labelStyle={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                        formatter={(value) => [value, 'Subjects']}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        radius={[6, 6, 0, 0]} 
+                        barSize={40}
+                      >
+                        {gradeDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} className={entry.color} fill="currentColor" />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Predictive Insights Panel */}
+            {predictiveInsights.length > 0 && (
+              <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden mb-6">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 dark:bg-white/10 blur-2xl" />
+                <button 
+                  onClick={() => setIsInsightsOpen(!isInsightsOpen)}
+                  className="flex items-center justify-between w-full group relative z-10"
+                >
+                  <div className="flex items-center gap-3">
+                    <Zap className="h-5 w-5 text-brand dark:text-white" />
+                    <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-brand dark:text-white transition-transform duration-300 ${isInsightsOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                <AnimatePresence initial={false}>
+                  {isInsightsOpen && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {predictiveInsights.map((insight, idx) => (
+                          <div key={idx} className={`p-4 rounded-2xl border ${insight.isAtRisk ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800' : 'bg-white/50 dark:bg-slate-900/50 border-white dark:border-slate-800'}`}>
+                            <p className={`text-sm font-bold ${insight.isAtRisk ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {insight.text}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
             <div className="overflow-x-auto rounded-[30px] border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/50 backdrop-blur-xl shadow-sm">
                 <table className="w-full text-left border-collapse">
                 <thead>
                     <tr className="bg-slate-100/80 dark:bg-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
                     <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Subject</th>
                     <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">CREDITS</th>
-                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Mid (25)</th>
-                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Int (25)</th>
-                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">End (100)</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Mid ({examConfig.mid.max})</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Int ({examConfig.int.max})</th>
+                    <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">End ({examConfig.end.max})</th>
                     <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Agg</th>
                     <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Grade</th>
                     <th className="py-5 px-4 text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-slate-100 text-center">Action</th>
@@ -566,7 +803,7 @@ export default function Marks() {
                         </tr>
                     ) : (
                         filteredMarks.map((mark, index) => (
-                            <LedgerRow key={mark.id} mark={mark} onUpdate={handleUpdateInline} onDelete={deleteMark} />
+                            <LedgerRow key={mark.id} mark={mark} onUpdate={handleUpdateInline} onDelete={deleteMark} examConfig={examConfig} />
                         ))
                     )}
                 </tbody>
@@ -698,6 +935,59 @@ export default function Marks() {
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Exam Structure Config Modal */}
+      <AnimatePresence>
+        {showConfigModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm" onClick={() => setShowConfigModal(false)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Exam Structure</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configure Max Marks & Weightage</p>
+                </div>
+                <button onClick={() => setShowConfigModal(false)} className="p-3 text-slate-400 hover:text-rose-500 rounded-2xl transition-all"><X size={20} /></button>
+              </div>
+              
+              <div className="space-y-6">
+                {['mid', 'int', 'end'].map(type => (
+                  <div key={type} className="flex gap-4 items-center bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="w-24">
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">{type === 'mid' ? 'Mid Sem' : type === 'int' ? 'Internals' : 'End Sem'}</p>
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Max Marks</label>
+                      <input 
+                        type="number" 
+                        value={tempConfig[type].max} 
+                        onChange={(e) => setTempConfig({...tempConfig, [type]: { ...tempConfig[type], max: parseFloat(e.target.value) || 0 }})} 
+                        className="w-full bg-white dark:bg-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm font-bold border-2 border-slate-200 dark:border-slate-700 focus:border-brand outline-none transition-all" 
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Weightage</label>
+                      <input 
+                        type="number" 
+                        value={tempConfig[type].weight} 
+                        onChange={(e) => setTempConfig({...tempConfig, [type]: { ...tempConfig[type], weight: parseFloat(e.target.value) || 0 }})} 
+                        className="w-full bg-white dark:bg-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm font-bold border-2 border-slate-200 dark:border-slate-700 focus:border-brand outline-none transition-all" 
+                      />
+                    </div>
+                  </div>
+                ))}
+                
+                <button onClick={() => {
+                  setExamConfig(tempConfig);
+                  localStorage.setItem("examStructureConfig", JSON.stringify(tempConfig));
+                  setShowConfigModal(false);
+                }} className="w-full mt-4 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2">
+                  <Save size={16} /> Save Configuration
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

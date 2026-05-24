@@ -10,19 +10,27 @@ import {
   CalendarPlus,
   Quote,
   Hash,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import StatsCard from "../components/StatsCard";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import MarkAttendanceWizard from "../components/MarkAttendanceWizard";
+
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import UserAvatar from "../components/UserAvatar";
 import { api } from "../services/api";
+import { useSemesterManager } from "../hooks/useSemesterManager";
 import {
   BarChart,
   Bar,
+  AreaChart,
+  Area,
+  ComposedChart,
+  ReferenceLine,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -41,6 +49,9 @@ export default function Dashboard() {
   const { dashboardData, dashboardLoading: loading, dashboardError: error, fetchDashboard, invalidateDashboard } = useData();
   const [showWizard, setShowWizard] = useState(false);
   const [todayThought, setTodayThought] = useState(null);
+  const [perfectDayLoading, setPerfectDayLoading] = useState(false);
+  
+  const { notification: semesterNotification, dismissNotification } = useSemesterManager();
 
   const handleRetry = useCallback(() => {
     fetchDashboard(true);
@@ -50,6 +61,41 @@ export default function Dashboard() {
     invalidateDashboard();
     fetchDashboard(true, false);
   }, [invalidateDashboard, fetchDashboard]);
+
+  const handlePerfectDay = async () => {
+    if (perfectDayLoading) return;
+    setPerfectDayLoading(true);
+    try {
+      const { data: lectures } = await api.getTodayLectures();
+      if (!lectures || lectures.length === 0) {
+        setPerfectDayLoading(false);
+        return;
+      }
+      const todayISO = new Date().toISOString().split("T")[0];
+      const processedSubjects = new Set();
+      
+      for (const lecture of lectures) {
+        if (lecture.subjectId && processedSubjects.has(lecture.subjectId)) continue;
+        
+        const res = await api.markAttendance({
+          date: todayISO,
+          status: "PRESENT",
+          timetableSlotId: lecture.slotId,
+          subjectId: lecture.subjectId || null,
+        });
+        
+        if (lecture.subjectId && !res.error) {
+           processedSubjects.add(lecture.subjectId);
+        }
+      }
+      
+      invalidateDashboard();
+      fetchDashboard(true, false);
+    } catch (e) {
+      console.error(e);
+    }
+    setPerfectDayLoading(false);
+  };
 
   useEffect(() => {
     fetchDashboard();
@@ -84,12 +130,14 @@ export default function Dashboard() {
     { name: "Current SGPA", value: dashboardData.marks.currentSgpa || 0 },
   ] : [], [dashboardData?.marks]);
 
+  const tasks = dashboardData?.tasks;
+
   if (loading) return <LoadingSpinner message="Loading dashboard..." fullPage showColdStartMsg />;
   if (error) return <ErrorMessage message={error} onRetry={handleRetry} />;
 
+  const minAttendanceCap = parseInt(localStorage.getItem("minAttendanceCap") || "75", 10);
   const fees = dashboardData?.fees;
   const assignments = dashboardData?.assignments;
-  const tasks = dashboardData?.tasks;
   const todos = dashboardData?.todos;
 
   return (
@@ -98,6 +146,10 @@ export default function Dashboard() {
         title="Dashboard"
         description="Overview of your academic performance and activities."
       />
+
+      {/* SEMESTER ALERT BANNER */}
+      <SemesterAlertBanner notification={semesterNotification} onDismiss={dismissNotification} />
+
 
       {/* Welcome Card with User Info */}
       {userData && (
@@ -149,14 +201,22 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  {/* Mark Attendance Button */}
-                  <div className="flex pt-1">
+                  {/* Mark Attendance Buttons */}
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
                     <button
                       onClick={() => setShowWizard(true)}
-                      className="group/btn inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-bold shadow-xl shadow-indigo-500/20 active:scale-[0.97] transition-all"
+                      className="group/btn inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm sm:text-base font-bold shadow-xl shadow-indigo-500/20 active:scale-[0.97] transition-all"
                     >
                       <CalendarPlus className="h-5 w-5 transition-transform group-hover/btn:rotate-12" />
-                      Mark Today's Attendance
+                      Mark Attendance
+                    </button>
+                    <button
+                      onClick={handlePerfectDay}
+                      disabled={perfectDayLoading}
+                      className="group/pbtn inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700 text-sm sm:text-base font-bold border border-indigo-100 dark:border-slate-700 shadow-sm active:scale-[0.97] transition-all disabled:opacity-50"
+                    >
+                      {perfectDayLoading ? <Loader2 className="h-5 w-5 animate-spin text-indigo-600 dark:text-indigo-400" /> : <Sparkles className="h-5 w-5 transition-transform group-hover/pbtn:scale-110" />}
+                      Perfect Day
                     </button>
                   </div>
                 </div>
@@ -269,13 +329,26 @@ export default function Dashboard() {
               
               <div className="h-64 w-full flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={attendanceData}>
+                  <ComposedChart data={attendanceData} margin={{ bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                     <XAxis 
                       dataKey="subject" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }}
+                      interval={0}
+                      tickMargin={8}
+                      tick={(props) => {
+                        const words = props.payload.value.split(" ");
+                        return (
+                          <g transform={`translate(${props.x},${props.y + 8})`}>
+                            <text x={0} y={0} dy={0} textAnchor="middle" fill={isDark ? '#94a3b8' : '#64748b'} fontSize={10}>
+                              {words.map((word, index) => (
+                                <tspan key={index} x={0} dy={index === 0 ? 0 : 12}>{word}</tspan>
+                              ))}
+                            </text>
+                          </g>
+                        );
+                      }}
                     />
                     <YAxis domain={[0, 100]} hide />
                     <Tooltip 
@@ -291,17 +364,17 @@ export default function Dashboard() {
                       labelStyle={{ color: isDark ? '#94a3b8' : '#64748b' }}
                       formatter={(value) => [`${value}%`, 'Attendance']}
                     />
+                    <ReferenceLine y={minAttendanceCap} stroke="#f43f5e" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: `${minAttendanceCap}% Min`, fill: '#f43f5e', fontSize: 10 }} />
                     <Bar 
                       dataKey="percentage" 
-                      fill="#0ea5e9"
                       radius={[6, 6, 0, 0]} 
                       barSize={40}
                     >
                       {attendanceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.percentage >= 75 ? '#10b981' : '#f43f5e'} />
+                        <Cell key={`cell-${index}`} fill={entry.percentage >= minAttendanceCap ? '#10b981' : '#f43f5e'} />
                       ))}
                     </Bar>
-                  </BarChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -320,7 +393,13 @@ export default function Dashboard() {
               
               <div className="h-64 w-full flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dashboardData?.expenses?.monthlyHistory || []}>
+                  <AreaChart data={dashboardData?.expenses?.monthlyHistory || []}>
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                     <XAxis 
                       dataKey="month" 
@@ -330,7 +409,7 @@ export default function Dashboard() {
                     />
                     <YAxis hide />
                     <Tooltip 
-                      cursor={{ fill: 'transparent' }}
+                      cursor={{ stroke: isDark ? '#334155' : '#e2e8f0', strokeWidth: 1, strokeDasharray: '3 3' }}
                       contentStyle={{ 
                         backgroundColor: isDark ? '#1e293b' : '#ffffff',
                         color: isDark ? '#f8fafc' : '#0f172a',
@@ -340,14 +419,17 @@ export default function Dashboard() {
                       }}
                       itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
                       labelStyle={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, 'Spent']}
                     />
-                    <Bar 
+                    <Area 
+                      type="monotone" 
                       dataKey="amount" 
-                      fill={isDark ? '#94a3b8' : '#475569'} 
-                      radius={[6, 6, 0, 0]} 
-                      barSize={30}
+                      stroke="#0ea5e9" 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#colorAmount)" 
                     />
-                  </BarChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -364,17 +446,41 @@ export default function Dashboard() {
               Your overall progress overview
             </p>
             <div className="flex-1 flex flex-col items-center justify-center py-4 gap-8">
-              <div className="text-center">
+              <div className="text-center w-full">
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">CGPA</p>
-                <div className="inline-flex items-center justify-center w-40 h-40 rounded-full border-8 border-brand/20 dark:border-brand-400/20 relative">
-                  <div className="absolute inset-0 rounded-full border-8 border-brand dark:border-brand-400 opacity-20 blur-sm"></div>
-                  <p className="text-5xl font-black text-brand dark:text-white tracking-tighter relative z-10">
-                    {((dashboardData?.marks?.cgpa) || 0).toFixed(2)}
-                  </p>
+                <div className="relative h-40 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "CGPA", value: (dashboardData?.marks?.cgpa || 0) },
+                          { name: "Remaining", value: 10 - (dashboardData?.marks?.cgpa || 0) }
+                        ]}
+                        cx="50%"
+                        cy="100%"
+                        startAngle={180}
+                        endAngle={0}
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={0}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        <Cell key="cell-0" fill="#8b5cf6" />
+                        <Cell key="cell-1" fill={isDark ? '#334155' : '#f1f5f9'} />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+                    <p className="text-4xl font-black text-brand dark:text-white tracking-tighter">
+                      {((dashboardData?.marks?.cgpa) || 0).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">out of 10</p>
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 sm:gap-6 w-full text-center mt-4">
+              <div className="grid grid-cols-2 gap-4 sm:gap-6 w-full text-center mt-2">
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Current SGPA</p>
                   <p className="text-3xl font-bold text-slate-800 dark:text-slate-100">
@@ -408,6 +514,35 @@ export default function Dashboard() {
         </div>
 
       </div>
+    </div>
+  );
+}
+
+function SemesterAlertBanner({ notification, onDismiss }) {
+  if (!notification) return null;
+  const isUpcoming = notification.type === 'upcoming';
+  
+  return (
+    <div className={`w-full rounded-2xl border p-4 shadow-sm relative overflow-hidden mb-6 flex items-start gap-4 ${isUpcoming ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'}`}>
+      <div className={`p-2 rounded-xl shrink-0 ${isUpcoming ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'}`}>
+        <CalendarCheck className="h-5 w-5" />
+      </div>
+      <div className="flex-1 pt-1">
+        <h3 className={`text-sm font-bold ${isUpcoming ? 'text-amber-900 dark:text-amber-100' : 'text-indigo-900 dark:text-indigo-100'}`}>
+          {isUpcoming ? 'Upcoming Semester Update' : 'Semester Auto-Updated'}
+        </h3>
+        <p className={`text-xs mt-1 font-medium ${isUpcoming ? 'text-amber-700 dark:text-amber-300' : 'text-indigo-700 dark:text-indigo-300'}`}>
+          {isUpcoming 
+            ? `Heads up! Your semester is scheduled to automatically update in ${notification.daysAway} day(s) (on ${notification.dateString}).` 
+            : `Welcome to Semester ${notification.newSemester}! Your semester has been automatically updated today.`}
+        </p>
+      </div>
+      <button onClick={onDismiss} className={`p-1.5 rounded-lg opacity-70 hover:opacity-100 transition-opacity ${isUpcoming ? 'hover:bg-amber-200/50 dark:hover:bg-amber-800/50 text-amber-900 dark:text-amber-100' : 'hover:bg-indigo-200/50 dark:hover:bg-indigo-800/50 text-indigo-900 dark:text-indigo-100'}`}>
+         <span className="sr-only">Dismiss</span>
+         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+         </svg>
+      </button>
     </div>
   );
 }

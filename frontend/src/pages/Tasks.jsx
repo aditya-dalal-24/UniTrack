@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -15,6 +16,8 @@ import {
   CheckSquare,
   BookOpen,
   Filter,
+  Zap,
+  CornerDownLeft,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -23,6 +26,9 @@ import { api } from "../services/api";
 import { useData } from "../contexts/DataContext";
 import { TASK_STATUS, TASK_TYPE } from "../constants/enums";
 import Pagination from "../components/Pagination";
+import { recordAction, getSmartDefaults } from "../utils/behaviorEngine";
+import { parseTaskString } from "../utils/nlp";
+
 
 const TILE_COLORS = [
   "bg-blue-100/50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-600/40",
@@ -35,6 +41,7 @@ const TILE_COLORS = [
 
 export default function Tasks() {
   const { invalidateDashboard } = useData();
+  const location = useLocation();
   const [subjects, setSubjects] = useState([]);
   const userSemester = useMemo(() => {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -47,6 +54,37 @@ export default function Tasks() {
   const [activeTab, setActiveTab] = useState(TASK_TYPE.ASSIGNMENT); // ASSIGNMENT or TODO
   const [filter, setFilter] = useState("all"); // all, active/pending, completed/submitted
   const [currentPage, setCurrentPage] = useState(0);
+
+  const [inlineInput, setInlineInput] = useState("");
+  const [inlineLoading, setInlineLoading] = useState(false);
+
+  const handleInlineTaskAdd = async (e) => {
+    if (e.key === "Enter" && inlineInput.trim()) {
+      if (inlineLoading) return;
+      setInlineLoading(true);
+      const parsed = parseTaskString(inlineInput, subjects);
+      
+      const payload = {
+        title: parsed.title,
+        type: parsed.type !== "OTHER" ? parsed.type : activeTab,
+        subject: parsed.subject,
+        dueDate: parsed.dueDate || new Date().toISOString().split("T")[0],
+        dueTime: "23:59",
+      };
+
+      const { error: apiError } = await api.addTask(payload);
+
+      if (!apiError) {
+        setInlineInput("");
+        fetchTasks(true);
+        invalidateDashboard();
+        recordAction("task", "inline_add_task", { type: payload.type });
+      } else {
+        alert(apiError);
+      }
+      setInlineLoading(false);
+    }
+  };
   const [pageSize, setPageSize] = useState(12);
 
   // Load tasks from backend
@@ -120,6 +158,38 @@ export default function Tasks() {
     subject: "",
   });
 
+  // Handle command palette / dashboard navigation state
+  useEffect(() => {
+    if (location.state?.openAdd) {
+      setNewTask(prev => ({
+        ...prev,
+        dueDate: new Date().toISOString().split('T')[0],
+        dueTime: "23:59",
+        type: activeTab,
+      }));
+      setShowModal(true);
+      // Clear the state so re-renders don't reopen
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Listen for unitrack:command events from CommandPalette
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.openAdd) {
+        setNewTask(prev => ({
+          ...prev,
+          dueDate: new Date().toISOString().split('T')[0],
+          dueTime: "23:59",
+          type: activeTab,
+        }));
+        setShowModal(true);
+      }
+    };
+    window.addEventListener("unitrack:command", handler);
+    return () => window.removeEventListener("unitrack:command", handler);
+  }, [activeTab]);
+
 
   const handleAddTask = async () => {
     if (!newTask.title?.trim() || !newTask.dueDate) {
@@ -141,6 +211,7 @@ export default function Tasks() {
 
     await fetchTasks(false); // Silent refresh without spinner
     invalidateDashboard();
+    recordAction("task", "add_task", { type: activeTab, subject: newTask.subject || "" });
     setNewTask({ title: "", description: "", dueDate: "", dueTime: "00:00", type: activeTab, subject: "" });
     setShowModal(false);
   };
@@ -245,14 +316,18 @@ export default function Tasks() {
           <div className="flex gap-2">
             <button
               onClick={() => {
+                const defaults = getSmartDefaults("task", "add_task");
                 setNewTask({
                   title: "",
                   description: "",
                   dueDate: new Date().toISOString().split('T')[0],
                   dueTime: "23:59",
-                  type: activeTab,
-                  subject: "",
+                  type: defaults.type || activeTab,
+                  subject: defaults.subject || "",
                 });
+                if (defaults.type && defaults.type !== activeTab) {
+                  setActiveTab(defaults.type);
+                }
                 setShowModal(true);
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-brand text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark transition-all active:scale-95"
@@ -265,7 +340,7 @@ export default function Tasks() {
       />
 
       {/* Tabs */}
-      <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl w-fit relative border border-slate-200 dark:border-slate-700">
+      <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl w-fit relative border border-slate-200 dark:border-slate-700 mb-6">
         <button
           onClick={() => handleTabChange(TASK_TYPE.ASSIGNMENT)}
           className={`relative z-10 flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
@@ -309,6 +384,26 @@ export default function Tasks() {
 
       {!loading && !error && (
         <div className="space-y-4">
+
+          {/* Inline Quick Add */}
+          <div className="relative mb-6">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Zap className="h-5 w-5 text-brand dark:text-brand-400" />
+            </div>
+            <input
+              type="text"
+              value={inlineInput}
+              onChange={(e) => setInlineInput(e.target.value)}
+              onKeyDown={handleInlineTaskAdd}
+              placeholder='Try "Finish OS assignment by tomorrow"...'
+              disabled={inlineLoading}
+              className="w-full pl-12 pr-12 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm text-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50 transition-all"
+            />
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
+              {inlineLoading ? <span className="animate-spin text-sm">⌛</span> : <CornerDownLeft className="h-4 w-4" />}
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             {["all", "active", "completed"].map((f) => (
@@ -337,7 +432,10 @@ export default function Tasks() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className={`group relative p-6 rounded-3xl border shadow-sm hover:shadow-xl transition-all ${
+                    onClick={() => {
+                      if (editingId !== task.id) toggleTaskStatus(task);
+                    }}
+                    className={`group relative p-6 rounded-3xl border shadow-sm hover:shadow-xl cursor-pointer transition-all ${
                       task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED 
                       ? 'bg-emerald-50/30 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30' 
                       : `${TILE_COLORS[task.id % TILE_COLORS.length]}`
@@ -364,7 +462,7 @@ export default function Tasks() {
                     ) : (
                       <>
                         <div className="flex justify-between items-start mb-4">
-                          <button onClick={() => toggleTaskStatus(task)} className="p-1">
+                          <button onClick={(e) => { e.stopPropagation(); toggleTaskStatus(task); }} className="p-1">
                             {task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED ? (
                               <CheckCircle className="h-6 w-6 text-emerald-500" />
                             ) : (
@@ -372,10 +470,10 @@ export default function Tasks() {
                             )}
                           </button>
                           <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => { setEditingId(task.id); setEditData(task); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingId(task.id); setEditData(task); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400">
                               <Edit2 size={20} />
                             </button>
-                            <button onClick={() => handleDeleteTask(task.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-slate-400 hover:text-red-500">
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-slate-400 hover:text-red-500">
                               <Trash2 size={20} />
                             </button>
                           </div>

@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Search,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -262,6 +263,25 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
         {/* Reset & Logout */}
         <div className="mt-auto p-4 space-y-2 border-t border-slate-200/60 dark:border-slate-800/60">
+          {/* Quick Search — Ctrl+K hint */}
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
+            className={`relative flex items-center w-full ${
+              collapsed ? "justify-center" : "gap-3 px-3"
+            } py-2 text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all duration-200 group`}
+            title={collapsed ? "Search (Ctrl+K)" : undefined}
+          >
+            <Search className="h-4 w-4 flex-shrink-0" />
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left truncate">Search</span>
+                <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-slate-400 border border-slate-200/60 dark:border-slate-700/60 group-hover:border-slate-300 dark:group-hover:border-slate-600 transition-colors">
+                  Ctrl+K
+                </kbd>
+              </>
+            )}
+          </button>
+
           {!collapsed && (
             <button
               onClick={resetOrder}

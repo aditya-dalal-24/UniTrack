@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet,
@@ -43,6 +44,11 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { api } from "../services/api";
+import { buildSuggestionModel, getSuggestedAmounts, getSuggestedCategories } from "../utils/expenseSuggestions";
+import { useUndoToast } from "../components/UndoToast";
+import { recordAction, getRecurringExpenses, getSmartDefaults, getExpenseSuggestions } from "../utils/behaviorEngine";
+
+import { Zap, ChevronDown } from "lucide-react";
 
 const defaultCategories = [
   { id: -1, name: "Food & Beverages", icon: Coffee, chartColor: "#16a34a" }, // green-600
@@ -77,9 +83,40 @@ export default function Expenses() {
   const [dailyBill, setDailyBill] = useState(null);
   const [fetchingBill, setFetchingBill] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isInsightsOpen, setIsInsightsOpen] = useState(true);
+  const { showUndo, UndoToastComponent } = useUndoToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [inlineExpenseAmount, setInlineExpenseAmount] = useState("");
+  const [inlineExpenseCategory, setInlineExpenseCategory] = useState("");
+  const [inlineLoading, setInlineLoading] = useState(false);
+
+  const handleInlineAdd = async (e) => {
+    e.preventDefault();
+    if (!inlineExpenseAmount || !inlineExpenseCategory || inlineLoading) return;
+    setInlineLoading(true);
+
+    const payload = {
+      amount: parseFloat(inlineExpenseAmount),
+      categoryId: inlineExpenseCategory,
+      date: new Date().toISOString().split("T")[0],
+      time: new Date().toTimeString().substring(0, 5)
+    };
+
+    const { error: apiError } = await api.addExpense(payload);
+    if (!apiError) {
+      setInlineExpenseAmount("");
+      setInlineExpenseCategory("");
+      fetchExpenses(true);
+      invalidateDashboard();
+      recordAction("expense", "add_expense", { amount: payload.amount });
+    } else {
+      alert(apiError);
+    }
+    setInlineLoading(false);
+  };
 
   // Month/Year tracking
   const today = new Date();
@@ -115,6 +152,23 @@ export default function Expenses() {
     fetchExpensesAndCategories();
   }, [selectedMonth, selectedYear]);
 
+  // Handle command palette / navigation openAdd
+  const location = useLocation();
+  useEffect(() => {
+    if (location.state?.openAdd) {
+      setShowAddExpense(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.openAdd) setShowAddExpense(true);
+    };
+    window.addEventListener("unitrack:command", handler);
+    return () => window.removeEventListener("unitrack:command", handler);
+  }, []);
+
   // Form states
   const [newExpense, setNewExpense] = useState({
     category: "",
@@ -144,40 +198,60 @@ export default function Expenses() {
   });
 
   const insights = useMemo(() => {
-    if (expenses.length === 0) return [];
     const list = [];
     
-    // Top category insight
-    const topCat = [...categoryBreakdown].sort((a,b) => b.total - a.total)[0];
-    if (topCat && topCat.total > 0) {
+    // Get suggestions from behavior engine
+    const suggestions = getExpenseSuggestions(expenses, 5000); // 5000 is default budget
+    
+    suggestions.forEach(s => {
+      let icon = TrendingUp;
+      let color = "#ef4444";
+      if (s.type === "BUDGET_OVERRUN") {
+        icon = AlertCircle;
+      } else if (s.type === "BUDGET_WARNING") {
+        icon = TrendingUp;
+        color = "#f59e0b";
+      } else if (s.type === "HIGH_SPEND_CATEGORY") {
+        icon = Tag;
+        color = "#f97316";
+      } else if (s.type === "INITIALIZE" || s.type === "INITIALIZE_MONTH") {
+        icon = Zap;
+        color = "#3b82f6";
+      }
       list.push({
-        text: `You're spending most on ${topCat.name}.`,
-        icon: topCat.icon || Tag,
-        color: topCat.chartColor
+        text: s.description,
+        title: s.title,
+        icon,
+        color,
+        isAtRisk: s.urgency >= 80 && s.type !== "INITIALIZE" && s.type !== "INITIALIZE_MONTH"
       });
-    }
+    });
 
-    // Milestone insight
-    if (totalExpenses >= 500) {
-      const milestone = Math.floor(totalExpenses / 500) * 500;
-      list.push({
-        text: `You have crossed ₹${milestone.toLocaleString()} for this month !`,
-        icon: TrendingUp,
-        color: "#ef4444" 
-      });
-    }
-
-    // Number of transactions
     if (expenses.length > 10) {
       list.push({
         text: "You've been busy tracking this month!",
+        title: "Active Tracking",
         icon: ShoppingBag,
-        color: "#10b981"
+        color: "#10b981",
+        isGood: true
       });
     }
 
     return list;
-  }, [expenses, categoryBreakdown, totalExpenses]);
+  }, [expenses]);
+
+  // Smart suggestion model — rebuilds whenever expenses or categories change
+  const suggestionModel = useMemo(() => {
+    return buildSuggestionModel(expenses, categories);
+  }, [expenses, categories]);
+
+  const suggestedAmounts = useMemo(() => {
+    return getSuggestedAmounts(suggestionModel, newExpense.category || null);
+  }, [suggestionModel, newExpense.category]);
+
+  const suggestedCategories = useMemo(() => {
+    return getSuggestedCategories(suggestionModel, categories);
+  }, [suggestionModel, categories]);
 
   const goToPreviousMonth = () => {
     if (selectedMonth === 0) {
@@ -253,6 +327,14 @@ export default function Expenses() {
 
     await fetchExpensesAndCategories(false);
     invalidateDashboard();
+
+    // Record behavior for intelligence engine
+    const catName = categories.find(c => c.id === categoryId)?.name || "";
+    recordAction("expense", "add_expense", {
+      categoryId: String(categoryId),
+      categoryName: catName,
+      amount: parseFloat(newExpense.amount),
+    });
 
     // Reset form
     setNewExpense({
@@ -399,7 +481,16 @@ export default function Expenses() {
               <span>Categories</span>
             </button>
             <button
-              onClick={() => setShowAddExpense(!showAddExpense)}
+              onClick={() => {
+                if (!showAddExpense) {
+                  const defaults = getSmartDefaults("expense", "add_expense");
+                  setNewExpense(prev => ({
+                    ...prev,
+                    category: defaults.categoryId || prev.category,
+                  }));
+                }
+                setShowAddExpense(!showAddExpense);
+              }}
               className="group relative inline-flex items-center gap-2 rounded-2xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 dark:shadow-none transition-all hover:scale-105 active:scale-95 overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-brand to-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity" />
@@ -441,36 +532,47 @@ export default function Expenses() {
             </button>
           </div>
 
-          {/* Fun Insights Marquee */}
+
+
+          {/* Predictive Insights Panel */}
           {insights.length > 0 && (
-            <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl py-3 shadow-sm">
-              <motion.div
-                animate={{ x: ["0%", "-50%"] }}
-                transition={{ 
-                  duration: 24, 
-                  repeat: Infinity, 
-                  ease: "linear" 
-                }}
-                className="flex gap-8 px-4 w-max"
+            <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden mb-6 mt-4">
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 dark:bg-white/10 blur-2xl" />
+              <button 
+                onClick={() => setIsInsightsOpen(!isInsightsOpen)}
+                className="flex items-center justify-between w-full group relative z-10"
               >
-                {[...insights, ...insights, ...insights, ...insights].map((insight, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-3"
+                <div className="flex items-center gap-3">
+                  <Zap className="h-5 w-5 text-brand dark:text-white" />
+                  <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
+                </div>
+                <ChevronDown className={`h-5 w-5 text-brand dark:text-white transition-transform duration-300 ${isInsightsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence initial={false}>
+                {isInsightsOpen && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
                   >
-                    <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${insight.color}15`, color: insight.color }}>
-                      <insight.icon className="h-4 w-4" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {insights.map((insight, idx) => (
+                        <div key={idx} className={`flex items-center gap-4 p-4 rounded-2xl border ${insight.isAtRisk ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800' : 'bg-white/50 dark:bg-slate-900/50 border-white dark:border-slate-800'}`}>
+                          <div className="p-2 rounded-xl" style={{ backgroundColor: `${insight.color}15`, color: insight.color }}>
+                            <insight.icon className="h-5 w-5" />
+                          </div>
+                          <p className={`text-sm font-bold ${insight.isAtRisk ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                            {insight.text}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {insight.text}
-                    </p>
-                    <span className="mx-4 text-slate-200 dark:text-slate-800">•</span>
-                  </div>
-                ))}
-              </motion.div>
-              {/* Fade gradients */}
-              <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10" />
-              <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white dark:from-slate-900 to-transparent z-10" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
@@ -565,6 +667,36 @@ export default function Expenses() {
                     </button>
                   </div>
                   
+                  {/* Quick Category Suggestions */}
+                  {suggestedCategories.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 ml-1">Quick Pick</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedCategories.map((sc) => {
+                          const catObj = categories.find(c => String(c.id) === sc.id);
+                          const isSelected = String(newExpense.category) === sc.id;
+                          const catColor = catObj?.chartColor || categoryBreakdown.find(c => String(c.id) === sc.id)?.chartColor || "#64748b";
+                          return (
+                            <button
+                              key={sc.id}
+                              type="button"
+                              onClick={() => setNewExpense({ ...newExpense, category: sc.id })}
+                              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                                isSelected
+                                  ? "shadow-md"
+                                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
+                              }`}
+                              style={isSelected ? { backgroundColor: `${catColor}15`, borderColor: catColor, color: catColor } : {}}
+                            >
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: catColor }} />
+                              {sc.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {/* Category */}
                     <div>
@@ -572,7 +704,7 @@ export default function Expenses() {
                         Classification
                       </label>
                       <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-brand transition-colors">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors">
                           <Tag className="h-4 w-4" />
                         </div>
                         <select
@@ -594,7 +726,7 @@ export default function Expenses() {
                         Magnitude
                       </label>
                       <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-brand transition-colors">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors">
                           <IndianRupee className="h-4 w-4" />
                         </div>
                         <input
@@ -605,6 +737,26 @@ export default function Expenses() {
                           className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-4 py-3 pl-11 text-sm font-black focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none dark:text-white shadow-inner"
                         />
                       </div>
+                      {/* Quick Amount Chips */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {suggestedAmounts.map((amt) => {
+                          const isSelected = String(newExpense.amount) === String(amt);
+                          return (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => setNewExpense({ ...newExpense, amount: isSelected ? "" : String(amt) })}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 ${
+                                isSelected
+                                  ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:border-emerald-400 dark:hover:border-emerald-600 hover:text-emerald-600 dark:hover:text-emerald-400"
+                              }`}
+                            >
+                              ₹{amt}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     {/* Date */}
@@ -613,7 +765,7 @@ export default function Expenses() {
                         Timeline
                       </label>
                       <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-brand transition-colors">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors">
                           <Calendar className="h-4 w-4" />
                         </div>
                         <input
@@ -628,17 +780,17 @@ export default function Expenses() {
                     {/* Note */}
                     <div>
                       <label className="block text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 ml-1">
-                        Description
+                        Description <span className="normal-case tracking-normal font-bold text-slate-300 dark:text-slate-600">(optional)</span>
                       </label>
                       <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-brand transition-colors">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors">
                           <FileText className="h-4 w-4" />
                         </div>
                         <input
                           type="text"
                           value={newExpense.note}
                           onChange={(e) => setNewExpense({ ...newExpense, note: e.target.value })}
-                          placeholder="What was this for?"
+                          placeholder="Optional note..."
                           className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-4 py-3 pl-11 text-sm font-bold focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all outline-none dark:text-white shadow-inner"
                         />
                       </div>
@@ -867,18 +1019,60 @@ export default function Expenses() {
               transition={{ delay: 0.5 }}
               className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden flex flex-col"
             >
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/20">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+                <form onSubmit={handleInlineAdd} className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold">₹</span>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="1"
+                      placeholder="Amount"
+                      value={inlineExpenseAmount}
+                      onChange={(e) => setInlineExpenseAmount(e.target.value)}
+                      disabled={inlineLoading}
+                      className="w-full pl-8 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50 transition-all"
+                    />
+                  </div>
+                  <div className="flex-1 relative">
+                    <select
+                      required
+                      value={inlineExpenseCategory}
+                      onChange={(e) => setInlineExpenseCategory(e.target.value)}
+                      disabled={inlineLoading}
+                      className="w-full pl-4 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50 transition-all appearance-none"
+                    >
+                      <option value="" disabled>Select Category</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={inlineLoading || !inlineExpenseAmount || !inlineExpenseCategory}
+                    className="px-6 py-3 bg-brand hover:bg-brand-600 dark:bg-brand-500 dark:hover:bg-brand-400 text-white font-bold rounded-2xl shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+                  >
+                    {inlineLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    Add
+                  </button>
+                </form>
+              </div>
+
+              <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/10">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                   Recent Transactions
                 </h3>
-                <div className="relative w-full sm:w-64">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div className="relative w-full sm:w-48">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <input 
                     type="text" 
                     placeholder="Search expenses..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-brand/10 transition-all dark:text-white" 
+                    className="w-full pl-9 pr-4 py-1.5 bg-white dark:bg-slate-900 border border-transparent rounded-lg text-xs font-medium outline-none focus:border-slate-200 dark:focus:border-slate-700 transition-all" 
                   />
                 </div>
               </div>
@@ -1020,9 +1214,9 @@ export default function Expenses() {
                   }
                 }
               ` }} />
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden text-slate-900 dark:text-white">
                 <h3 className="text-xl font-bold">Daily Expense Bill</h3>
-                <button onClick={() => { setShowBillModal(false); setDailyBill(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <button onClick={() => { setShowBillModal(false); setDailyBill(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 dark:text-slate-500">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -1030,12 +1224,12 @@ export default function Expenses() {
               <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 print:hidden">
                   <div className="flex-1">
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Date</label>
+                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Select Date</label>
                     <input 
                       type="date" 
                       value={billDate} 
                       onChange={(e) => setBillDate(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm dark:text-white outline-none focus:ring-4 focus:ring-brand/10 transition-all"
                     />
                   </div>
                   <div className="flex items-end">
@@ -1140,6 +1334,9 @@ export default function Expenses() {
         isOpen={showCalculator} 
         onClose={() => setShowCalculator(false)} 
       />
+
+      {/* Undo Toast */}
+      {UndoToastComponent}
     </div>
   );
 }

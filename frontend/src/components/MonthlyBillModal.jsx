@@ -128,7 +128,7 @@ export default function MonthlyBillModal({ isOpen, onClose, onGenerate, categori
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Monthly Rate (₹)</label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
                     <IndianRupee className="h-4 w-4" />
                   </div>
                   <input
@@ -144,7 +144,7 @@ export default function MonthlyBillModal({ isOpen, onClose, onGenerate, categori
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Start Date</label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
                     <Calendar className="h-4 w-4" />
                   </div>
                   <input
@@ -159,7 +159,7 @@ export default function MonthlyBillModal({ isOpen, onClose, onGenerate, categori
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Category</label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
                     <Tag className="h-4 w-4" />
                   </div>
                   <select
