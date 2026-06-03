@@ -27,6 +27,7 @@ import {
   CreditCard,
   Layers,
   Search,
+  AlertCircle,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -200,15 +201,19 @@ export default function Expenses() {
   const insights = useMemo(() => {
     const list = [];
     
-    // Get suggestions from behavior engine
-    const suggestions = getExpenseSuggestions(expenses, 5000); // 5000 is default budget
+    // Get budget from userData if available
+    const userDataStr = localStorage.getItem("userData");
+    const budget = userDataStr ? JSON.parse(userDataStr).monthlyBudget || 5000 : 5000;
+
+    // Get suggestions from behavior engine (passing active month context)
+    const suggestions = getExpenseSuggestions(expenses, budget, selectedMonth, selectedYear);
     
     suggestions.forEach(s => {
       let icon = TrendingUp;
       let color = "#ef4444";
       if (s.type === "BUDGET_OVERRUN") {
         icon = AlertCircle;
-      } else if (s.type === "BUDGET_WARNING") {
+      } else if (s.type === "BUDGET_WARNING" || s.type === "PROJECTED_OVERRUN") {
         icon = TrendingUp;
         color = "#f59e0b";
       } else if (s.type === "HIGH_SPEND_CATEGORY") {
@@ -217,13 +222,20 @@ export default function Expenses() {
       } else if (s.type === "INITIALIZE" || s.type === "INITIALIZE_MONTH") {
         icon = Zap;
         color = "#3b82f6";
+      } else if (s.type === "SAFE_DAILY_SPEND") {
+        icon = Calendar;
+        color = "#10b981"; // Emerald green for safe
+      } else if (s.type === "WEEKEND_SPENDER") {
+        icon = ShoppingBag;
+        color = "#8b5cf6"; // Purple
       }
       list.push({
         text: s.description,
         title: s.title,
         icon,
         color,
-        isAtRisk: s.urgency >= 80 && s.type !== "INITIALIZE" && s.type !== "INITIALIZE_MONTH"
+        isAtRisk: s.urgency >= 80 && s.type !== "INITIALIZE" && s.type !== "INITIALIZE_MONTH",
+        isGood: s.type === "SAFE_DAILY_SPEND"
       });
     });
 

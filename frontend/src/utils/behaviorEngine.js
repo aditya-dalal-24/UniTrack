@@ -487,18 +487,9 @@ export function getRecurringExpenses(minOccurrences = 3) {
  * @param {number} monthlyBudget - Configured monthly budget
  * @returns {Array} List of suggested actions
  */
-export function getExpenseSuggestions(expenses = [], monthlyBudget = 5000) {
+export function getExpenseSuggestions(expenses = [], monthlyBudget = 5000, selectedMonth = null, selectedYear = null) {
   const suggestions = [];
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  const thisMonthExpenses = expenses.filter(e => {
-    if (!e.date) return false;
-    const d = new Date(e.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
-
+  
   if (expenses.length === 0) {
     suggestions.push({
       type: "INITIALIZE",
@@ -507,7 +498,30 @@ export function getExpenseSuggestions(expenses = [], monthlyBudget = 5000) {
       urgency: 100
     });
     return suggestions;
-  } else if (thisMonthExpenses.length === 0) {
+  }
+
+  // Determine the context month/year from expenses if not provided
+  let contextMonth = selectedMonth;
+  let contextYear = selectedYear;
+  if (contextMonth === null || contextYear === null) {
+    const validDates = expenses.filter(e => e.date).map(e => new Date(e.date));
+    if (validDates.length > 0) {
+      contextMonth = validDates[0].getMonth();
+      contextYear = validDates[0].getFullYear();
+    } else {
+      const now = new Date();
+      contextMonth = now.getMonth();
+      contextYear = now.getFullYear();
+    }
+  }
+
+  const thisMonthExpenses = expenses.filter(e => {
+    if (!e.date) return false;
+    const d = new Date(e.date);
+    return d.getMonth() === contextMonth && d.getFullYear() === contextYear;
+  });
+
+  if (thisMonthExpenses.length === 0) {
     suggestions.push({
       type: "INITIALIZE_MONTH",
       title: "New Month",
@@ -535,23 +549,82 @@ export function getExpenseSuggestions(expenses = [], monthlyBudget = 5000) {
     });
   }
 
-  const categoryTotals = {};
-  thisMonthExpenses.forEach(e => {
-    if (!e.category) return;
-    categoryTotals[e.category] = (categoryTotals[e.category] || 0) + (parseFloat(e.amount) || 0);
-  });
-
-  const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
-  if (topCategory && topCategory[1] > monthlyBudget * 0.3) {
+  // Advanced Insights
+  const now = new Date();
+  const isCurrentMonth = (now.getMonth() === contextMonth && now.getFullYear() === contextYear);
+  const daysInMonth = new Date(contextYear, contextMonth + 1, 0).getDate();
+  
+  // 1. Safe Daily Spend
+  if (isCurrentMonth && totalSpent < monthlyBudget) {
+    const remainingDays = Math.max(1, daysInMonth - now.getDate() + 1);
+    const remainingBudget = monthlyBudget - totalSpent;
+    const safeDaily = Math.floor(remainingBudget / remainingDays);
+    
     suggestions.push({
-      type: "HIGH_SPEND_CATEGORY",
-      title: `${topCategory[0]} Spending`,
-      description: `High spend: ₹${topCategory[1]} this month.`,
-      urgency: 70
+      type: "SAFE_DAILY_SPEND",
+      title: "Pacing Advice",
+      description: `To stay under budget, keep daily spending below ₹${safeDaily}.`,
+      urgency: 60
     });
   }
 
-  return suggestions.sort((a, b) => b.urgency - a.urgency);
+  // 2. Projected Spend (Burn Rate)
+  if (isCurrentMonth && now.getDate() > 3) {
+    const currentDay = now.getDate();
+    const dailyAverage = totalSpent / currentDay;
+    const projectedSpend = Math.round(dailyAverage * daysInMonth);
+    
+    if (projectedSpend > monthlyBudget && totalSpent <= monthlyBudget) {
+      suggestions.push({
+        type: "PROJECTED_OVERRUN",
+        title: "Burn Rate Alert",
+        description: `You are projected to spend ₹${projectedSpend} by month-end.`,
+        urgency: 85
+      });
+    }
+  }
+
+  // 3. Heavy Category Detection
+  const categoryTotals = {};
+  thisMonthExpenses.forEach(e => {
+    const catName = e.categoryName || "Other";
+    categoryTotals[catName] = (categoryTotals[catName] || 0) + (parseFloat(e.amount) || 0);
+  });
+
+  const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+  if (topCategory && topCategory[1] > 0) {
+    const categoryPercentage = Math.round((topCategory[1] / totalSpent) * 100);
+    if (categoryPercentage >= 30) {
+      suggestions.push({
+        type: "HIGH_SPEND_CATEGORY",
+        title: `${topCategory[0]} Spending`,
+        description: `${topCategory[0]} accounts for ${categoryPercentage}% of your expenses.`,
+        urgency: 70
+      });
+    }
+  }
+  
+  // 4. Weekend vs Weekday Analysis
+  let weekendSpend = 0;
+  let weekdaySpend = 0;
+  thisMonthExpenses.forEach(e => {
+    if (!e.date) return;
+    const day = new Date(e.date).getDay();
+    const amount = parseFloat(e.amount) || 0;
+    if (day === 0 || day === 6) weekendSpend += amount;
+    else weekdaySpend += amount;
+  });
+  
+  if (weekendSpend > weekdaySpend && weekendSpend > totalSpent * 0.5) {
+    suggestions.push({
+      type: "WEEKEND_SPENDER",
+      title: "Weekend Spender",
+      description: `Over 50% of your expenses happen on weekends.`,
+      urgency: 50
+    });
+  }
+
+  return suggestions.sort((a, b) => b.urgency - a.urgency).slice(0, 4); // Show top 4 insights max
 }
 
 // ==================== FEE PATTERNS ====================
