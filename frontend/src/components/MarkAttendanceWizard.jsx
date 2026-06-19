@@ -88,7 +88,9 @@ export default function MarkAttendanceWizard({ isOpen, onClose, onComplete }) {
       }
 
       setSaving(true);
-      const todayISO = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+      const todayISO = localDate.toISOString().split("T")[0];
 
       const { data, error: apiError } = await api.markAttendance({
         date: todayISO,
@@ -132,7 +134,9 @@ export default function MarkAttendanceWizard({ isOpen, onClose, onComplete }) {
     async (status) => {
       if (saving) return;
       setSaving(true);
-      const todayISO = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+      const todayISO = localDate.toISOString().split("T")[0];
 
       const processedSubjects = new Map(); // subjectId -> attendanceRecordId
       const results = [];

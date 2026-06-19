@@ -4,13 +4,13 @@ import { ChevronDown, GripVertical, EyeOff } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 /**
- * WidgetShell — Reusable container for dashboard widgets (Minimalist Redesign).
+ * WidgetShell — Reusable container for dashboard widgets.
  *
  * Features:
  * - Collapsible header (persisted to localStorage)
  * - Drag handle for dnd-kit
  * - Hide widget button
- * - Clean, monochrome, structured styling
+ * - Premium monochrome card styling with hover elevation
  */
 function WidgetShellInner({
   id,
@@ -46,18 +46,18 @@ function WidgetShellInner({
   return (
     <div
       className={cn(
-        "rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col transition-shadow hover:shadow-sm h-full",
+        "rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 flex flex-col transition-all duration-200 hover:shadow-md hover:border-slate-300/80 dark:hover:border-slate-700 h-full",
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-transparent group/header hover:border-slate-100 dark:hover:border-slate-800 transition-colors">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100/80 dark:border-slate-800/40 group/header transition-colors">
+        <div className="flex items-center gap-2.5 min-w-0">
           {/* Drag Handle */}
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="cursor-grab active:cursor-grabbing p-1 -ml-2 rounded-md text-slate-300 hover:text-slate-500 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+              className="cursor-grab active:cursor-grabbing p-1 -ml-1.5 rounded-md text-slate-300 hover:text-slate-500 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-400 dark:hover:bg-slate-800 transition-colors"
               title="Drag to reorder"
             >
               <GripVertical className="h-4 w-4" />
@@ -65,8 +65,8 @@ function WidgetShellInner({
           )}
 
           {Icon && (
-            <div className="text-slate-400 dark:text-slate-500 flex-shrink-0">
-              <Icon className="h-4 w-4" strokeWidth={2.5} />
+            <div className="p-1 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 flex-shrink-0">
+              <Icon className="h-3.5 w-3.5" strokeWidth={2.5} />
             </div>
           )}
           <h3 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 tracking-wide">
@@ -116,8 +116,14 @@ function WidgetShellInner({
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden flex-1 flex flex-col"
           >
-            <div className={`flex-1 flex flex-col ${scrollable ? 'overflow-y-auto overflow-x-hidden custom-scrollbar' : 'overflow-hidden'}`}>
-              <div className="p-4 pt-2 pb-5 flex-1 flex flex-col">
+            <div
+              className={`flex-1 flex flex-col ${
+                scrollable
+                  ? "overflow-y-auto overflow-x-hidden custom-scrollbar"
+                  : "overflow-hidden"
+              }`}
+            >
+              <div className="p-4 pt-3 pb-5 flex-1 flex flex-col">
                 {loading ? <WidgetSkeleton /> : children}
               </div>
             </div>

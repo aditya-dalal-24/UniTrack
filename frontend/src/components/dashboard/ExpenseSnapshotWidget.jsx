@@ -51,14 +51,19 @@ function ExpenseSnapshotWidgetInner({ data, loading, dragHandleProps, onHide }) 
               return (
                 <div
                   key={i}
-                  title={`${m.month}: ₹${(m.amount || 0).toLocaleString()}`}
-                  className={`flex-1 rounded-sm transition-all ${
+                  className={`group relative flex-1 rounded-sm transition-all ${
                     isLast
                       ? "bg-indigo-500 dark:bg-indigo-400"
-                      : "bg-slate-200 dark:bg-slate-700"
+                      : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
                   }`}
                   style={{ height: `${height}px` }}
-                />
+                >
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+                    <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap border border-slate-700 dark:border-slate-200">
+                      {m.month}: ₹{(m.amount || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>

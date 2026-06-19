@@ -51,7 +51,7 @@ function AcademicPressureWidgetInner({ data, loading, dragHandleProps, onHide })
       icon={Activity}
       dragHandleProps={dragHandleProps}
       onHide={onHide}
-      scrollable={false}
+      scrollable={true}
       className="col-span-1 md:col-span-1"
     >
       <div className="flex flex-col h-full justify-center gap-6 items-center text-center py-2">

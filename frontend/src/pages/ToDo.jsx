@@ -213,7 +213,7 @@ export default function ToDo() {
             )}
             <button
               onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-brand text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 text-sm font-semibold shadow-xl shadow-brand/20 dark:shadow-none hover:scale-105 active:scale-95 transition-all"
             >
               <Plus className="h-4 w-4" />
               Add Task

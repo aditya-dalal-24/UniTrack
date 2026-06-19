@@ -166,7 +166,13 @@ async function request(method, url, body = null, params = null) {
     let message = 'Something went wrong. Please try again.';
     if (error.response) {
       // Server responded with error
-      const serverMsg = error.response.data?.message || error.response.data?.error;
+      let serverMsg = null;
+      if (typeof error.response.data === 'string') {
+        serverMsg = error.response.data;
+      } else {
+        serverMsg = error.response.data?.message || error.response.data?.error;
+      }
+      
       if (serverMsg) {
         message = serverMsg;
       } else if (error.response.status === 403) {

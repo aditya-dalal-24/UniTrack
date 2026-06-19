@@ -229,7 +229,10 @@ const LedgerRow = ({ mark, onUpdate, onDelete, examConfig }) => {
   );
 };
 
+import { useLocation } from "react-router-dom";
+
 export default function Marks() {
+  const location = useLocation();
   const { invalidateDashboard } = useData();
   const [selectedSemester, setSelectedSemester] = useState(() => {
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -241,10 +244,16 @@ export default function Marks() {
   const [timetableCredits, setTimetableCredits] = useState({});
   const [marksSummary, setMarksSummary] = useState(null);
   
-  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [showSubjectModal, setShowSubjectModal] = useState(() => location.hash === "#add");
   const [editingMark, setEditingMark] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isInsightsOpen, setIsInsightsOpen] = useState(true);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  
+  useEffect(() => {
+    if (location.hash === "#add") {
+      setShowSubjectModal(true);
+    }
+  }, [location.hash]);
   
   const [examConfig, setExamConfig] = useState(() => {
     try {
@@ -546,7 +555,7 @@ export default function Marks() {
               setNewMark({ subjectName: "", subjectCode: "", credits: defaults.credits || "3", midSem: "", internals: "", endSem: "" });
               setShowSubjectModal(true);
             }}
-            className="group relative inline-flex items-center gap-2 rounded-2xl bg-brand text-white px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 transition-all hover:scale-105 active:scale-95 overflow-hidden"
+            className="group relative inline-flex items-center gap-2 rounded-2xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 dark:shadow-none transition-all hover:scale-105 active:scale-95 overflow-hidden"
           >
             <Plus className="h-5 w-5" />
             <span>Add Subject Marks</span>

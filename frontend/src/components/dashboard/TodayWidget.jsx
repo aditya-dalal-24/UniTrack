@@ -57,78 +57,140 @@ function TodayWidgetInner({ data, onMarkAttendance, loading, dragHandleProps, on
           )}
         </div>
       ) : (
-        <div className="flex flex-col h-full justify-center gap-6 py-2">
-          {heroLecture && (
-            <div className="flex-1 flex flex-col items-center text-center">
-              <div className="flex flex-col items-center gap-1.5 w-full max-w-sm mx-auto p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30">
-                <div className="flex items-center gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    {isCurrentlyInClass ? "Happening Now" : "Up Next"}
-                  </p>
-                  {isCurrentlyInClass && (
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  )}
-                  {!isCurrentlyInClass && minutesUntilNext !== null && (
-                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-300 px-1.5 py-0.5 rounded">
-                      {formatCountdown(minutesUntilNext)}
-                    </span>
-                  )}
-                </div>
-                
-                <p className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                  {heroLecture.subjectName || "Lecture"}
-                </p>
-                
-                <div className="flex items-center justify-center gap-3 text-xs text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {heroLecture.startTime} – {heroLecture.endTime}
-                  </span>
-                  {heroLecture.roomNumber && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {heroLecture.roomNumber}
-                    </span>
-                  )}
-                </div>
+          <div className="flex flex-col h-full justify-center gap-4 py-2">
+            <div className="flex flex-col gap-3 w-full pr-1 pb-1">
+              {lectures.map((l, i) => {
+                const isHero = heroLecture && l.slotId === heroLecture.slotId;
+                const isCurrent = currentLecture && l.slotId === currentLecture.slotId;
 
-                {!heroLecture.status && onMarkAttendance && (
-                  <div className="flex w-full gap-2 mt-3 pt-3 border-t border-indigo-100/50 dark:border-indigo-800/30">
-                    <button
-                      onClick={() => onMarkAttendance(heroLecture, "PRESENT")}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:opacity-90 transition-opacity"
-                    >
-                      <Check className="h-3.5 w-3.5" /> Present
-                    </button>
-                    <button
-                      onClick={() => onMarkAttendance(heroLecture, "ABSENT")}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-bold bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5" /> Absent
-                    </button>
+                if (isHero) {
+                  return (
+                    <div key={l.slotId || i} className="flex-1 flex flex-col items-center text-center my-2">
+                      <div className="flex flex-col items-center gap-1.5 w-full max-w-sm mx-auto p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                            {isCurrent ? "Happening Now" : "Up Next"}
+                          </p>
+                          {isCurrent && (
+                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          )}
+                          {!isCurrent && minutesUntilNext !== null && (
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-300 px-1.5 py-0.5 rounded">
+                              {formatCountdown(minutesUntilNext)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                          {l.subjectName || "Lecture"}
+                        </p>
+                        
+                        <div className="flex items-center justify-center gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {l.startTime} – {l.endTime}
+                          </span>
+                          {l.roomNumber && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {l.roomNumber}
+                            </span>
+                          )}
+                        </div>
+
+                        {onMarkAttendance && (
+                          <div className="flex w-full gap-2 mt-3 pt-3 border-t border-indigo-100/50 dark:border-indigo-800/30">
+                            <button
+                              onClick={() => onMarkAttendance(l, "PRESENT")}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-bold transition-all ${
+                                l.status === "PRESENT"
+                                  ? "bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-500 ring-offset-1 dark:ring-offset-slate-900"
+                                  : l.status === "ABSENT"
+                                  ? "bg-slate-100 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"
+                                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:opacity-90"
+                              }`}
+                            >
+                              <Check className="h-3.5 w-3.5" /> Present
+                            </button>
+                            <button
+                              onClick={() => onMarkAttendance(l, "ABSENT")}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-bold transition-all ${
+                                l.status === "ABSENT"
+                                  ? "bg-red-500 text-white shadow-sm ring-2 ring-red-500 ring-offset-1 dark:ring-offset-slate-900"
+                                  : l.status === "PRESENT"
+                                  ? "bg-slate-100 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
+                                  : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
+                              }`}
+                            >
+                              <X className="h-3.5 w-3.5" /> Absent
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Render normal list item
+                return (
+                  <div
+                    key={l.slotId || i}
+                    className={`flex flex-col gap-2 px-4 py-3 rounded-lg border text-xs transition-colors ${
+                      l.status === "PRESENT"
+                        ? "bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800/30"
+                        : l.status === "ABSENT"
+                        ? "bg-red-50 border-red-100 dark:bg-red-900/10 dark:border-red-800/30"
+                        : "bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-700/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-semibold">
+                      <span className={`truncate flex-1 text-left max-w-[200px] ${
+                        l.status === "PRESENT" ? "text-emerald-700 dark:text-emerald-400" :
+                        l.status === "ABSENT" ? "text-red-600 dark:text-red-400" :
+                        "text-slate-600 dark:text-slate-300"
+                      }`}>
+                        {l.subjectName}
+                      </span>
+                      <span className={`opacity-70 text-[11px] ml-2 flex-shrink-0 font-medium ${
+                        l.status === "PRESENT" ? "text-emerald-700 dark:text-emerald-400" :
+                        l.status === "ABSENT" ? "text-red-600 dark:text-red-400" :
+                        "text-slate-500 dark:text-slate-400"
+                      }`}>
+                        {l.startTime} - {l.endTime}
+                      </span>
+                    </div>
+                    
+                    {onMarkAttendance && (
+                      <div className="flex w-full gap-2 mt-1">
+                        <button
+                          onClick={() => onMarkAttendance(l, "PRESENT")}
+                          className={`flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] font-bold transition-all ${
+                            l.status === "PRESENT"
+                              ? "bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-500 ring-offset-1 dark:ring-offset-slate-900"
+                              : l.status === "ABSENT"
+                              ? "bg-slate-100 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600"
+                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:opacity-90"
+                          }`}
+                        >
+                          <Check className="h-3 w-3" /> Present
+                        </button>
+                        <button
+                          onClick={() => onMarkAttendance(l, "ABSENT")}
+                          className={`flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] font-bold transition-all ${
+                            l.status === "ABSENT"
+                              ? "bg-red-500 text-white shadow-sm ring-1 ring-red-500 ring-offset-1 dark:ring-offset-slate-900"
+                              : l.status === "PRESENT"
+                              ? "bg-slate-100 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
+                              : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
+                          }`}
+                        >
+                          <X className="h-3 w-3" /> Absent
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col items-center w-full">
-            <div className="flex flex-col gap-2 w-full pr-1 pb-1">
-              {lectures.map((l, i) => (
-                <div
-                  key={l.slotId || i}
-                  className={`flex items-center justify-between px-4 py-3 rounded-lg border text-xs font-semibold transition-colors ${
-                    l.status === "PRESENT"
-                      ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-800/30 dark:text-emerald-400"
-                      : l.status === "ABSENT"
-                      ? "bg-red-50 border-red-100 text-red-600 dark:bg-red-900/10 dark:border-red-800/30 dark:text-red-400"
-                      : "bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800/30 dark:border-slate-700/50 dark:text-slate-300"
-                  }`}
-                >
-                  <span className="truncate flex-1 text-left max-w-[200px]">{l.subjectName}</span>
-                  <span className="opacity-70 text-[11px] ml-2 flex-shrink-0 font-medium">{l.startTime} - {l.endTime}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-[11px] text-slate-500 w-full pt-3 border-t border-slate-100 dark:border-slate-800/50">
@@ -147,7 +209,6 @@ function TodayWidgetInner({ data, onMarkAttendance, loading, dragHandleProps, on
               )}
             </div>
           </div>
-        </div>
       )}
     </WidgetShell>
   );

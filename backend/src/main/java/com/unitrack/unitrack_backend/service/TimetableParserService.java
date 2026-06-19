@@ -308,12 +308,35 @@ public class TimetableParserService {
             }
         }
 
+        // FALLBACK: Use PDFTextStripper if Tabula extraction yielded poor results
+        if (bestGrid.isEmpty() || countNonEmpty(bestGrid) < 5) {
+            log.info("Tabula extraction yielded empty or poor results. Attempting fallback text extraction...");
+            org.apache.pdfbox.text.PDFTextStripper stripper = new org.apache.pdfbox.text.PDFTextStripper();
+            stripper.setSortByPosition(true);
+            String text = stripper.getText(document);
+            List<List<String>> fallbackGrid = new ArrayList<>();
+            String[] lines = text.split("\\r?\\n");
+            for (String line : lines) {
+                if (line.trim().isEmpty()) continue;
+                // Split by two or more spaces
+                String[] parts = line.split("\\s{2,}");
+                List<String> row = new ArrayList<>();
+                for (String p : parts) {
+                    row.add(p.trim());
+                }
+                fallbackGrid.add(row);
+            }
+            if (countNonEmpty(fallbackGrid) > countNonEmpty(bestGrid)) {
+                bestGrid = fallbackGrid;
+            }
+        }
+
         oe.close();
         document.close();
 
         if (bestGrid.isEmpty()) {
             throw new RuntimeException(
-                    "Could not find any structured tables in this PDF. Try the Excel format instead.");
+                    "Could not extract any text from this PDF. If this is a scanned image or a screenshot, the system cannot read it. Please upload a native text-based PDF or an Excel file.");
         }
 
         return bestGrid;

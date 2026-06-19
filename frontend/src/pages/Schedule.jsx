@@ -34,6 +34,8 @@ import { useUndoToast } from "../components/UndoToast";
 import { recordAction, getAttendanceBehavior, isAllPresentDay } from "../utils/behaviorEngine";
 
 
+import { useLocation } from "react-router-dom";
+
 // const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -59,7 +61,13 @@ const defaultTimeSlots = [
 ];
 
 export default function Schedule() {
-  const [activeTab, setActiveTab] = useState("daily");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => location.hash === "#setup" ? "setup" : "daily");
+  
+  useEffect(() => {
+    if (location.hash === "#setup") setActiveTab("setup");
+    else if (location.hash === "#daily") setActiveTab("daily");
+  }, [location.hash]);
   
   // Shared Timetable/Template State
   const { invalidateDashboard } = useData();
@@ -135,6 +143,7 @@ export default function Schedule() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAttendanceWizard, setShowAttendanceWizard] = useState(false);
   const [smartBannerDismissed, setSmartBannerDismissed] = useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const { showUndo, UndoToastComponent } = useUndoToast();
 
   useEffect(() => { localStorage.setItem("timetable_timeslots", JSON.stringify(timeSlots)); }, [timeSlots]);
@@ -758,49 +767,67 @@ export default function Schedule() {
               {/* Predictive Insights Panel */}
               <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden mb-6">
                 <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 dark:bg-white/10 blur-2xl" />
-                <div className="flex items-center gap-3 mb-4 relative z-10">
-                  <Sparkles className="h-5 w-5 text-brand dark:text-white" />
-                  <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-                  {subjectAnalysis.filter(s => s.percentage < parseInt(minPercentage)).length > 0 ? (
-                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800">
-                      <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <p className="text-sm font-bold text-rose-600 dark:text-rose-400">
-                        {subjectAnalysis.filter(s => s.percentage < parseInt(minPercentage)).length} subjects are currently below the {minPercentage}% threshold.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800">
-                      <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle className="h-5 w-5" />
-                      </div>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                        You're safely above the {minPercentage}% threshold in all subjects!
-                      </p>
-                    </div>
-                  )}
-                  {subjectAnalysis.map(s => {
-                    if (s.total === 0) return null;
-                    const requiredTotal = Math.ceil((s.present * 100) / parseInt(minPercentage));
-                    const safeToMiss = Math.max(0, s.total - requiredTotal);
-                    if (safeToMiss > 0) {
-                      return (
-                        <div key={s.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-white dark:border-slate-800">
-                          <div className="p-2 rounded-xl bg-brand/10 text-brand">
-                            <BookOpen className="h-5 w-5" />
+                <button 
+                  onClick={() => setIsInsightsOpen(!isInsightsOpen)}
+                  className="flex items-center justify-between w-full group relative z-10"
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-brand dark:text-white" />
+                    <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-brand dark:text-white transition-transform duration-300 ${isInsightsOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isInsightsOpen && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                        {subjectAnalysis.filter(s => s.percentage < parseInt(minPercentage)).length > 0 ? (
+                          <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800">
+                            <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                              <User className="h-5 w-5" />
+                            </div>
+                            <p className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                              {subjectAnalysis.filter(s => s.percentage < parseInt(minPercentage)).length} subjects are currently below the {minPercentage}% threshold.
+                            </p>
                           </div>
-                          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                            You can safely miss <span className="text-brand dark:text-white">{safeToMiss} more classes</span> in {s.shortName}.
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }).filter(Boolean).slice(0, 2)}
-                </div>
+                        ) : (
+                          <div className="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800">
+                            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle className="h-5 w-5" />
+                            </div>
+                            <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                              You're safely above the {minPercentage}% threshold in all subjects!
+                            </p>
+                          </div>
+                        )}
+                        {subjectAnalysis.map(s => {
+                          if (s.total === 0) return null;
+                          const requiredTotal = Math.ceil((s.present * 100) / parseInt(minPercentage));
+                          const safeToMiss = Math.max(0, s.total - requiredTotal);
+                          if (safeToMiss > 0) {
+                            return (
+                              <div key={s.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-white dark:border-slate-800">
+                                <div className="p-2 rounded-xl bg-brand/10 text-brand">
+                                  <BookOpen className="h-5 w-5" />
+                                </div>
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                  You can safely miss <span className="text-brand dark:text-white">{safeToMiss} more classes</span> in {s.shortName}.
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }).filter(Boolean).slice(0, 2)}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Daily Attendance Summary Stats */}

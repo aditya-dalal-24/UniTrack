@@ -166,7 +166,7 @@ export default function Assignments() {
           )}
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand/10 text-brand hover:bg-brand/20 dark:bg-brand/20 dark:text-brand-400 dark:hover:bg-brand/30 ring-1 ring-inset ring-brand/10 dark:ring-brand/30 transition-all font-semibold shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xl shadow-brand/20 dark:shadow-none hover:scale-105 active:scale-95 transition-all font-semibold"
           >
             <PlusCircle size={18} /> Add Assignment
           </button>

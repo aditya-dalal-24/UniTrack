@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useData } from '../contexts/DataContext';
+import { scanTimetableWithGemini } from '../services/geminiTimetableScannerService';
 
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
 
@@ -30,7 +31,15 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
   const [isSaving, setIsSaving] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
   const fileInputRef = useRef(null);
+
+  const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  const isGeminiSupportedFile = (f) => {
+    if (!f) return false;
+    const ext = f.name.split('.').pop().toLowerCase();
+    return IMAGE_TYPES.includes(f.type) || ['png', 'jpg', 'jpeg', 'webp', 'pdf'].includes(ext) || f.type === 'application/pdf';
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -38,6 +47,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
       setPreviewData(null);
       setError(null);
       setSelectedGroup("");
+      setOcrProgress(0);
     }
   }, [isOpen]);
 
@@ -71,15 +81,16 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
     const validTypes = [
       'application/pdf', 
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
-      'application/vnd.ms-excel'
+      'application/vnd.ms-excel',
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp'
     ];
     const extension = selectedFile.name.split('.').pop().toLowerCase();
     
-    if (validTypes.includes(selectedFile.type) || ['pdf', 'xlsx', 'xls'].includes(extension)) {
+    if (validTypes.includes(selectedFile.type) || ['pdf', 'xlsx', 'xls', 'png', 'jpg', 'jpeg', 'webp'].includes(extension)) {
       setFile(selectedFile);
       setError(null);
     } else {
-      setError("Please upload a valid PDF or Excel file (.pdf, .xlsx, .xls)");
+      setError("Please upload a PDF, Excel, or Image file (.pdf, .xlsx, .xls, .png, .jpg)");
     }
   };
 
@@ -87,14 +98,26 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
     if (!file) return;
     setIsUploading(true);
     setError(null);
+    setOcrProgress(0);
 
-    const { data, error } = await api.uploadTimetable(file);
-    setIsUploading(false);
-
-    if (error) {
-      setError(error);
+    if (isGeminiSupportedFile(file)) {
+      // Route image and PDF files to Gemini AI
+      try {
+        const data = await scanTimetableWithGemini(file);
+        setPreviewData(data);
+      } catch (err) {
+        setError(err.message || "Failed to parse timetable file. Ensure it's clear and readable.");
+      }
+      setIsUploading(false);
     } else {
-      setPreviewData(data);
+      // Route Excel to backend
+      const { data, error } = await api.uploadTimetable(file);
+      setIsUploading(false);
+      if (error) {
+        setError(error);
+      } else {
+        setPreviewData(data);
+      }
     }
   };
 
@@ -377,7 +400,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                       ref={fileInputRef}
                       type="file" 
                       className="hidden" 
-                      accept=".pdf,.xlsx,.xls"
+                      accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
                       onChange={handleChange}
                     />
                     
@@ -396,7 +419,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                         {file ? file.name : 'Drop your file here'}
                       </h3>
                       <p className="text-sm text-slate-500 max-w-[240px] mx-auto leading-relaxed">
-                        Supports PDF and Excel formats. Our system will extract the grid for you.
+                        Supports Images, PDF and Excel formats. Our system will extract the grid for you.
                       </p>
                     </div>
                   </div>
@@ -425,7 +448,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                       className="flex-1 bg-brand text-white px-6 py-4 rounded-2xl font-black shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3"
                     >
                       {isUploading ? <Loader2 className="animate-spin" /> : <FileSearch size={22} />}
-                      {isUploading ? 'ANALYZING FILE...' : 'EXTRACT DATA'}
+                      {isUploading ? (isGeminiSupportedFile(file) ? 'ANALYZING WITH AI...' : 'ANALYZING FILE...') : 'EXTRACT DATA'}
                     </button>
                   </div>
                 </div>

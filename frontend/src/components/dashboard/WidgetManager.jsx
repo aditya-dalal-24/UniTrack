@@ -3,14 +3,12 @@ import { Plus, GripVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const WIDGET_LABELS = {
-  today: "Today",
   reminders: "Reminders",
   "attendance-risk": "Attendance Risk",
   "smart-tasks": "Tasks",
   "academic-pressure": "Pressure Level",
   "expense-snapshot": "Expenses",
   "semester-health": "Semester Health",
-  "quick-actions": "Quick Actions",
 };
 
 export default function WidgetManager({ hiddenWidgets, onRestoreWidget }) {

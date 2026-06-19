@@ -17,6 +17,7 @@ import {
   Trash2,
   Pencil,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -40,6 +41,7 @@ export default function Fees() {
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
   const [feesSummary, setFeesSummary] = useState(null);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
 
   const handleImportPrevious = async () => {
     if (selectedSemester <= 1 || importing) return;
@@ -353,9 +355,9 @@ export default function Fees() {
                 setNewFee(prev => ({ ...prev, ...defaults }));
                 setShowAddFee(true);
               }}
-              className="group relative inline-flex items-center gap-2 rounded-2xl bg-brand text-white px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 transition-all hover:scale-105 active:scale-95 overflow-hidden"
+              className="group relative inline-flex items-center gap-2 rounded-2xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 text-sm font-black shadow-xl shadow-brand/20 dark:shadow-none transition-all hover:scale-105 active:scale-95 overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-brand to-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity" />
               <Plus className="h-5 w-5" />
               <span>New Fee Record</span>
             </button>
@@ -452,34 +454,53 @@ export default function Fees() {
 
           {/* Predictive Insights Panel */}
           {urgentFees.length > 0 && (
-            <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden">
+            <div className="rounded-[30px] border border-brand/20 dark:border-brand-500/20 bg-brand/5 dark:bg-brand-500/5 shadow-sm p-6 relative overflow-hidden mb-6">
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 dark:bg-white/10 blur-2xl" />
-              <div className="flex items-center gap-3 mb-4 relative z-10">
-                <AlertCircle className="h-5 w-5 text-brand dark:text-white" />
-                <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
-                {urgentFees.map((fee, idx) => {
-                  const due = new Date(fee.dueDate);
-                  const now = new Date();
-                  const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-                  const isOverdue = daysLeft < 0;
-                  
-                  return (
-                    <div key={idx} className={`flex items-center gap-4 p-4 rounded-2xl border ${isOverdue ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'}`}>
-                      <div className={`p-2 rounded-xl ${isOverdue ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'}`}>
-                        {getCategoryIcon(fee.category)}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                          {fee.category} Fee is {isOverdue ? 'overdue by ' + Math.abs(daysLeft) + ' days' : 'due in ' + daysLeft + ' days'}.
-                        </p>
-                        <p className="text-xs font-black text-slate-500 mt-1">₹{fee.totalAmount?.toLocaleString()}</p>
-                      </div>
+              <button 
+                onClick={() => setIsInsightsOpen(!isInsightsOpen)}
+                className="flex items-center justify-between w-full group relative z-10"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-brand dark:text-white" />
+                  <h4 className="text-sm font-black text-brand dark:text-white uppercase tracking-tight">Predictive Insights</h4>
+                </div>
+                <ChevronDown className={`h-5 w-5 text-brand dark:text-white transition-transform duration-300 ${isInsightsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence initial={false}>
+                {isInsightsOpen && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
+                      {urgentFees.map((fee, idx) => {
+                        const due = new Date(fee.dueDate);
+                        const now = new Date();
+                        const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+                        const isOverdue = daysLeft < 0;
+                        
+                        return (
+                          <div key={idx} className={`flex items-center gap-4 p-4 rounded-2xl border ${isOverdue ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'}`}>
+                            <div className={`p-2 rounded-xl ${isOverdue ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'}`}>
+                              {getCategoryIcon(fee.category)}
+                            </div>
+                            <div>
+                              <p className={`text-sm font-bold ${isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {fee.category} Fee is {isOverdue ? 'overdue by ' + Math.abs(daysLeft) + ' days' : 'due in ' + daysLeft + ' days'}.
+                              </p>
+                              <p className="text-xs font-black text-slate-500 mt-1">₹{fee.totalAmount?.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 

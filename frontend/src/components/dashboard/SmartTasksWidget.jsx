@@ -1,10 +1,35 @@
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ListTodo, ArrowRight, AlertCircle, Check } from "lucide-react";
+import { ListTodo, ArrowRight, AlertCircle, Check, Clock } from "lucide-react";
 import WidgetShell from "./WidgetShell";
+import { api } from "../../services/api";
 
 function SmartTasksWidgetInner({ data, loading, dragHandleProps, onHide }) {
   const navigate = useNavigate();
+  const [closestTask, setClosestTask] = useState(null);
+  const [actualPendingAssignments, setActualPendingAssignments] = useState(null);
+  const [actualPendingTodos, setActualPendingTodos] = useState(null);
+
+  useEffect(() => {
+    if (data && !data.allCaughtUp) {
+      api.getTasks().then(({ data: allTasks }) => {
+        if (allTasks && allTasks.length > 0) {
+          const pendingTasks = allTasks.filter(t => t.status === "PENDING" || t.status === "OVERDUE");
+          if (pendingTasks.length > 0) {
+            const sorted = pendingTasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            setClosestTask(sorted[0]);
+          }
+          const pendingAssigCount = pendingTasks.filter(t => t.type === "ASSIGNMENT").length;
+          const pendingTodoCount = pendingTasks.filter(t => t.type === "TODO").length;
+          setActualPendingAssignments(pendingAssigCount);
+          setActualPendingTodos(pendingTodoCount);
+        } else {
+          setActualPendingAssignments(0);
+          setActualPendingTodos(0);
+        }
+      }).catch(console.error);
+    }
+  }, [data]);
 
   if (!data) return null;
 
@@ -61,18 +86,34 @@ function SmartTasksWidgetInner({ data, loading, dragHandleProps, onHide }) {
             <div className="flex justify-center gap-8 px-4">
               <div className="flex flex-col items-center">
                 <p className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 leading-none mb-1">
-                  {pendingAssignments}
+                  {actualPendingAssignments !== null ? actualPendingAssignments : pendingAssignments}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assignments</p>
               </div>
               <div className="w-px bg-slate-100 dark:bg-slate-800" />
               <div className="flex flex-col items-center">
                 <p className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 leading-none mb-1">
-                  {pendingTodos}
+                  {actualPendingTodos !== null ? actualPendingTodos : pendingTodos}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">To-dos</p>
               </div>
             </div>
+            
+            {closestTask && (
+              <div className="w-full mt-3 px-3">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 border border-slate-100 dark:border-slate-700/50 text-left">
+                  <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <Clock className="h-3 w-3" /> Closest Deadline
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {closestTask.title}
+                  </p>
+                  <p className="text-[10px] font-medium text-brand dark:text-brand-400 mt-0.5">
+                    Due: {new Date(closestTask.dueDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between w-full border-t border-slate-100 dark:border-slate-800/50 pt-3 px-2 mt-auto">

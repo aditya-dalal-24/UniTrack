@@ -28,8 +28,10 @@ import {
   Layers,
   Search,
   AlertCircle,
+  Camera,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
+import BillScannerModal from "../components/BillScannerModal";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import MonthlyExpenseReportModal from "../components/MonthlyExpenseReportModal";
@@ -80,11 +82,12 @@ export default function Expenses() {
   const [showBillModal, setShowBillModal] = useState(false);
   const [showMonthlyReportModal, setShowMonthlyReportModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showBillScanner, setShowBillScanner] = useState(false);
   const [billDate, setBillDate] = useState(new Date().toISOString().split("T")[0]);
   const [dailyBill, setDailyBill] = useState(null);
   const [fetchingBill, setFetchingBill] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isInsightsOpen, setIsInsightsOpen] = useState(true);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const { showUndo, UndoToastComponent } = useUndoToast();
 
   const [loading, setLoading] = useState(true);
@@ -156,11 +159,11 @@ export default function Expenses() {
   // Handle command palette / navigation openAdd
   const location = useLocation();
   useEffect(() => {
-    if (location.state?.openAdd) {
+    if (location.state?.openAdd || location.hash === "#add") {
       setShowAddExpense(true);
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({}, document.title, location.pathname);
     }
-  }, [location.state]);
+  }, [location.state, location.hash, location.pathname]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -468,6 +471,14 @@ export default function Expenses() {
         description="Track your daily expenses and manage spending by category."
         actions={
           <div className="flex flex-wrap gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowBillScanner(true)}
+              className="group relative inline-flex items-center gap-2 rounded-2xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 px-5 py-3 text-sm font-black shadow-sm border border-slate-200 dark:border-slate-800 transition-all hover:shadow-md active:scale-95 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Camera className="h-4 w-4 text-violet-500" />
+              <span>Scan Bill</span>
+            </button>
             <button
               onClick={() => setShowBillModal(true)}
               className="group relative inline-flex items-center gap-2 rounded-2xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 px-5 py-3 text-sm font-black shadow-sm border border-slate-200 dark:border-slate-800 transition-all hover:shadow-md active:scale-95 overflow-hidden"
@@ -1345,6 +1356,18 @@ export default function Expenses() {
       <FloatingCalculator 
         isOpen={showCalculator} 
         onClose={() => setShowCalculator(false)} 
+      />
+
+      <BillScannerModal
+        isOpen={showBillScanner}
+        onClose={() => setShowBillScanner(false)}
+        categories={categories}
+        onSaveExpense={async (data) => {
+          const { error: apiError } = await api.addExpense(data);
+          if (apiError) throw new Error(apiError);
+          await fetchExpensesAndCategories(false);
+          invalidateDashboard();
+        }}
       />
 
       {/* Undo Toast */}
