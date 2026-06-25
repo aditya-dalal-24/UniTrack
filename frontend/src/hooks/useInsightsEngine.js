@@ -210,8 +210,8 @@ export function useInsightsEngine(dashboardData, todayLectures = [], tomorrowLec
       level: pressureLevel,
       reasons: pressureReasons,
       breakdown: {
-        attendance: Math.round(attendancePressure),
-        tasks: Math.round(taskPressure),
+        attendance: `${Math.round(attendance.attendancePercentage || 0)}%`,
+        tasks: taskInsights.pendingCount,
         marks: Math.round(marksPressure),
         workload: Math.round(workloadPressure),
       },

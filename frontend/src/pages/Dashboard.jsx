@@ -50,7 +50,8 @@ const DEFAULT_HIDDEN = [];
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
+  if(hour<5) return "Still Up?"
+  if (hour>5 &&hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
@@ -417,73 +418,77 @@ export default function Dashboard() {
         </div>
 
         {/* Action Buttons Row */}
-        <div className="flex flex-wrap items-center gap-2.5 mt-5">
-          <button
-            onClick={() => setShowWizard(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
-          >
-            <CalendarPlus className="h-4 w-4" />
-            Mark Attendance
-          </button>
-          {todayLectures.length > 0 && (
-            <>
-              <button
-                onClick={handlePerfectDay}
-                disabled={perfectDayLoading}
-                className="group inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold border border-slate-200 dark:border-slate-700 shadow-sm transition-all disabled:opacity-50 active:scale-[0.98]"
-              >
-                {perfectDayLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-colors" />
-                )}
-                Perfect Day
-              </button>
-              <button
-                onClick={handleZeroDay}
-                disabled={perfectDayLoading}
-                className="group inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold border border-slate-200 dark:border-slate-700 shadow-sm transition-all disabled:opacity-50 active:scale-[0.98]"
-              >
-                {perfectDayLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <X className="h-4 w-4 text-slate-400 group-hover:text-red-500 transition-colors" />
-                )}
-                Skipped All
-              </button>
-            </>
-          )}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mt-5 w-full">
+          {/* Primary Action Buttons (Left) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-2xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 shadow-sm backdrop-blur-sm w-full lg:w-auto">
+            <button
+              onClick={() => setShowWizard(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-sm font-bold shadow-sm transition-all duration-200 active:scale-[0.98] w-full sm:w-auto"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Mark Attendance
+            </button>
+            {todayLectures.length > 0 && (
+              <>
+                <button
+                  onClick={handlePerfectDay}
+                  disabled={perfectDayLoading}
+                  className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-200 dark:hover:border-emerald-800/40 shadow-xs transition-all duration-200 active:scale-[0.98] disabled:opacity-50 w-full sm:w-auto"
+                >
+                  {perfectDayLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                  )}
+                  Perfect Day
+                </button>
+                <button
+                  onClick={handleZeroDay}
+                  disabled={perfectDayLoading}
+                  className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-900/20 border border-slate-200/80 dark:border-slate-700/80 hover:border-red-200 dark:hover:border-red-800/40 shadow-xs transition-all duration-200 active:scale-[0.98] disabled:opacity-50 w-full sm:w-auto"
+                >
+                  {perfectDayLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4 text-slate-400 group-hover:text-red-500 transition-colors" />
+                  )}
+                  Skipped All
+                </button>
+              </>
+            )}
+          </div>
 
-          <div className="hidden sm:block flex-1" />
-
-          <Link
-            to="/schedule#setup"
-            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">View Timetable</span>
-          </Link>
-          <Link
-            to="/marks#add"
-            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-          >
-            <Award className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Enter Marks</span>
-          </Link>
-          <Link
-            to="/tasks"
-            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-          >
-            <ListPlus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Add Task</span>
-          </Link>
-          <Link
-            to="/expenses#add"
-            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-          >
-            <Wallet className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Add Expense</span>
-          </Link>
+          {/* Quick Navigation Panel (Right) */}
+          <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-row lg:items-center lg:gap-2 p-2 rounded-2xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 shadow-sm backdrop-blur-sm">
+            <Link
+              to="/schedule#setup"
+              className="inline-flex items-center justify-center lg:justify-start gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs transition-all duration-200 active:scale-[0.98] w-full lg:w-auto"
+            >
+              <Calendar className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
+              <span>View Timetable</span>
+            </Link>
+            <Link
+              to="/marks#add"
+              className="inline-flex items-center justify-center lg:justify-start gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs transition-all duration-200 active:scale-[0.98] w-full lg:w-auto"
+            >
+              <Award className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+              <span>Enter Marks</span>
+            </Link>
+            <Link
+              to="/tasks"
+              className="inline-flex items-center justify-center lg:justify-start gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs transition-all duration-200 active:scale-[0.98] w-full lg:w-auto"
+            >
+              <ListPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+              <span>Add Task</span>
+            </Link>
+            <Link
+              to="/expenses#add"
+              className="inline-flex items-center justify-center lg:justify-start gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs transition-all duration-200 active:scale-[0.98] w-full lg:w-auto"
+            >
+              <Wallet className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+              <span>Add Expense</span>
+            </Link>
+          </div>
         </div>
 
         {/* Mobile quote (shown on small screens) */}

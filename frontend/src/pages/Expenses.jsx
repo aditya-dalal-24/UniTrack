@@ -1043,6 +1043,12 @@ export default function Expenses() {
               className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden flex flex-col"
             >
               <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+                <div className="flex items-center mb-3">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-brand/10 dark:bg-brand-500/20 text-brand dark:text-slate-200 border border-brand/20 dark:border-brand-500/20 shadow-sm">
+                    <Zap className="h-3.5 w-3.5 fill-current text-amber-500 dark:text-amber-400 animate-pulse" />
+                    <span className="tracking-wider">QUICK ADD</span>
+                  </div>
+                </div>
                 <form onSubmit={handleInlineAdd} className="flex flex-col sm:flex-row gap-3">
                   <div className="flex-1 relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold">₹</span>

@@ -48,6 +48,13 @@ function toISODate(d) {
   return `${y}-${m}-${day}`;
 }
 
+// Helper: parse YYYY-MM-DD string safely into a local Date object
+function parseISODate(isoStr) {
+  if (!isoStr) return new Date();
+  const [y, m, d] = isoStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 const defaultTimeSlots = [
   { id: 1, start: "09:00", end: "10:00" },
   { id: 2, start: "10:00", end: "11:00" },
@@ -474,7 +481,7 @@ export default function Schedule() {
   };
 
   const getLecturesForDate = () => {
-    const d = new Date(selectedDate);
+    const d = parseISODate(selectedDate);
     const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
     
     if (!days.includes(dayName)) return [];
@@ -615,14 +622,14 @@ export default function Schedule() {
     if (allSlotIds.length > 0) {
       await toggleAttendanceStatus(allSlotIds, status);
       // Record behavior
-      const dayOfWeek = new Date(selectedDate).getDay();
+      const dayOfWeek = parseISODate(selectedDate).getDay();
       recordAction("attendance", status === "PRESENT" ? "mark_all_present" : "mark_all_absent", { dow: dayOfWeek });
     }
   };
 
   // Smart attendance: detect if user usually marks all present on this day
   const smartAttendanceSuggestion = useMemo(() => {
-    const selectedDateObj = new Date(selectedDate);
+    const selectedDateObj = parseISODate(selectedDate);
     const dow = selectedDateObj.getDay();
     const lectures = getLecturesForDate();
     const unmarkedLectures = lectures.filter(({ classes }) => {
@@ -666,7 +673,7 @@ export default function Schedule() {
   }, [dailyRecords, attendanceMap, markAllForSelectedDate, showUndo]);
 
   const changeDate = (offset) => {
-    const d = new Date(selectedDate);
+    const d = parseISODate(selectedDate);
     d.setDate(d.getDate() + offset);
     setSelectedDate(d.toISOString().split('T')[0]);
   };
@@ -957,7 +964,7 @@ export default function Schedule() {
                                 else if (presentCount === 3) colorClass = "bg-slate-700 dark:bg-slate-200";
                                 else if (presentCount >= 4) colorClass = "bg-slate-900 dark:bg-white shadow-sm";
                                 
-                                const dObj = new Date(dateKey);
+                                const dObj = parseISODate(dateKey);
                                 const isFuture = dObj > today;
                                 
                                 // Make future/inactive days the same as Level 0
@@ -965,7 +972,14 @@ export default function Schedule() {
 
                                 return (
                                   <div key={dateKey} className="group relative">
-                                    <div className={`w-[14px] h-[14px] rounded-[3px] transition-all hover:ring-2 hover:ring-offset-1 hover:ring-offset-white dark:hover:ring-offset-slate-900 hover:ring-slate-400 dark:hover:ring-slate-500 hover:scale-110 cursor-pointer ${colorClass}`} />
+                                    <div 
+                                      onClick={() => {
+                                        if (!isFuture) {
+                                          setSelectedDate(dateKey);
+                                        }
+                                      }}
+                                      className={`w-[14px] h-[14px] rounded-[3px] transition-all hover:ring-2 hover:ring-offset-1 hover:ring-offset-white dark:hover:ring-offset-slate-900 hover:ring-slate-400 dark:hover:ring-slate-500 hover:scale-110 cursor-pointer ${colorClass}`} 
+                                    />
                                     {!isFuture && (
                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity shadow-xl">
                                         {dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1029,7 +1043,7 @@ export default function Schedule() {
                         <div className="mb-6 flex justify-center">
                             <div className="flex flex-col items-center gap-2 w-full max-w-sm">
                                 {(() => {
-                                  const dayName = new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long" });
+                                  const dayName = parseISODate(selectedDate).toLocaleDateString("en-US", { weekday: "long" });
                                   const dayStyles = {
                                     Monday: "bg-indigo-500/10 dark:bg-indigo-500/30 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/50 shadow-indigo-500/10",
                                     Tuesday: "bg-emerald-500/10 dark:bg-emerald-500/30 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/50 shadow-emerald-500/10",
@@ -1119,16 +1133,16 @@ export default function Schedule() {
 
                       {/* ===== COMPACT ATTENDANCE GRID ===== */}
                       <div>
-                        {isHoliday(new Date(selectedDate).toDateString()) ? (
+                        {isHoliday(parseISODate(selectedDate).toDateString()) ? (
                            <div className="text-center py-12 bg-amber-50 dark:bg-amber-900/10 rounded-3xl border border-amber-300 dark:border-amber-800/50">
                               <div className="text-amber-500 mb-2">🌴</div>
-                              <h3 className="text-lg font-bold text-amber-800 dark:text-amber-500">Holiday: {getHolidayName(new Date(selectedDate).toDateString())}</h3>
+                              <h3 className="text-lg font-bold text-amber-800 dark:text-amber-500">Holiday: {getHolidayName(parseISODate(selectedDate).toDateString())}</h3>
                            </div>
-                        ) : isExam(new Date(selectedDate).toDateString()) ? (
+                        ) : isExam(parseISODate(selectedDate).toDateString()) ? (
                            <div className="text-center py-12 bg-purple-50 dark:bg-purple-900/10 rounded-3xl border border-purple-200 dark:border-purple-800/50">
                               <div className="text-purple-500 mb-2">📝</div>
-                              <h3 className="text-lg font-bold text-purple-700 dark:text-purple-500">Exam: {getExam(new Date(selectedDate).toDateString()).subject}</h3>
-                              <p className="text-sm font-bold text-purple-600 dark:text-purple-400 opacity-70 mt-1">{getExam(new Date(selectedDate).toDateString()).startTime} - {getExam(new Date(selectedDate).toDateString()).endTime}</p>
+                              <h3 className="text-lg font-bold text-purple-700 dark:text-purple-500">Exam: {getExam(parseISODate(selectedDate).toDateString()).subject}</h3>
+                              <p className="text-sm font-bold text-purple-600 dark:text-purple-400 opacity-70 mt-1">{getExam(parseISODate(selectedDate).toDateString()).startTime} - {getExam(parseISODate(selectedDate).toDateString()).endTime}</p>
                            </div>
                         ) : getLecturesForDate().length === 0 ? (
                           <div className="text-center py-16 text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800/50">

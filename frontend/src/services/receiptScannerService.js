@@ -59,14 +59,18 @@ function parseReceiptText(text) {
     if (date) break;
   }
 
-  // 3. Find Amount (Largest valid looking currency value)
-  let maxAmount = 0;
+  // 3. Find Amount (Closest to the bottom)
+  let bottomMostTotalAmount = null;
+  let bottomMostFallbackAmount = null;
   
-  // Look for lines containing "Total", "Amount", "Net", "Pay", "Rs", "₹", "Grand", "Due", "Tot"
-  const amountKeywords = ["total", "tot", "amount", "amt", "net", "pay", "rs", "₹", "grand", "due"];
+  // Strong indicators of the final total of the bill
+  const totalKeywords = ["total", "net", "payable", "grand", "gross", "gros", "due", "pay", "tot", "amt", "amount"];
   
-  // Regex for numbers with optional decimals: 123.45, 1,234.5, 50.00
-  const numberRegex = /(?:rs\.?\s*|₹\s*)?(?:[1-9]\d{0,2}(?:,\d{3})+|\d+)(?:\.\d{1,2})?/gi;
+  // Indicators of line items or headers that we should deprioritize
+  const itemKeywords = ["qty", "rate", "rate/qty", "item", "price", "discount", "gst%"];
+
+  // Regex for numbers with optional decimals: 123.45, 1,234.5, 740.000
+  const numberRegex = /(?:rs\.?\s*|₹\s*)?(?:[1-9]\d{0,2}(?:,\d{3})+|\d+)(?:\.\d{1,3})?/gi;
 
   for (const line of lines) {
     const lower = line.toLowerCase();
@@ -81,17 +85,18 @@ function parseReceiptText(text) {
           const val = parseFloat(cleanStr);
           
           const hasDecimal = cleanStr.includes('.') || match.includes('.');
-          const isTotalLine = amountKeywords.some(k => lower.includes(k));
+          const isTotalLine = totalKeywords.some(k => lower.includes(k));
+          const isItemLine = itemKeywords.some(k => lower.includes(k));
           const hasCurrency = /(?:rs|₹)/i.test(match);
           const isYear = val >= 1990 && val <= 2050 && !hasDecimal;
           
           // Filter out obvious noise (>100,000 or exact years)
           if (val > 0 && val < 100000 && !isYear) {
-            // If it has a keyword, a decimal point, or a currency symbol, it's a valid price candidate
-            if (isTotalLine || hasDecimal || hasCurrency) {
-              if (val > maxAmount) {
-                maxAmount = val;
-              }
+            // We prioritize total lines that are NOT header/item lines
+            if (isTotalLine && !isItemLine) {
+              bottomMostTotalAmount = val;
+            } else if (isTotalLine || hasDecimal || hasCurrency) {
+              bottomMostFallbackAmount = val;
             }
           }
         }
@@ -99,7 +104,7 @@ function parseReceiptText(text) {
     }
   }
   
-  const amount = maxAmount > 0 ? maxAmount : null;
+  const amount = bottomMostTotalAmount !== null ? bottomMostTotalAmount : (bottomMostFallbackAmount !== null ? bottomMostFallbackAmount : null);
 
   // Set confidence based on heuristics
   let confidence = "LOW";
