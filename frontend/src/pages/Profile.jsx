@@ -199,7 +199,7 @@ export default function Profile() {
           ) : (
              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">{studentData.name || "Student Node"}</h2>
           )}
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{studentData.rollNumber || "NO ID SET"}</p>
+          {studentData.rollNumber && <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{studentData.rollNumber}</p>}
         </div>
 
         <div className="flex flex-col sm:items-end gap-4 shrink-0">
@@ -294,12 +294,12 @@ function PreferenceToggle({ icon: Icon, title, description, checked, onChange })
       onClick={onChange}
       className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
         checked 
-          ? 'bg-brand/5 border-brand/20 dark:bg-brand/10 dark:border-brand/30' 
+          ? 'bg-brand/5 border-brand/20 dark:bg-brand/20 dark:border-brand/40' 
           : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
       }`}
     >
       <div className="flex items-center gap-4">
-        <div className={`p-2 rounded-xl ${checked ? 'bg-brand/10 text-brand' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+        <div className={`p-2 rounded-xl ${checked ? 'bg-brand/10 text-brand dark:bg-brand/30 dark:text-brand-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div>
@@ -307,7 +307,7 @@ function PreferenceToggle({ icon: Icon, title, description, checked, onChange })
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
         </div>
       </div>
-      <div className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-700'}`}>
+      <div className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-brand dark:bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
         <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-2' : '-translate-x-2'}`} />
       </div>
     </div>
