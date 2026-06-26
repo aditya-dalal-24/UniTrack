@@ -11,8 +11,8 @@ export default function useNotificationScheduler() {
   const [permission, setPermission] = useState(Notification.permission);
   const navigate = useNavigate();
   
-  // Track alerted keys so we don't spam the user
-  const alertedKeys = useRef(new Set());
+  // Track queued notifications to stagger them
+  const notificationQueue = useRef([]);
 
   const requestPermission = async () => {
     if (!('Notification' in window)) return false;
@@ -31,9 +31,28 @@ export default function useNotificationScheduler() {
   useEffect(() => {
     if (permission !== 'granted') return;
 
+    const getAlertedKeys = () => {
+      try { return new Set(JSON.parse(localStorage.getItem('alertedKeys') || '[]')); }
+      catch { return new Set(); }
+    };
+
+    const addAlertedKey = (key) => {
+      const keys = getAlertedKeys();
+      keys.add(key);
+      const todayStr = new Date().toDateString();
+      const filtered = Array.from(keys).filter(k => k.endsWith(todayStr));
+      localStorage.setItem('alertedKeys', JSON.stringify(filtered));
+    };
+
+    const queueNotification = (key, title, body, url, actions = []) => {
+      addAlertedKey(key);
+      notificationQueue.current.push({ title, body, url, actions });
+    };
+
     const checkAlerts = async () => {
       try {
         const todayStr = new Date().toDateString();
+        const keys = getAlertedKeys();
         
         // 1. CLASS REMINDERS
         if (localStorage.getItem('notify_classes') !== 'false') {
@@ -51,9 +70,9 @@ export default function useNotificationScheduler() {
               const timeDiffMinutes = (slotTime.getTime() - now.getTime()) / (1000 * 60);
               const key = `class-${slot.id}-${todayStr}`;
 
-              if (timeDiffMinutes <= 5 && timeDiffMinutes >= -2 && !alertedKeys.current.has(key)) {
-                alertedKeys.current.add(key);
-                triggerNotification(
+              if (timeDiffMinutes <= 5 && timeDiffMinutes >= -2 && !keys.has(key)) {
+                queueNotification(
+                  key,
                   `Attending ${slot.subjectName || 'Class'}?`,
                   `Your class ${slot.courseCode ? `(${slot.courseCode}) ` : ''}starts at ${slot.startTime}. Mark your attendance!`,
                   '/schedule',
@@ -72,9 +91,9 @@ export default function useNotificationScheduler() {
             const dueToday = res.data.filter(t => t.dueDate === todayISO && t.status !== 'COMPLETED');
             const key = `tasks-${todayStr}`;
             
-            if (dueToday.length > 0 && !alertedKeys.current.has(key)) {
-              alertedKeys.current.add(key);
-              triggerNotification(
+            if (dueToday.length > 0 && !keys.has(key)) {
+              queueNotification(
+                key,
                 'Tasks Due Today!',
                 `You have ${dueToday.length} task(s) pending for today. Don't forget to complete them!`,
                 '/tasks'
@@ -93,9 +112,9 @@ export default function useNotificationScheduler() {
             });
             const key = `attendance-${todayStr}`;
 
-            if (lowSubjects.length > 0 && !alertedKeys.current.has(key)) {
-              alertedKeys.current.add(key);
-              triggerNotification(
+            if (lowSubjects.length > 0 && !keys.has(key)) {
+              queueNotification(
+                key,
                 'Low Attendance Alert',
                 `Your attendance is below 75% in ${lowSubjects.length} subject(s).`,
                 '/schedule'
@@ -121,9 +140,9 @@ export default function useNotificationScheduler() {
             }
             
             const key = `fees-${todayStr}`;
-            if (approachingCount > 0 && !alertedKeys.current.has(key)) {
-              alertedKeys.current.add(key);
-              triggerNotification(
+            if (approachingCount > 0 && !keys.has(key)) {
+              queueNotification(
+                key,
                 'Fee Deadline Approaching',
                 `You have ${approachingCount} fee(s) due within the next 3 days.`,
                 '/fees'
@@ -137,11 +156,25 @@ export default function useNotificationScheduler() {
       }
     };
 
-    // Run immediately, then every 60 seconds
-    checkAlerts();
-    const intervalId = setInterval(checkAlerts, 60000);
+    // Stagger notification delivery to avoid spam
+    const processQueue = () => {
+      if (notificationQueue.current.length > 0) {
+        const next = notificationQueue.current.shift();
+        triggerNotification(next.title, next.body, next.url, next.actions);
+      }
+    };
 
-    return () => clearInterval(intervalId);
+    // Run checks immediately, then every 60 seconds
+    checkAlerts();
+    const checkInterval = setInterval(checkAlerts, 60000);
+    
+    // Process queue every 4 seconds to stagger delivery
+    const queueInterval = setInterval(processQueue, 4000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearInterval(queueInterval);
+    };
   }, [permission]);
 
   const triggerNotification = (title, body, url, actions = []) => {

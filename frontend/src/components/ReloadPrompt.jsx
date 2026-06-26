@@ -18,11 +18,18 @@ export default function ReloadPrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(swUrl, registration) {
-      // Check for updates every 60 minutes
       if (registration) {
+        // Check for updates every 60 minutes
         setInterval(() => {
           registration.update();
         }, 60 * 60 * 1000);
+
+        // Check for updates when the app comes back into focus (crucial for home screen PWA)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update();
+          }
+        });
       }
     },
     onRegisterError(error) {
