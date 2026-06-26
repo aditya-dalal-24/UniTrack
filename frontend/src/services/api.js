@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { queueRequest, getQueuedRequests, removeQueuedRequest } from './offlineManager';
+import { queueRequest, getQueuedRequests, removeQueuedRequest, setPersistentCache, getPersistentCache } from './offlineManager';
 
 // ==================== CONFIG ====================
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api';
@@ -266,12 +266,22 @@ async function request(method, url, body = null, params = null) {
         if (navigator.onLine) {
           axiosInstance(config).then(res => {
             apiCache.set(cacheKey, { data: res.data, timestamp: Date.now() });
+            setPersistentCache(cacheKey, res.data).catch(() => {});
           }).catch(() => {}); 
         }
         
         // Instantly return cached data with offline mutations dynamically applied
         const offlineData = await applyPendingMutations(url, cached.data);
         return { data: offlineData, error: null };
+      }
+
+      // If offline and memory cache misses or is stale, check IndexedDB
+      if (!navigator.onLine) {
+        const persistentData = await getPersistentCache(cacheKey);
+        if (persistentData) {
+          const offlineData = await applyPendingMutations(url, persistentData);
+          return { data: offlineData, error: null };
+        }
       }
     } else {
       // Brutal cache invalidation on ANY mutation to guarantee cross-module consistency
@@ -282,6 +292,7 @@ async function request(method, url, body = null, params = null) {
     
     if (isGet && cacheKey) {
       apiCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+      await setPersistentCache(cacheKey, response.data).catch(() => {});
     }
 
     // Apply pending offline mutations to fresh network data as well, in case sync is slow
@@ -292,6 +303,19 @@ async function request(method, url, body = null, params = null) {
 
     return { data: response.data, error: null };
   } catch (error) {
+    // If it's a GET request and the network failed, try fallback to persistent cache
+    const isGet = method.toLowerCase() === 'get';
+    const cacheKey = isGet ? (url + (params ? JSON.stringify(params) : '')) : null;
+    
+    if (isGet && cacheKey) {
+      const persistentData = await getPersistentCache(cacheKey);
+      if (persistentData) {
+        console.warn(`Network failed for ${url}. Falling back to persistent IndexedDB cache.`);
+        const offlineData = await applyPendingMutations(url, persistentData);
+        return { data: offlineData, error: null };
+      }
+    }
+
     let message = 'Something went wrong. Please try again.';
     if (error.response) {
       // Server responded with error
