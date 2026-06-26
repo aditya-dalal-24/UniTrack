@@ -104,7 +104,8 @@ axiosInstance.interceptors.response.use(
       config._retryCount = 0;
     }
 
-    if (isNetworkError && config._retryCount < 3) {
+    // ONLY retry if online, and we haven't explicitly disabled it for fast-fallback routes
+    if (isNetworkError && navigator.onLine && !config._noRetry && config._retryCount < 3) {
       config._retryCount += 1;
       const delay = config._retryCount * 2000; // Exponential backoff: 2s, 4s, 6s
       
@@ -275,13 +276,19 @@ async function request(method, url, body = null, params = null) {
         return { data: offlineData, error: null };
       }
 
-      // If offline and memory cache misses or is stale, check IndexedDB
-      if (!navigator.onLine) {
-        const persistentData = await getPersistentCache(cacheKey);
-        if (persistentData) {
-          const offlineData = await applyPendingMutations(url, persistentData);
-          return { data: offlineData, error: null };
-        }
+      // Always grab IDB data if available to see if we can do a fast fallback
+      const persistentData = await getPersistentCache(cacheKey);
+
+      // If offline and we have cache, return instantly
+      if (!navigator.onLine && persistentData) {
+        const offlineData = await applyPendingMutations(url, persistentData);
+        return { data: offlineData, error: null };
+      }
+
+      // If online but we have backup cache, enforce a strict timeout to ensure the app stays snappy
+      if (persistentData) {
+        config.timeout = 2500; // 2.5 seconds maximum wait before falling back to cache
+        config._noRetry = true; // Disable the aggressive 12-second interceptor retries
       }
     } else {
       // Brutal cache invalidation on ANY mutation to guarantee cross-module consistency
