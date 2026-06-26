@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { queueRequest, getQueuedRequests, removeQueuedRequest } from './offlineManager';
 
 // ==================== CONFIG ====================
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api';
@@ -124,6 +125,113 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 mins
 
 export const clearApiCache = () => apiCache.clear();
 
+// ==================== OFFLINE SYNC LOOP ====================
+let isSyncing = false;
+
+async function processOfflineQueue() {
+  if (isSyncing || !navigator.onLine) return;
+  
+  try {
+    const queue = await getQueuedRequests();
+    if (queue.length === 0) return;
+    
+    isSyncing = true;
+    window.dispatchEvent(new CustomEvent('offline-sync-started', { detail: { count: queue.length } }));
+    console.log(`Starting background sync of ${queue.length} items...`);
+    
+    let successCount = 0;
+    
+    for (const req of queue) {
+      try {
+        const config = { method: req.method, url: req.url };
+        if (req.body) config.data = req.body;
+        if (req.params) config.params = req.params;
+        
+        await axiosInstance(config);
+        
+        await removeQueuedRequest(req.tempId);
+        successCount++;
+      } catch (err) {
+        console.error("Failed to sync queued request:", req.url, err);
+        // Break on failure to preserve chronological order for subsequent mutations
+        break; 
+      }
+    }
+    
+    if (successCount > 0) {
+      apiCache.clear(); 
+      window.dispatchEvent(new CustomEvent('offline-sync-completed', { detail: { count: successCount } }));
+    }
+    
+  } finally {
+    isSyncing = false;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    setTimeout(processOfflineQueue, 2000);
+  });
+}
+
+// ==================== OPTIMISTIC UI MERGE ====================
+async function applyPendingMutations(url, cachedData) {
+  try {
+    const queue = await getQueuedRequests();
+    if (!queue || queue.length === 0) return cachedData;
+
+    let data = JSON.parse(JSON.stringify(cachedData)); // Deep clone to avoid mutating cache
+
+    queue.forEach(req => {
+      // TASKS / ASSIGNMENTS / TODOS
+      if ((url.startsWith('/tasks') || url.startsWith('/assignments') || url.startsWith('/todos')) && req.url.startsWith(url.split('?')[0])) {
+        if (req.method === 'post') {
+          if (Array.isArray(data)) data.unshift({ ...req.body, id: req.tempId, isOffline: true });
+        } else if (req.method === 'put') {
+          const idStr = req.url.split('/').pop();
+          if (Array.isArray(data)) {
+            const index = data.findIndex(t => String(t.id) === idStr);
+            if (index !== -1) data[index] = { ...data[index], ...req.body, isOffline: true };
+          }
+        } else if (req.method === 'delete') {
+          const idStr = req.url.split('/').pop();
+          if (Array.isArray(data)) data = data.filter(t => String(t.id) !== idStr);
+        }
+      }
+      // EXPENSES
+      else if (url.startsWith('/expenses') && req.url.startsWith('/expenses')) {
+        if (url.includes('bill')) return;
+        if (req.method === 'post' && data.expenses) {
+          data.expenses.unshift({ ...req.body, id: req.tempId, isOffline: true });
+        } else if (req.method === 'delete' && data.expenses) {
+          const idStr = req.url.split('/').pop();
+          data.expenses = data.expenses.filter(e => String(e.id) !== idStr);
+        }
+      }
+      // STANDARD ARRAYS (Attendance, Marks, Fees, Subjects)
+      else if ((url.startsWith('/attendance') || url.startsWith('/marks') || url.startsWith('/fees') || url.startsWith('/subjects') || url.startsWith('/timetable')) && req.url.startsWith(url.split('?')[0])) {
+        if (req.method === 'post') {
+          if (Array.isArray(data)) data.push({ ...req.body, id: req.tempId, isOffline: true });
+        } else if (req.method === 'put') {
+          const idStr = req.url.split('/').pop();
+          if (Array.isArray(data)) {
+            const index = data.findIndex(t => String(t.id) === idStr);
+            if (index !== -1) data[index] = { ...data[index], ...req.body, isOffline: true };
+          }
+        } else if (req.method === 'delete') {
+          const idStr = req.url.split('/').pop();
+          if (Array.isArray(data)) data = data.filter(t => String(t.id) !== idStr);
+        }
+      }
+    });
+
+    return data;
+  } catch (err) {
+    console.error("Failed to apply offline mutations:", err);
+    return cachedData;
+  }
+}
+
 /**
  * Wraps every API call in a normalized { data, error } response.
  * Implements SWR (Stale-While-Revalidate) global cache for ultra-fast page speeds.
@@ -135,6 +243,18 @@ async function request(method, url, body = null, params = null) {
     if (params) config.params = params;
 
     const isGet = method.toLowerCase() === 'get';
+    
+    // --- OFFLINE MUTATION INTERCEPT ---
+    if (!navigator.onLine && !isGet) {
+      if (body instanceof FormData) {
+        return { data: null, error: "File uploads are not available offline. Please connect to the internet to upload." };
+      }
+      const tempId = 'temp-' + Date.now();
+      await queueRequest({ url, method: method.toLowerCase(), body, params, tempId });
+      window.dispatchEvent(new CustomEvent('offline-sync-queued'));
+      return { data: { ...body, id: tempId, _isOfflineQueued: true }, error: null };
+    }
+
     let cacheKey = null;
 
     if (isGet) {
@@ -142,13 +262,16 @@ async function request(method, url, body = null, params = null) {
       const cached = apiCache.get(cacheKey);
       
       if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-        // Fire background revalidation to keep cache fresh
-        axiosInstance(config).then(res => {
-          apiCache.set(cacheKey, { data: res.data, timestamp: Date.now() });
-        }).catch(() => {}); 
+        // Fire background revalidation to keep cache fresh (only if online)
+        if (navigator.onLine) {
+          axiosInstance(config).then(res => {
+            apiCache.set(cacheKey, { data: res.data, timestamp: Date.now() });
+          }).catch(() => {}); 
+        }
         
-        // Instantly return cached data (zero-lag rendering)
-        return { data: cached.data, error: null };
+        // Instantly return cached data with offline mutations dynamically applied
+        const offlineData = await applyPendingMutations(url, cached.data);
+        return { data: offlineData, error: null };
       }
     } else {
       // Brutal cache invalidation on ANY mutation to guarantee cross-module consistency
@@ -159,6 +282,12 @@ async function request(method, url, body = null, params = null) {
     
     if (isGet && cacheKey) {
       apiCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+    }
+
+    // Apply pending offline mutations to fresh network data as well, in case sync is slow
+    if (isGet) {
+      const offlineData = await applyPendingMutations(url, response.data);
+      return { data: offlineData, error: null };
     }
 
     return { data: response.data, error: null };

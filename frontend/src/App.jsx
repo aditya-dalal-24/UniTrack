@@ -6,6 +6,10 @@ import { DataProvider } from "./contexts/DataContext";
 import LoadingSpinner from "./components/LoadingSpinner";
 import ThemeToggle from "./components/ThemeToggle";
 import FloatingCalculator from "./components/FloatingCalculator";
+import ReloadPrompt from "./components/ReloadPrompt";
+import OfflineBanner from "./components/OfflineBanner";
+import InstallPrompt from "./components/InstallPrompt";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Lazy-loaded pages for better performance
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -130,7 +134,12 @@ function AppContent() {
         <ThemeToggle />
       </div>
       <FloatingCalculator isOpen={showCalculator} onClose={() => setShowCalculator(false)} />
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
+      <ReloadPrompt />
+      <OfflineBanner />
+      <InstallPrompt />
     </DataProvider>
   );
 }

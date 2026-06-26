@@ -69,3 +69,16 @@ body {
   }
 }
 
+/* PWA Standalone Mode — iOS safe areas */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pwa-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Prevent pull-to-refresh in standalone mode */
+@media all and (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: contain;
+  }
+}

@@ -21,8 +21,8 @@ import {
   ShieldQuestion,
   Receipt,
 } from "lucide-react";
-import { scanReceipt, isConfigured } from "../services/receiptScannerService";
-import { matchCategory } from "../utils/categoryMatcher";
+import { isConfigured } from "../services/receiptScannerService";
+import { receiptToDraft } from "../services/adapters/receiptAdapter";
 
 /**
  * BillScannerModal
@@ -96,26 +96,34 @@ export default function BillScannerModal({ isOpen, onClose, categories, onSaveEx
         const controller = new AbortController();
         abortRef.current = controller;
 
-        const result = await scanReceipt(file, controller.signal);
+        // Use the receipt adapter to get a normalized draft
+        const draft = await receiptToDraft(file, categories, [], controller.signal);
 
-        // Match category to user's categories
-        const categoryMatch = matchCategory(
-          result.suggestedCategory,
-          result.merchant,
-          categories
-        );
+        // Map draft fields to the existing editData shape for UI compatibility
+        const ocrResult = draft.rawData?.ocrResult || {};
+        const result = {
+          ...ocrResult,
+          confidence: draft.confidence >= 0.7 ? 'HIGH' : draft.confidence >= 0.4 ? 'MEDIUM' : 'LOW',
+          fieldConfidence: ocrResult.fieldConfidence || {
+            amount: draft.amount ? 'HIGH' : 'LOW',
+            merchant: draft.merchant ? 'HIGH' : 'LOW',
+            category: draft.categoryId ? 'MEDIUM' : 'LOW',
+            date: draft.date ? 'HIGH' : 'LOW',
+          },
+        };
 
         const editData = {
-          amount: result.amount || "",
-          merchant: result.merchant || "",
-          categoryId: categoryMatch.categoryId || "",
-          categoryName: categoryMatch.categoryName || "",
-          date: result.date || new Date().toISOString().split("T")[0],
-          time: result.time || new Date().toTimeString().slice(0, 5),
-          note: [result.merchant, result.billNumber].filter(Boolean).join(" — "),
-          gstAmount: result.gstAmount,
-          billNumber: result.billNumber,
-          items: result.items || [],
+          amount: draft.amount || "",
+          merchant: draft.merchant || "",
+          categoryId: draft.categoryId || "",
+          categoryName: draft.categoryName || "",
+          date: draft.date || new Date().toISOString().split("T")[0],
+          time: draft.time || new Date().toTimeString().slice(0, 5),
+          note: draft.note || "",
+          gstAmount: ocrResult.gstAmount || null,
+          billNumber: ocrResult.billNumber || null,
+          items: ocrResult.items || [],
+          _draftId: draft.id,
         };
 
         setReceipts((prev) =>

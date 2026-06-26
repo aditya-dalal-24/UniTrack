@@ -5,6 +5,7 @@ import { ArrowRight, Sun, Moon } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import LightRays from "../components/LightRays";
 import InteractiveDice from "../components/ui/InteractiveDice";
+import InstallPrompt from "../components/InstallPrompt";
 
 function WordCycle({ isDark }) {
     const lightModeCategories = [
@@ -192,6 +193,8 @@ export default function LandingPage() {
                     Built for the next generation of students
                 </p>
             </footer>
+            
+            <InstallPrompt />
         </div>
     );
 }
