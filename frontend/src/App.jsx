@@ -10,6 +10,7 @@ import ReloadPrompt from "./components/ReloadPrompt";
 import OfflineBanner from "./components/OfflineBanner";
 import InstallPrompt from "./components/InstallPrompt";
 import ErrorBoundary from "./components/ErrorBoundary";
+import NotificationBanner from "./components/NotificationBanner";
 
 // Lazy-loaded pages for better performance
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -137,6 +138,7 @@ function AppContent() {
       <ErrorBoundary>
         <AppRoutes />
       </ErrorBoundary>
+      <NotificationBanner />
       <ReloadPrompt />
       <OfflineBanner />
       <InstallPrompt />

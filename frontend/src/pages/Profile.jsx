@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { Edit2, Save, Camera, GraduationCap } from "lucide-react";
+import { Edit2, Save, Camera, GraduationCap, Bell, CheckSquare, AlertTriangle, Wallet } from "lucide-react";
 import { api } from "../services/api";
 import { useData } from "../contexts/DataContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -38,6 +38,26 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [coverUrl, setCoverUrl] = useState(null);
+
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    classes: localStorage.getItem('notify_classes') !== 'false',
+    tasks: localStorage.getItem('notify_tasks') !== 'false',
+    attendance: localStorage.getItem('notify_attendance') !== 'false',
+    fees: localStorage.getItem('notify_fees') !== 'false',
+  });
+
+  const handleTogglePref = async (key) => {
+    const newValue = !notificationPrefs[key];
+    if (newValue && 'Notification' in window && Notification.permission !== 'granted') {
+      const p = await Notification.requestPermission();
+      if (p !== 'granted') {
+        alert("You must allow notifications in your browser settings to enable this feature.");
+        return;
+      }
+    }
+    setNotificationPrefs(prev => ({ ...prev, [key]: newValue }));
+    localStorage.setItem(`notify_${key}`, newValue.toString());
+  };
 
   const fetchProfile = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -228,6 +248,67 @@ export default function Profile() {
             </div>
          </div>
 
+         {/* Notification Preferences Section */}
+         <div className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800">
+            <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6">Notification Preferences</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <PreferenceToggle 
+                 icon={GraduationCap} 
+                 title="Class Reminders" 
+                 description="Notify me 5 minutes before a lecture starts." 
+                 checked={notificationPrefs.classes} 
+                 onChange={() => handleTogglePref('classes')} 
+               />
+               <PreferenceToggle 
+                 icon={CheckSquare} 
+                 title="Task Alerts" 
+                 description="Remind me about tasks that are due today." 
+                 checked={notificationPrefs.tasks} 
+                 onChange={() => handleTogglePref('tasks')} 
+               />
+               <PreferenceToggle 
+                 icon={AlertTriangle} 
+                 title="Attendance Warnings" 
+                 description="Alert me if my attendance drops below 75%." 
+                 checked={notificationPrefs.attendance} 
+                 onChange={() => handleTogglePref('attendance')} 
+               />
+               <PreferenceToggle 
+                 icon={Wallet} 
+                 title="Fee Deadlines" 
+                 description="Remind me when a fee is due within 3 days." 
+                 checked={notificationPrefs.fees} 
+                 onChange={() => handleTogglePref('fees')} 
+               />
+            </div>
+         </div>
+
+      </div>
+    </div>
+  );
+}
+
+function PreferenceToggle({ icon: Icon, title, description, checked, onChange }) {
+  return (
+    <div 
+      onClick={onChange}
+      className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+        checked 
+          ? 'bg-brand/5 border-brand/20 dark:bg-brand/10 dark:border-brand/30' 
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+      }`}
+    >
+      <div className="flex items-center gap-4">
+        <div className={`p-2 rounded-xl ${checked ? 'bg-brand/10 text-brand' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
+        </div>
+      </div>
+      <div className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-700'}`}>
+        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-2' : '-translate-x-2'}`} />
       </div>
     </div>
   );
