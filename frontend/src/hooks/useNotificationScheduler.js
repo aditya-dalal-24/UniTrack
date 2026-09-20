@@ -8,7 +8,13 @@ import api from '../services/api';
  * Periodically checks various data sources (offline cached) to trigger local alerts.
  */
 export default function useNotificationScheduler() {
-  const [permission, setPermission] = useState(Notification.permission);
+  // Guard against browsers/webviews with no Notification API at all (e.g. iOS
+  // Safari < 16.4) — referencing Notification.permission there throws, which
+  // previously crashed the whole app since this hook is mounted outside the
+  // ErrorBoundary via NotificationBanner in App.jsx.
+  const [permission, setPermission] = useState(() =>
+    ('Notification' in window) ? Notification.permission : 'unsupported'
+  );
   const navigate = useNavigate();
   
   // Track queued notifications to stagger them

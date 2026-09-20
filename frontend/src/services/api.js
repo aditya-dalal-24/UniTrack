@@ -1,5 +1,32 @@
 import axios from 'axios';
-import { queueRequest, getQueuedRequests, removeQueuedRequest, setPersistentCache, getPersistentCache } from './offlineManager';
+import { queueRequest, getQueuedRequests, removeQueuedRequest, setPersistentCache, getPersistentCache, clearPersistentCache } from './offlineManager';
+
+// Named Workbox runtime caches (must match frontend/vite.config.js runtimeCaching cacheName values).
+// Cleared on logout so a different user on the same device never sees stale cached responses.
+const WORKBOX_CACHE_NAMES = [
+  'unitrack-dashboard',
+  'unitrack-timetable',
+  'unitrack-tasks',
+  'unitrack-attendance',
+  'unitrack-expenses',
+  'unitrack-marks',
+  'unitrack-subjects',
+];
+
+/**
+ * A short, stable tag identifying the currently logged-in user's session,
+ * derived from their JWT. Used to namespace cached GET responses and to
+ * tag/filter offline-queued mutations so one user's cached data or pending
+ * edits can never be shown to, or replayed under, a different user's session.
+ */
+function getUserCacheTag() {
+  const token = localStorage.getItem('authToken');
+  return token ? token.slice(-24) : 'anon';
+}
+
+function buildCacheKey(url, params) {
+  return getUserCacheTag() + '::' + url + (params ? JSON.stringify(params) : '');
+}
 
 // ==================== CONFIG ====================
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api';
@@ -9,14 +36,21 @@ const axiosInstance = axios.create({
   timeout: 60000, // Increased to 60s to handle Render cold starts
 });
 
+// Diagnostic-only logging (connectivity info, retry/sync chatter) is gated behind
+// dev mode so it doesn't ship to the production console; real errors still use
+// console.error unconditionally.
+const isDev = import.meta.env.DEV;
+
 // Diagnostic log to verify connection details
-console.table({
-  "UniTrack Connectivity": "Diagnostic",
-  "Target Backend": API_BASE_URL,
-  "Environment": import.meta.env.MODE,
-  "Retry Config": "3 attempts on Network Error",
-  "Status": "Initializing..."
-});
+if (isDev) {
+  console.table({
+    "UniTrack Connectivity": "Diagnostic",
+    "Target Backend": API_BASE_URL,
+    "Environment": import.meta.env.MODE,
+    "Retry Config": "3 attempts on Network Error",
+    "Status": "Initializing..."
+  });
+}
 
 /**
  * Enhanced Wake-up logic: Aggressively pings during cold start window,
@@ -41,7 +75,7 @@ async function wakeUpBackend(attempts = 0) {
     if (response.ok) {
       backendAwake = true;
       const elapsed = Date.now() - start;
-      console.log(`Backend is AWAKE (responded in ${elapsed}ms)`);
+      if (isDev) console.log(`Backend is AWAKE (responded in ${elapsed}ms)`);
       
       // Pre-warm the security filter chain & JPA lazy beans
       // by making a lightweight authenticated-path request
@@ -57,7 +91,7 @@ async function wakeUpBackend(attempts = 0) {
       throw new Error(`Status ${response.status}`);
     }
   } catch (err) {
-    console.log(`Backend sleeping or booting (Attempt ${attempts + 1}/8)...`);
+    if (isDev) console.log(`Backend sleeping or booting (Attempt ${attempts + 1}/8)...`);
     setTimeout(() => wakeUpBackend(attempts + 1), delay);
   }
 }
@@ -90,6 +124,8 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('authToken');
       localStorage.removeItem('userData');
       localStorage.setItem('isAuthenticated', 'false');
+      // Awaited before navigating so the clear isn't cut short by the page unload.
+      await clearAllOfflineCaches();
       if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
         window.location.href = '/login';
       }
@@ -109,7 +145,7 @@ axiosInstance.interceptors.response.use(
       config._retryCount += 1;
       const delay = config._retryCount * 2000; // Exponential backoff: 2s, 4s, 6s
       
-      console.warn(`Network error detected. Retrying request (${config._retryCount}/3) in ${delay}ms...`, config.url);
+      if (isDev) console.warn(`Network error detected. Retrying request (${config._retryCount}/3) in ${delay}ms...`, config.url);
       
       await new Promise(resolve => setTimeout(resolve, delay));
       return axiosInstance(config);
@@ -126,22 +162,54 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 mins
 
 export const clearApiCache = () => apiCache.clear();
 
+/**
+ * Clears every read-cache layer (in-memory, IndexedDB, and the PWA's Workbox
+ * service-worker caches). Call this on logout / session expiry so a
+ * different user logging in on the same device never sees the previous
+ * user's cached attendance/marks/fees/etc. Does NOT touch the offline
+ * mutation queue — pending edits stay queued, tagged to their original
+ * user, and are only ever replayed for that same user (see
+ * processOfflineQueue/applyPendingMutations above).
+ */
+export async function clearAllOfflineCaches() {
+  apiCache.clear();
+  try {
+    await clearPersistentCache();
+  } catch (err) {
+    console.error('Failed to clear persistent cache on logout', err);
+  }
+  if (typeof caches !== 'undefined') {
+    try {
+      await Promise.all(WORKBOX_CACHE_NAMES.map((name) => caches.delete(name)));
+    } catch (err) {
+      console.error('Failed to clear service worker caches on logout', err);
+    }
+  }
+}
+
 // ==================== OFFLINE SYNC LOOP ====================
 let isSyncing = false;
 
 async function processOfflineQueue() {
   if (isSyncing || !navigator.onLine) return;
-  
+
   try {
-    const queue = await getQueuedRequests();
+    const allQueued = await getQueuedRequests();
+    // Only replay mutations queued under the currently logged-in user's session.
+    // Entries from a different (or since-logged-out) user are left in the queue
+    // untouched — never sent under the wrong session — so they can still sync
+    // later if that user logs back in on this device. Entries with no userTag
+    // predate this check and are treated as belonging to the current user.
+    const currentTag = getUserCacheTag();
+    const queue = allQueued.filter(req => !req.userTag || req.userTag === currentTag);
     if (queue.length === 0) return;
-    
+
     isSyncing = true;
     window.dispatchEvent(new CustomEvent('offline-sync-started', { detail: { count: queue.length } }));
-    console.log(`Starting background sync of ${queue.length} items...`);
-    
+    if (isDev) console.log(`Starting background sync of ${queue.length} items...`);
+
     let successCount = 0;
-    
+
     for (const req of queue) {
       try {
         const config = { method: req.method, url: req.url };
@@ -178,7 +246,9 @@ if (typeof window !== 'undefined') {
 // ==================== OPTIMISTIC UI MERGE ====================
 async function applyPendingMutations(url, cachedData) {
   try {
-    const queue = await getQueuedRequests();
+    const allQueued = await getQueuedRequests();
+    const currentTag = getUserCacheTag();
+    const queue = (allQueued || []).filter(req => !req.userTag || req.userTag === currentTag);
     if (!queue || queue.length === 0) return cachedData;
 
     let data = JSON.parse(JSON.stringify(cachedData)); // Deep clone to avoid mutating cache
@@ -251,7 +321,7 @@ async function request(method, url, body = null, params = null) {
         return { data: null, error: "File uploads are not available offline. Please connect to the internet to upload." };
       }
       const tempId = 'temp-' + Date.now();
-      await queueRequest({ url, method: method.toLowerCase(), body, params, tempId });
+      await queueRequest({ url, method: method.toLowerCase(), body, params, tempId, userTag: getUserCacheTag() });
       window.dispatchEvent(new CustomEvent('offline-sync-queued'));
       return { data: { ...body, id: tempId, _isOfflineQueued: true }, error: null };
     }
@@ -259,7 +329,7 @@ async function request(method, url, body = null, params = null) {
     let cacheKey = null;
 
     if (isGet) {
-      cacheKey = url + (params ? JSON.stringify(params) : '');
+      cacheKey = buildCacheKey(url, params);
       const cached = apiCache.get(cacheKey);
       
       if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
@@ -312,12 +382,12 @@ async function request(method, url, body = null, params = null) {
   } catch (error) {
     // If it's a GET request and the network failed, try fallback to persistent cache
     const isGet = method.toLowerCase() === 'get';
-    const cacheKey = isGet ? (url + (params ? JSON.stringify(params) : '')) : null;
+    const cacheKey = isGet ? buildCacheKey(url, params) : null;
     
     if (isGet && cacheKey) {
       const persistentData = await getPersistentCache(cacheKey);
       if (persistentData) {
-        console.warn(`Network failed for ${url}. Falling back to persistent IndexedDB cache.`);
+        if (isDev) console.warn(`Network failed for ${url}. Falling back to persistent IndexedDB cache.`);
         const offlineData = await applyPendingMutations(url, persistentData);
         return { data: offlineData, error: null };
       }
@@ -444,59 +514,8 @@ export const api = {
   getTodayLectures: () =>
     request('get', '/attendance/today'),
 
-  // ==================== ASSIGNMENTS ====================
-  getAssignments: () =>
-    request('get', '/assignments'),
 
-  addAssignment: (data) =>
-    request('post', '/assignments', {
-      title: data.title,
-      subject: data.subject,
-      dueDate: data.dueDate,
-      status: data.status || 'PENDING',
-    }),
 
-  updateAssignment: (id, data) =>
-    request('put', `/assignments/${id}`, {
-      title: data.title,
-      subject: data.subject,
-      dueDate: data.dueDate,
-      status: data.status,
-    }),
-
-  deleteAssignment: (id) =>
-    request('delete', `/assignments/${id}`),
-
-  deleteAllAssignments: () =>
-    request('delete', '/assignments'),
-
-  // ==================== TODOS ====================
-  getTodos: (completed = null) =>
-    request('get', '/todos', null, completed !== null ? { completed } : null),
-
-  addTodo: (data) =>
-    request('post', '/todos', {
-      title: data.title,
-      description: data.description || null,
-      dueDate: data.dueDate || null,
-      dueTime: data.dueTime || null,
-      completed: false,
-    }),
-
-  updateTodo: (id, data) =>
-    request('put', `/todos/${id}`, {
-      title: data.title,
-      description: data.description || null,
-      dueDate: data.dueDate || null,
-      dueTime: data.dueTime || null,
-      completed: data.completed || false,
-    }),
-
-  deleteTodo: (id) =>
-    request('delete', `/todos/${id}`),
-
-  deleteAllTodos: () =>
-    request('delete', '/todos'),
 
   // ==================== TASKS (Merged Assignments & Todos) ====================
   getTasks: (type = null, page = null, size = null) => {

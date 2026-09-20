@@ -141,7 +141,7 @@ public class AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
 
         if (!record.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Attendance record not found");
         }
 
         record.setStatus(request.getStatus());
@@ -166,7 +166,7 @@ public class AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
 
         if (!record.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Attendance record not found");
         }
         attendanceRepository.delete(record);
     }
@@ -184,16 +184,33 @@ public class AttendanceService {
 
         List<TimetableSlot> slots = timetableRepository.findByUserAndDayOfWeekOrderByStartTimeAsc(user, dayOfWeek);
 
+        // Fetch the whole day's attendance once (instead of one query per slot below) and
+        // index it in memory by subject id / timetable slot id, latest record first, so the
+        // per-slot lookup matches the same "first by id desc" record the old per-slot queries did.
+        List<AttendanceRecord> todaysRecords = attendanceRepository.findByUserAndDate(
+                user, today, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"));
+
+        java.util.Map<Long, AttendanceRecord> recordBySubjectId = new java.util.HashMap<>();
+        java.util.Map<Long, AttendanceRecord> recordByTimetableSlotId = new java.util.HashMap<>();
+        for (AttendanceRecord rec : todaysRecords) {
+            if (rec.getSubject() != null) {
+                recordBySubjectId.putIfAbsent(rec.getSubject().getId(), rec);
+            }
+            if (rec.getTimetableSlot() != null) {
+                recordByTimetableSlotId.putIfAbsent(rec.getTimetableSlot().getId(), rec);
+            }
+        }
+
         return slots.stream()
                 .filter(slot -> !Boolean.TRUE.equals(slot.getIsBreak()))
                 .map(slot -> {
                     // Look up existing attendance by SUBJECT first (handles labs spanning multiple slots)
                     // Falls back to slot-level lookup only when no subject is linked
-                    java.util.Optional<AttendanceRecord> existingRecord;
+                    AttendanceRecord existingRecord;
                     if (slot.getSubject() != null) {
-                        existingRecord = attendanceRepository.findFirstByUserAndDateAndSubjectOrderByIdDesc(user, today, slot.getSubject());
+                        existingRecord = recordBySubjectId.get(slot.getSubject().getId());
                     } else {
-                        existingRecord = attendanceRepository.findFirstByUserAndDateAndTimetableSlotOrderByIdDesc(user, today, slot);
+                        existingRecord = recordByTimetableSlotId.get(slot.getId());
                     }
 
                     String resolvedName = slot.getSubjectName();
@@ -211,8 +228,8 @@ public class AttendanceService {
                             .roomNumber(slot.getRoomNumber())
                             .groupInfo(slot.getGroupInfo())
                             .subjectId(slot.getSubject() != null ? slot.getSubject().getId() : null)
-                            .attendanceRecordId(existingRecord.map(AttendanceRecord::getId).orElse(null))
-                            .status(existingRecord.map(AttendanceRecord::getStatus).orElse(null))
+                            .attendanceRecordId(existingRecord != null ? existingRecord.getId() : null)
+                            .status(existingRecord != null ? existingRecord.getStatus() : null)
                             .build();
                 })
                 .collect(Collectors.toList());

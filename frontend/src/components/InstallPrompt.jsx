@@ -1,24 +1,26 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, X } from 'lucide-react';
+import { Download, X, Share } from 'lucide-react';
 import useInstallPrompt from '../hooks/useInstallPrompt';
 
+const DISMISS_KEY = 'unitrack_pwa_install_dismissed_at';
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 export default function InstallPrompt() {
-  const { canInstall, promptInstall, isInstalled } = useInstallPrompt();
+  const { canInstall, promptInstall, isInstalled, isIOS } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(false);
 
-  // Check if user previously dismissed the prompt
+  // Check if user previously dismissed the prompt (within the last 7 days)
   useEffect(() => {
-    const isDismissed = localStorage.getItem('unitrack_pwa_install_dismissed') === 'true';
-    if (isDismissed) {
+    const dismissedAt = Number(localStorage.getItem(DISMISS_KEY));
+    if (dismissedAt && Date.now() - dismissedAt < DISMISS_DURATION_MS) {
       setDismissed(true);
     }
   }, []);
 
   const handleDismiss = () => {
     setDismissed(true);
-    // Remember the dismissal for 7 days
-    localStorage.setItem('unitrack_pwa_install_dismissed', 'true');
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
   };
 
   const handleInstall = async () => {
@@ -28,8 +30,9 @@ export default function InstallPrompt() {
     }
   };
 
-  // Don't show if installed, dismissed, or can't install yet
-  const show = canInstall && !isInstalled && !dismissed;
+  // iOS never fires beforeinstallprompt, so canInstall is never true there —
+  // show manual "Add to Home Screen" instructions instead of a native button.
+  const show = (canInstall || isIOS) && !isInstalled && !dismissed;
 
   return (
     <AnimatePresence>
@@ -49,23 +52,41 @@ export default function InstallPrompt() {
               <p className="text-sm font-bold text-slate-900 dark:text-white">
                 Install UniTrack
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Add to your home screen for quick access and offline support.
-              </p>
-              <div className="flex items-center gap-2 mt-3">
-                <button
-                  onClick={handleInstall}
-                  className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-sm"
-                >
-                  Install App
-                </button>
-                <button
-                  onClick={handleDismiss}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                >
-                  Not now
-                </button>
-              </div>
+              {canInstall ? (
+                <>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Add to your home screen for quick access and offline support.
+                  </p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={handleInstall}
+                      className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-sm"
+                    >
+                      Install App
+                    </button>
+                    <button
+                      onClick={handleDismiss}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    >
+                      Not now
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center flex-wrap gap-1">
+                    Tap <Share className="h-3.5 w-3.5 inline-block flex-shrink-0" /> Share, then "Add to Home Screen".
+                  </p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={handleDismiss}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    >
+                      Got it
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
             <button
               onClick={handleDismiss}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -14,7 +14,9 @@ import {
   Save,
   FileSearch,
   Grid,
-  Users
+  Users,
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useData } from '../contexts/DataContext';
@@ -34,6 +36,15 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
   const [ocrProgress, setOcrProgress] = useState(0);
   const fileInputRef = useRef(null);
 
+  // Minor course state
+  const [minorStep, setMinorStep] = useState(null); // null = not asked, 'asking' = yes/no, 'picking' = enter name, 'done' = resolved
+  const [hasMinor, setHasMinor] = useState(null); // true/false
+  const [minorSubjectName, setMinorSubjectName] = useState("");
+
+  // Elective selection state
+  const [electiveStep, setElectiveStep] = useState(null); // null = not started, 'picking' = showing picker, 'done' = resolved
+  const [electiveSelections, setElectiveSelections] = useState({}); // { electiveGroupId: selectedSubjectName }
+
   const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   const isGeminiSupportedFile = (f) => {
     if (!f) return false;
@@ -48,8 +59,29 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
       setError(null);
       setSelectedGroup("");
       setOcrProgress(0);
+      setMinorStep(null);
+      setHasMinor(null);
+      setMinorSubjectName("");
+      setElectiveStep(null);
+      setElectiveSelections({});
     }
   }, [isOpen]);
+
+  // Compute elective groups from previewData
+  const electiveGroups = useMemo(() => {
+    if (!previewData?.slots) return {};
+    const groups = {};
+    for (const slot of previewData.slots) {
+      if (slot.electiveGroup && slot.electiveGroup.trim()) {
+        const gid = slot.electiveGroup.trim();
+        if (!groups[gid]) groups[gid] = [];
+        groups[gid].push(slot);
+      }
+    }
+    return groups;
+  }, [previewData]);
+
+  const hasElectives = Object.keys(electiveGroups).length > 0;
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -105,6 +137,8 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
       try {
         const data = await scanTimetableWithGemini(file);
         setPreviewData(data);
+        // Start the minor course step
+        setMinorStep('asking');
       } catch (err) {
         setError(err.message || "Failed to parse timetable file. Ensure it's clear and readable.");
       }
@@ -117,9 +151,84 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
         setError(error);
       } else {
         setPreviewData(data);
+        // Start the minor course step
+        setMinorStep('asking');
       }
     }
   };
+
+  // === MINOR COURSE HANDLERS ===
+  const handleMinorNo = () => {
+    setHasMinor(false);
+    setMinorStep('done');
+    // Move to elective step if needed
+    if (hasElectives) {
+      setElectiveStep('picking');
+    }
+  };
+
+  const handleMinorYes = () => {
+    setHasMinor(true);
+    setMinorStep('picking');
+  };
+
+  const handleMinorConfirm = () => {
+    if (!minorSubjectName.trim()) return;
+    
+    // Add 8:00-8:55 slot for each day that has classes
+    const daysWithClasses = [...new Set(previewData.slots.map(s => s.dayOfWeek))];
+    const minorSlots = daysWithClasses.map(day => ({
+      dayOfWeek: day,
+      startTime: "08:00",
+      endTime: "08:55",
+      subjectName: minorSubjectName.trim(),
+      subjectFullName: null,
+      courseCode: null,
+      professor: null,
+      roomNumber: null,
+      groupInfo: null,
+      electiveGroup: null,
+      color: "#a855f7", // Purple for minor
+      isBreak: false,
+    }));
+
+    setPreviewData(prev => ({
+      ...prev,
+      slots: [...minorSlots, ...prev.slots],
+    }));
+
+    setMinorStep('done');
+    // Move to elective step if needed
+    if (hasElectives) {
+      setElectiveStep('picking');
+    }
+  };
+
+  // === ELECTIVE HANDLERS ===
+  const handleElectiveSelection = (groupId, subjectName) => {
+    setElectiveSelections(prev => ({ ...prev, [groupId]: subjectName }));
+  };
+
+  const handleElectiveConfirm = () => {
+    // Filter out non-selected elective slots
+    setPreviewData(prev => ({
+      ...prev,
+      slots: prev.slots.filter(slot => {
+        if (!slot.electiveGroup || !slot.electiveGroup.trim()) return true; // Keep non-elective slots
+        const groupId = slot.electiveGroup.trim();
+        const selected = electiveSelections[groupId];
+        if (!selected) return true; // Keep if no selection made for this group (shouldn't happen)
+        // Keep only the selected subject for this elective group
+        return slot.subjectName === selected;
+      }),
+    }));
+    setElectiveStep('done');
+  };
+
+  const allElectivesSelected = useMemo(() => {
+    const groupIds = Object.keys(electiveGroups);
+    return groupIds.length > 0 && groupIds.every(gid => electiveSelections[gid]);
+  }, [electiveGroups, electiveSelections]);
 
   const handleDeleteSlot = (index) => {
     setPreviewData(prev => ({
@@ -136,13 +245,124 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
   };
 
   const filteredSlots = React.useMemo(() => {
-    if (!previewData || !selectedGroup) return previewData?.slots || [];
-    if (selectedGroup === "ALL") return previewData.slots;
-    return previewData.slots.filter(slot => {
-      if (slot.isBreak || !slot.groupInfo) return true;
-      // Match group (e.g. G5 matches G5G6)
-      return slot.groupInfo.toUpperCase().includes(selectedGroup.toUpperCase());
+    if (!previewData) return [];
+
+    const fixTime = (t) => {
+      if (!t || !t.includes(":")) return t;
+      let [hStr, mStr] = t.split(":");
+      let h = parseInt(hStr, 10);
+      // Heuristic: College timetables don't have classes at 1-6 AM. Treat as PM.
+      if (h >= 1 && h <= 6) {
+        h += 12;
+      }
+      return `${h.toString().padStart(2, '0')}:${mStr}`;
+    };
+
+    let slots = previewData.slots.map(slot => ({
+      ...slot,
+      startTime: fixTime(slot.startTime),
+      endTime: fixTime(slot.endTime)
+    }));
+
+    if (selectedGroup && selectedGroup !== "ALL") {
+      slots = slots.filter(slot => {
+        if (slot.isBreak || !slot.groupInfo) return true;
+        return slot.groupInfo.toUpperCase().includes(selectedGroup.toUpperCase());
+      });
+    }
+
+    // 2. Normalize so all days have a consistent time structure
+    // Extract all unique time boundaries across the whole week from ALL groups
+    const timePoints = new Set();
+    slots.forEach(s => {
+      if (s.startTime) timePoints.add(s.startTime);
+      if (s.endTime) timePoints.add(s.endTime);
     });
+
+    const sortedPoints = Array.from(timePoints).sort();
+
+    // Create atomic intervals between adjacent time points
+    const atomicIntervals = [];
+    for (let i = 0; i < sortedPoints.length - 1; i++) {
+      atomicIntervals.push({
+        start: sortedPoints[i],
+        end: sortedPoints[i + 1]
+      });
+    }
+
+    // Only process days that actually have classes in the original timetable
+    const activeDays = DAYS.filter(day => previewData.slots.some(s => s.dayOfWeek === day));
+    const normalizedSlots = [];
+
+    const timeToMins = (t) => {
+      if (!t) return 0;
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + (m || 0);
+    };
+
+    activeDays.forEach(day => {
+      const daySlots = slots.filter(s => s.dayOfWeek === day);
+      const addedRealSlots = new Set();
+      
+      let currentFreeSlot = null;
+
+      atomicIntervals.forEach(interval => {
+        // A real slot overlaps if it starts before interval ends AND ends after interval starts
+        const overlappingSlots = daySlots.filter(s => 
+          s.startTime < interval.end && s.endTime > interval.start
+        );
+
+        if (overlappingSlots.length > 0) {
+          if (currentFreeSlot) {
+            // Only keep Free slots if duration > 15 minutes (ignore 5-min transition gaps)
+            if (timeToMins(currentFreeSlot.endTime) - timeToMins(currentFreeSlot.startTime) > 15) {
+              normalizedSlots.push(currentFreeSlot);
+            }
+            currentFreeSlot = null;
+          }
+
+          overlappingSlots.forEach(s => {
+            // Use a unique key to avoid pushing the same real slot multiple times
+            // Include groupInfo to prevent deleting identical subjects for different groups
+            const key = `${s.startTime}-${s.endTime}-${s.subjectName}-${s.groupInfo || ''}`;
+            if (!addedRealSlots.has(key)) {
+              normalizedSlots.push(s);
+              addedRealSlots.add(key);
+            }
+          });
+        } else {
+          // If no real class covers this time, pad it with a Free slot
+          if (!currentFreeSlot) {
+            currentFreeSlot = {
+              dayOfWeek: day,
+              startTime: interval.start,
+              endTime: interval.end,
+              subjectName: "Free",
+              isBreak: true,
+              color: "#f8fafc" // Light slate color for empty slots
+            };
+          } else {
+            // Merge consecutive Free slots
+            currentFreeSlot.endTime = interval.end;
+          }
+        }
+      });
+      
+      if (currentFreeSlot) {
+        if (timeToMins(currentFreeSlot.endTime) - timeToMins(currentFreeSlot.startTime) > 15) {
+          normalizedSlots.push(currentFreeSlot);
+        }
+      }
+    });
+
+    // Final sort by day and time to be safe
+    normalizedSlots.sort((a, b) => {
+      const dayDiff = DAYS.indexOf(a.dayOfWeek) - DAYS.indexOf(b.dayOfWeek);
+      if (dayDiff !== 0) return dayDiff;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+    return normalizedSlots;
   }, [previewData, selectedGroup]);
 
   const handleConfirmSave = async () => {
@@ -161,10 +381,204 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
     }
   };
 
+  // === MINOR COURSE STEP RENDER ===
+  const renderMinorStep = () => {
+    if (minorStep === 'asking') {
+      return (
+        <div className="space-y-8 py-6 px-4">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-20 h-20 rounded-[1.5rem] bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 dark:from-purple-500/20 dark:to-indigo-500/20 flex items-center justify-center text-purple-500 dark:text-purple-400 mb-4 shadow-inner border border-purple-500/5">
+              <BookOpen size={36} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h4 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Minor Course</h4>
+              <p className="text-slate-500 mt-2 max-w-sm mx-auto font-medium">Do you have a minor course this semester? If yes, we'll add an 8:00 – 8:55 AM slot for it.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-4 justify-center pt-2">
+            <button
+              onClick={handleMinorYes}
+              className="group relative overflow-hidden px-10 py-4 rounded-2xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-1 transition-all duration-300 text-center"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/5 dark:to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative text-lg font-black text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Yes</span>
+            </button>
+            <button
+              onClick={handleMinorNo}
+              className="px-10 py-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-300 text-center"
+            >
+              <span className="text-lg font-bold text-slate-600 dark:text-slate-400">No</span>
+            </button>
+          </div>
+          
+          <div className="pt-6 flex justify-center border-t border-slate-100 dark:border-slate-800">
+            <button 
+              onClick={() => setPreviewData(null)}
+              className="text-sm text-slate-400 font-bold hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-2"
+            >
+              <X size={16} /> Cancel and select another file
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (minorStep === 'picking') {
+      return (
+        <div className="space-y-8 py-6 px-4">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-20 h-20 rounded-[1.5rem] bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 dark:from-purple-500/20 dark:to-indigo-500/20 flex items-center justify-center text-purple-500 dark:text-purple-400 mb-4 shadow-inner border border-purple-500/5">
+              <BookOpen size={36} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h4 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">What's Your Minor?</h4>
+              <p className="text-slate-500 mt-2 max-w-sm mx-auto font-medium">Enter the name of your minor course. We'll add it as an 8:00 – 8:55 AM slot on all your class days.</p>
+            </div>
+          </div>
+          
+          <div className="max-w-sm mx-auto space-y-4">
+            <input
+              type="text"
+              value={minorSubjectName}
+              onChange={(e) => setMinorSubjectName(e.target.value)}
+              placeholder="e.g. Introduction to Psychology"
+              className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium outline-none focus:border-purple-500 dark:focus:border-purple-500 transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleMinorConfirm()}
+            />
+            <button
+              onClick={handleMinorConfirm}
+              disabled={!minorSubjectName.trim()}
+              className="w-full bg-purple-600 text-white px-6 py-4 rounded-2xl font-black shadow-lg shadow-purple-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+            >
+              <Check size={20} />
+              Add Minor Course
+            </button>
+          </div>
+          
+          <div className="pt-6 flex justify-center border-t border-slate-100 dark:border-slate-800">
+            <button 
+              onClick={handleMinorNo}
+              className="text-sm text-slate-400 font-bold hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-2"
+            >
+              Skip — I don't have a minor
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // === ELECTIVE SELECTION STEP RENDER ===
+  const renderElectiveStep = () => {
+    if (electiveStep !== 'picking') return null;
+
+    const groupEntries = Object.entries(electiveGroups);
+
+    return (
+      <div className="space-y-8 py-6 px-4">
+        <div className="text-center space-y-4">
+          <div className="mx-auto w-20 h-20 rounded-[1.5rem] bg-gradient-to-tr from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400 mb-4 shadow-inner border border-amber-500/5">
+            <Sparkles size={36} strokeWidth={2.5} />
+          </div>
+          <div>
+            <h4 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Choose Your Electives</h4>
+            <p className="text-slate-500 mt-2 max-w-md mx-auto font-medium">We detected {groupEntries.length} elective slot{groupEntries.length > 1 ? 's' : ''} with multiple options. Pick the subject you're enrolled in for each.</p>
+          </div>
+        </div>
+
+        <div className="max-h-[350px] overflow-y-auto pr-1 space-y-5">
+          {groupEntries.map(([groupId, slots]) => {
+            const firstSlot = slots[0];
+            const dayLabel = firstSlot.dayOfWeek.charAt(0) + firstSlot.dayOfWeek.slice(1).toLowerCase();
+            const timeLabel = `${firstSlot.startTime} – ${firstSlot.endTime}`;
+
+            return (
+              <div key={groupId} className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
+                  <Calendar size={12} />
+                  <span>{dayLabel}</span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <Clock size={12} />
+                  <span>{timeLabel}</span>
+                </div>
+                <div className="space-y-2">
+                  {slots.map((slot, idx) => {
+                    const isSelected = electiveSelections[groupId] === slot.subjectName;
+                    return (
+                      <label
+                        key={idx}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-600 shadow-sm'
+                            : 'bg-white dark:bg-slate-800 border-2 border-transparent hover:border-slate-200 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={groupId}
+                          checked={isSelected}
+                          onChange={() => handleElectiveSelection(groupId, slot.subjectName)}
+                          className="w-4 h-4 text-amber-500 accent-amber-500 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-sm font-bold truncate ${isSelected ? 'text-amber-700 dark:text-amber-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                            {slot.subjectName}
+                          </div>
+                          {(slot.professor || slot.roomNumber) && (
+                            <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                              {[slot.professor, slot.roomNumber].filter(Boolean).join(' • ')}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <button
+            onClick={() => {
+              setElectiveStep('done');
+            }}
+            className="flex-1 px-6 py-3 rounded-2xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+          >
+            Skip
+          </button>
+          <button
+            onClick={handleElectiveConfirm}
+            disabled={!allElectivesSelected}
+            className="flex-1 bg-amber-500 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+          >
+            <Check size={18} />
+            Confirm Electives
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderPreview = () => {
     if (!previewData) return null;
 
-    // If groups exist and none selected, ask user first
+    // Step 1: Minor course question (shown right after parsing)
+    if (minorStep && minorStep !== 'done') {
+      return renderMinorStep();
+    }
+
+    // Step 2: Elective selection (shown after minor is resolved)
+    if (electiveStep === 'picking') {
+      return renderElectiveStep();
+    }
+
+    // Step 3: If groups exist and none selected, ask user first
     if (previewData.availableGroups?.length > 0 && !selectedGroup) {
       return (
         <div className="space-y-8 py-6 px-4">
@@ -211,6 +625,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
       );
     }
 
+    // Step 4: Review slots
     // Group slots by day
     const slotsByDay = DAYS.reduce((acc, day) => {
       acc[day] = filteredSlots.filter(s => s.dayOfWeek === day);
@@ -257,8 +672,10 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                 <div className="grid gap-2">
                   {daySlots.map((slot, idx) => {
                     const globalIdx = previewData.slots.indexOf(slot);
+                    // Generate a truly unique key for rendering to prevent React duplicate key issues
+                    const uniqueKey = `${day}-${slot.startTime}-${slot.endTime}-${idx}`;
                     return (
-                      <div key={globalIdx} className="group relative flex items-start gap-0 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 transition hover:border-brand/30 overflow-hidden">
+                      <div key={uniqueKey} className="group relative flex items-start gap-0 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 transition hover:border-brand/30 overflow-hidden">
                         {/* Color accent bar */}
                         <div className="w-1.5 min-h-full flex-shrink-0 rounded-l-2xl" style={{ backgroundColor: slot.color || '#6366f1' }} />
                         <div className="flex-1 min-w-0 p-3 space-y-1.5">
@@ -267,7 +684,8 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                             type="text"
                             value={slot.subjectName}
                             onChange={(e) => handleEditSlot(globalIdx, 'subjectName', e.target.value)}
-                            className="w-full bg-transparent font-bold text-slate-900 dark:text-white outline-none focus:text-brand text-sm"
+                            disabled={globalIdx === -1} // Cannot edit dynamically generated Free slots
+                            className={`w-full bg-transparent font-bold outline-none text-sm ${globalIdx === -1 ? 'text-slate-500 cursor-not-allowed' : 'text-slate-900 dark:text-white focus:text-brand'}`}
                             placeholder="Subject Name"
                           />
                           {slot.subjectFullName && slot.subjectFullName !== slot.subjectName && (
@@ -282,7 +700,8 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                               type="text"
                               value={slot.startTime}
                               onChange={(e) => handleEditSlot(globalIdx, 'startTime', e.target.value)}
-                              className="w-14 bg-transparent text-xs text-slate-500 outline-none focus:text-brand"
+                              disabled={globalIdx === -1}
+                              className="w-14 bg-transparent text-xs text-slate-500 outline-none focus:text-brand disabled:cursor-not-allowed"
                               placeholder="09:00"
                             />
                             <span className="text-slate-300 text-xs">–</span>
@@ -290,7 +709,8 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                               type="text"
                               value={slot.endTime}
                               onChange={(e) => handleEditSlot(globalIdx, 'endTime', e.target.value)}
-                              className="w-14 bg-transparent text-xs text-slate-500 outline-none focus:text-brand"
+                              disabled={globalIdx === -1}
+                              className="w-14 bg-transparent text-xs text-slate-500 outline-none focus:text-brand disabled:cursor-not-allowed"
                               placeholder="10:00"
                             />
                             {slot.courseCode && (

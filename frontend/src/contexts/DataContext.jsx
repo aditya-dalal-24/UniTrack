@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useRef } from "react";
 import { api } from "../services/api";
 
 const DataContext = createContext(null);
@@ -41,13 +41,13 @@ export function DataProvider({ children }) {
     lastFetchRef.current = 0; // Force next fetch to bypass cache
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     dashboardData,
     dashboardLoading,
     dashboardError,
     fetchDashboard,
     invalidateDashboard,
-  };
+  }), [dashboardData, dashboardLoading, dashboardError, fetchDashboard, invalidateDashboard]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

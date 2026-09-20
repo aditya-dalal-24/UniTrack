@@ -46,7 +46,7 @@ export default function OfflineBanner() {
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -50 }}
-          className="fixed top-0 left-0 right-0 z-[9999] flex justify-center p-2 pointer-events-none"
+          className="fixed top-0 left-0 right-0 z-[9999] flex justify-center p-2 pwa-safe-top pointer-events-none"
         >
           <div 
             className={`pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full shadow-lg border text-sm font-medium transition-colors ${

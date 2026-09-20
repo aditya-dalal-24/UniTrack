@@ -85,7 +85,7 @@ public class TimetableParserService {
     private static final Pattern LEGEND_ENTRY = Pattern.compile(
             "^\\s*\\(?([A-Z0-9][A-Z0-9\\-]{1,15})\\)?\\s*[-–=:]\\s*(.+)$", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern BREAK_PATTERN = Pattern.compile(".*(BREAK|LUNCH|SLOT|RECESS|INTERVAL).*",
+    private static final Pattern BREAK_PATTERN = Pattern.compile(".*\\b(BREAK|LUNCH|RECESS|INTERVAL)\\b.*",
             Pattern.CASE_INSENSITIVE);
 
     // Curated color palette for auto-assignment
@@ -390,7 +390,7 @@ public class TimetableParserService {
                     rowToDay.putIfAbsent(r, dayFound);
                 }
 
-                if (looksLikeTime(raw)) {
+                if (looksLikeTime(raw) && !isTransitionGap(raw)) {
                     rowToTime.putIfAbsent(r, raw.trim());
                     colToTime.putIfAbsent(c, raw.trim());
                 }
@@ -405,6 +405,7 @@ public class TimetableParserService {
         Map<String, String> colorMap = new LinkedHashMap<>(); // subject name → color
 
         if (layoutB) {
+            // Layout B: Days as rows, Times as columns
             for (Map.Entry<Integer, String> dayEntry : rowToDay.entrySet()) {
                 int r = dayEntry.getKey();
                 String day = dayEntry.getValue();
@@ -421,23 +422,71 @@ public class TimetableParserService {
                 }
             }
         } else {
+            // Layout A: Days as columns, Times as rows
             if (colToDay.isEmpty() || rowToTime.isEmpty()) {
                 throw new RuntimeException(
                         "Could not identify Day headers or Time slots in the document. " +
                                 "Please ensure the timetable has clear day names (Mon-Sun) and time values.");
             }
-            for (Map.Entry<Integer, String> timeEntry : rowToTime.entrySet()) {
-                int r = timeEntry.getKey();
-                String timeStr = timeEntry.getValue();
+
+            // === PER-DAY ROW PARSING ===
+            // Build day-row ownership: each day column 'owns' the rows from its
+            // day-header row span. For merged cells (e.g. Monday spans rows 3-5),
+            // all those rows belong to Monday regardless of elective sub-rows.
+            // We map each day column to its set of applicable time-rows independently.
+
+            // First, find which rows contain day headers for each column.
+            // A day header row is the row where the day name appears in that column,
+            // BUT for Layout A, days are columns — the day name is in a header row.
+            // The time rows are independent of day columns.
+            // The REAL problem is: time rows that have content for one day (e.g. elective rows)
+            // but should NOT map to adjacent day columns that have empty cells there.
+
+            // Solution: For each (timeRow, dayCol) pair, only emit a slot if the cell
+            // at that position is non-empty and valid. Additionally, handle rows where
+            // the time cell is empty (continuation of a merged time block) by inheriting
+            // the time from the nearest time-row above.
+
+            // Build a per-row time mapping that handles merged/empty time cells
+            // by scanning rows in order and carrying forward the last seen time.
+            // This prevents rows in the middle of a merged block from being orphaned.
+            List<Integer> sortedTimeRows = new ArrayList<>(rowToTime.keySet());
+            Collections.sort(sortedTimeRows);
+
+            for (int i = 0; i < sortedTimeRows.size(); i++) {
+                int r = sortedTimeRows.get(i);
+                String timeStr = rowToTime.get(r);
+                // Determine the row range this time slot covers:
+                // from this time row up to (but not including) the next time row
+                int nextTimeRow = (i + 1 < sortedTimeRows.size()) ? sortedTimeRows.get(i + 1) : grid.size();
+
                 for (Map.Entry<Integer, String> dayEntry : colToDay.entrySet()) {
                     int c = dayEntry.getKey();
-                    if (c < grid.get(r).size()) {
-                        String cellText = grid.get(r).get(c).trim();
-                        if (isValidSubject(cellText)) {
-                            slots.addAll(
-                                    buildSlotsFromCell(colToDay.get(c), timeStr, cellText, subjectLegend, facultyLegend,
-                                            colorMap));
+
+                    // Collect all valid content from rows [r, nextTimeRow) for this day column
+                    // This handles elective sub-rows that span multiple grid rows for a single time slot
+                    StringBuilder cellContent = new StringBuilder();
+                    for (int subRow = r; subRow < nextTimeRow; subRow++) {
+                        if (subRow < grid.size() && c < grid.get(subRow).size()) {
+                            String subCellText = grid.get(subRow).get(c).trim();
+                            // Skip if cell is a day header, time value, or empty
+                            if (!subCellText.isEmpty() && !looksLikeTime(subCellText)) {
+                                String upperSub = subCellText.toUpperCase().replaceAll("[^A-Z0-9:.\\-–]", "");
+                                if (resolveDay(upperSub) == null) {
+                                    if (cellContent.length() > 0) {
+                                        cellContent.append("\n");
+                                    }
+                                    cellContent.append(subCellText);
+                                }
+                            }
                         }
+                    }
+
+                    String mergedCellText = cellContent.toString().trim();
+                    if (isValidSubject(mergedCellText)) {
+                        slots.addAll(
+                                buildSlotsFromCell(colToDay.get(c), timeStr, mergedCellText, subjectLegend,
+                                        facultyLegend, colorMap));
                     }
                 }
             }
@@ -457,6 +506,11 @@ public class TimetableParserService {
 
         // Merge consecutive Lab slots into single 2-hour sessions
         slots = mergeLabSlots(slots);
+
+        // === ELECTIVE DETECTION ===
+        // Group slots by (day, startTime, endTime). If a group has multiple distinct
+        // subjects and NONE of them have groupInfo, these are elective choices.
+        slots = detectElectives(slots);
 
         Set<String> detectedDays = slots.stream()
                 .map(PreviewSlot::getDayOfWeek).collect(Collectors.toCollection(LinkedHashSet::new));
@@ -488,6 +542,49 @@ public class TimetableParserService {
                 .build();
     }
 
+    /**
+     * Detects elective slots: when the same (day, startTime, endTime, groupInfo) has multiple
+     * distinct subjects, they are elective choices.
+     * Tags them with a shared electiveGroup ID so the frontend can show a picker.
+     */
+    private List<PreviewSlot> detectElectives(List<PreviewSlot> slots) {
+        // Group by (day, startTime, endTime, groupInfo)
+        Map<String, List<PreviewSlot>> timeGroups = new LinkedHashMap<>();
+        for (PreviewSlot s : slots) {
+            // Lab lectures should NOT be treated as electives
+            if (s.getIsBreak() || isLab(s)) continue;
+            String groupKey = s.getGroupInfo() != null ? s.getGroupInfo().trim() : "";
+            String key = String.format("%s|%s|%s|%s", s.getDayOfWeek(), s.getStartTime(), s.getEndTime(), groupKey);
+            timeGroups.computeIfAbsent(key, k -> new ArrayList<>()).add(s);
+        }
+
+        for (Map.Entry<String, List<PreviewSlot>> entry : timeGroups.entrySet()) {
+            List<PreviewSlot> group = entry.getValue();
+            if (group.size() <= 1) continue;
+
+            // Check if there are multiple DISTINCT subjects
+            Set<String> distinctSubjects = group.stream()
+                    .map(s -> s.getSubjectName().replaceAll("[^A-Za-z0-9]", "").toLowerCase())
+                    .collect(Collectors.toSet());
+            if (distinctSubjects.size() <= 1) continue;
+
+            // Generate an ID based on the sorted distinct subjects so the same elective combo on 
+            // another day gets the SAME electiveGroup ID. This prevents the user from being asked
+            // multiple times for the same elective choice across different days.
+            List<String> sortedSubjects = new ArrayList<>(distinctSubjects);
+            Collections.sort(sortedSubjects);
+            // Hash or format the string cleanly to avoid weird chars in the ID
+            String electiveId = "elective-" + String.join("-", sortedSubjects).replaceAll("[^a-z0-9\\-]", "");
+            
+            for (PreviewSlot s : group) {
+                s.setElectiveGroup(electiveId);
+            }
+        }
+
+        return slots;
+    }
+
+
     private List<PreviewSlot> mergeLabSlots(List<PreviewSlot> slots) {
         if (slots == null || slots.isEmpty())
             return slots;
@@ -495,7 +592,7 @@ public class TimetableParserService {
         // 1. Enforce single-slot duration (55-60 min) for all subjects initially
         // "Do NOT assume 2-hour duration from start time alone"
         for (PreviewSlot s : slots) {
-            if (!s.getIsBreak()) {
+            if (!s.getIsBreak() && !isLab(s)) {
                 int duration = timeToMinutes(s.getEndTime()) - timeToMinutes(s.getStartTime());
                 if (duration > 65) {
                     s.setEndTime(addOneHour(s.getStartTime()));
@@ -542,18 +639,18 @@ public class TimetableParserService {
                     result.add(current);
                     i++;
                 } else {
-                    // NORMAL SUBJECT: Always occupy EXACTLY 1 slot. Never extend.
+                    // NORMAL SUBJECT: Do NOT merge into multi-hour slots (keep distinct 1-hr lectures).
                     result.add(current);
                     
-                    // Look ahead to drop consecutive duplicates (fix first lecture doubling)
+                    // Look ahead to drop exact duplicates (same start time) or small transition artifacts (<= 15 mins)
                     while (i + 1 < group.size()) {
                         PreviewSlot next = group.get(i + 1);
                         if (timeToMinutes(next.getStartTime()) == timeToMinutes(current.getStartTime())) {
-                            i++; // Exact duplicate (same time), skip
-                        } else if (canMergeLabs(current, next)) { 
-                            i++; // Consecutive duplicate of normal subject -> DROP it
+                            i++; // Exact duplicate (same start time), skip
+                        } else if (canMergeLabs(current, next) && (timeToMinutes(next.getEndTime()) - timeToMinutes(next.getStartTime()) <= 15)) {
+                            i++; // Transition artifact (<= 15 mins) -> skip
                         } else {
-                            break;
+                            break; // Legitimate consecutive lecture -> keep it
                         }
                     }
                     i++;
@@ -928,6 +1025,12 @@ public class TimetableParserService {
         // Detect if this is a break slot
         boolean isBreak = BREAK_PATTERN.matcher(cellText).matches();
         if (!isBreak) {
+            String noSpaceText = cellText.replaceAll("\\s+", "");
+            if (Pattern.compile("(?i).*(BREAK|LUNCH|RECESS|INTERVAL).*").matcher(noSpaceText).matches()) {
+                isBreak = true;
+            }
+        }
+        if (!isBreak) {
             // Check if any line looks like a break
             for (String line : lines) {
                 if (BREAK_PATTERN.matcher(line).matches()) {
@@ -1077,6 +1180,26 @@ public class TimetableParserService {
                 || HOUR_ONLY.matcher(raw).find();
     }
 
+    private boolean isTransitionGap(String timeStr) {
+        if (timeStr == null || timeStr.isBlank()) return false;
+        Matcher tm = TIME_RANGE.matcher(timeStr);
+        if (tm.find()) {
+            String startStr = normalizeTime(tm.group(1).trim());
+            String endStr = normalizeTime(tm.group(2).trim());
+            if (!startStr.isEmpty() && !endStr.isEmpty()) {
+                try {
+                    int duration = timeToMinutes(endStr) - timeToMinutes(startStr);
+                    // Only ignore very short transition gaps (<= 5 mins). 
+                    // 10-15 min gaps might be actual short breaks!
+                    if (duration > 0 && duration <= 5) {
+                        return true;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+        return false;
+    }
+
     private boolean isValidSubject(String text) {
         if (text == null || text.isBlank())
             return false;
@@ -1085,9 +1208,10 @@ public class TimetableParserService {
             return false;
         if (looksLikeTime(text) && text.replaceAll("[0-9:.\\-–\\sAMPMampm]", "").isEmpty())
             return false;
-        String lc = text.toLowerCase().trim();
+        String lc = text.toLowerCase().replaceAll("\\s+", ""); // remove all spaces for checking
         if (lc.equals("time") || lc.equals("day") || lc.equals("period") || lc.equals("slot")
                 || lc.equals("break") || lc.equals("lunch") || lc.equals("recess")
+                || lc.equals("minor") // ignore placeholder "MINOR" columns
                 || lc.equals("---") || lc.equals("-")) {
             return false;
         }

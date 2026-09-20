@@ -26,7 +26,7 @@ const SUBJECT_COLORS = [
   "#a855f7", "#22d3ee", "#84cc16", "#e11d48", "#0ea5e9",
 ];
 
-const BREAK_WORDS = ["BREAK", "LUNCH", "RECESS", "INTERVAL", "SHORT", "MINOR"];
+const BREAK_WORDS = ["BREAK", "LUNCH", "RECESS", "INTERVAL"];
 
 const SKIP_WORDS = [
   "TIME", "DAY", "PERIOD", "SLOT", "DAYS", "SLOTS",

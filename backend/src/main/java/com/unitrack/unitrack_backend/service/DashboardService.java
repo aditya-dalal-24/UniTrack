@@ -23,10 +23,8 @@ public class DashboardService {
         private final UserRepository userRepository;
         private final AttendanceRepository attendanceRepository;
         private final FeesRepository feesRepository;
-        private final AssignmentRepository assignmentRepository;
         private final ExpenseRepository expenseRepository;
         private final MarksRepository marksRepository;
-        private final TodoRepository todoRepository;
         private final SubjectRepository subjectRepository;
         private final TaskRepository taskRepository;
 
@@ -88,20 +86,12 @@ public class DashboardService {
                                 .mapToDouble(f -> f.getPaidAmount() != null ? f.getPaidAmount() : 0.0).sum();
 
                 // ── Assignments ─────────────────────────────────────────
-                List<Assignment> assignments = assignmentRepository.findByUserOrderByDueDateAsc(user);
-                List<Task> taskAssignments = taskRepository.findByUserAndTypeOrderByDueDateAsc(user,
-                                TaskType.ASSIGNMENT);
+                List<Task> taskAssignments = taskRepository.findByUserAndTypeOrderByDueDateAsc(user, TaskType.ASSIGNMENT);
 
-                long pending = assignments.stream()
-                                .filter(a -> a.getStatus() == AssignmentStatus.PENDING).count()
-                                + taskAssignments.stream().filter(t -> t.getStatus() == TaskStatus.PENDING).count();
-                long submitted = assignments.stream()
-                                .filter(a -> a.getStatus() == AssignmentStatus.SUBMITTED).count()
-                                + taskAssignments.stream().filter(t -> t.getStatus() == TaskStatus.SUBMITTED).count();
-                long overdue = assignments.stream()
-                                .filter(a -> a.getStatus() == AssignmentStatus.OVERDUE).count()
-                                + taskAssignments.stream().filter(t -> t.getStatus() == TaskStatus.OVERDUE).count();
-                long totalAsgn = assignments.size() + taskAssignments.size();
+                long pending = taskAssignments.stream().filter(t -> t.getStatus() == TaskStatus.PENDING).count();
+                long submitted = taskAssignments.stream().filter(t -> t.getStatus() == TaskStatus.SUBMITTED).count();
+                long overdue = taskAssignments.stream().filter(t -> t.getStatus() == TaskStatus.OVERDUE).count();
+                long totalAsgn = taskAssignments.size();
 
                 // ── Expenses ────────────────────────────────────────────
                 LocalDate now = LocalDate.now();
@@ -172,12 +162,10 @@ public class DashboardService {
                                 : 0.0;
 
                 // ── Todos ───────────────────────────────────────────────
-                List<Todo> allTodos = todoRepository.findByUserOrderByDueDateAsc(user);
                 List<Task> taskTodos = taskRepository.findByUserAndTypeOrderByDueDateAsc(user, TaskType.TODO);
 
-                long completedTodos = allTodos.stream().filter(Todo::isCompleted).count()
-                                + taskTodos.stream().filter(t -> t.getStatus() == TaskStatus.COMPLETED).count();
-                long totalTodosCount = allTodos.size() + taskTodos.size();
+                long completedTodos = taskTodos.stream().filter(t -> t.getStatus() == TaskStatus.COMPLETED).count();
+                long totalTodosCount = taskTodos.size();
                 long pendingTodos = totalTodosCount - completedTodos;
 
                 // ── Tasks (Unified) ─────────────────────────────────────

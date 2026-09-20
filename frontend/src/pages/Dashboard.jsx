@@ -771,7 +771,7 @@ function SemesterAlertBanner({ notification, onDismiss }) {
       </div>
       <button
         onClick={onDismiss}
-        className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+        className="p-2.5 -m-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
       >
         <span className="sr-only">Dismiss</span>
         <svg

@@ -34,7 +34,7 @@ export default function Topbar() {
   };
 
   return (
-    <div className="sticky top-0 z-10 border-b border-slate-200/60 dark:border-slate-800/60 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur">
+    <div className="sticky top-0 z-10 pwa-safe-top border-b border-slate-200/60 dark:border-slate-800/60 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur">
       {/* Student Profile Section */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

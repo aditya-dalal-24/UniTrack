@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
 
+// iOS Safari (and other iOS browsers, which all use WebKit's install flow)
+// never fires `beforeinstallprompt` — there is no native install prompt to
+// hook into. Detected once at module load since the UA doesn't change at runtime.
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  // iPadOS 13+ reports as "MacIntel" but has touch support, unlike a real Mac.
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 export default function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -57,5 +64,5 @@ export default function useInstallPrompt() {
     return outcome === 'accepted';
   };
 
-  return { canInstall, promptInstall, isInstalled };
+  return { canInstall, promptInstall, isInstalled, isIOS };
 }

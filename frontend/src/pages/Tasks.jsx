@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -551,7 +551,7 @@ export default function Tasks() {
                     const HeaderIcon = headerInfo?.icon;
 
                     return (
-                      <>
+                      <Fragment key={task.id}>
                         {showHeader && headerInfo && (
                           <div key={`header-${taskGroup}`} className="col-span-full mt-2">
                             <div className="flex items-center gap-2 mb-2">
@@ -572,7 +572,7 @@ export default function Tasks() {
                           className={`group relative p-5 sm:p-6 rounded-3xl border shadow-sm hover:shadow-xl cursor-pointer transition-all ${
                             task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED 
                             ? 'bg-emerald-50/30 border-emerald-200/50 dark:bg-emerald-900/10 dark:border-emerald-800/30' 
-                            : `${TILE_COLORS[task.id % TILE_COLORS.length]}`
+                            : `${TILE_COLORS[Math.abs(Number(task.id) || 0) % TILE_COLORS.length]}`
                           }`}
                         >
                           {editingId === task.id ? (
@@ -596,7 +596,7 @@ export default function Tasks() {
                           ) : (
                             <>
                               <div className="flex justify-between items-start mb-3">
-                                <button onClick={(e) => { e.stopPropagation(); toggleTaskStatus(task); }} className="p-1.5 -ml-1">
+                                <button onClick={(e) => { e.stopPropagation(); toggleTaskStatus(task); }} className="p-2.5 -ml-2">
                                   {task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.SUBMITTED ? (
                                     <CheckCircle className="h-6 w-6 text-emerald-500" />
                                   ) : (
@@ -649,7 +649,7 @@ export default function Tasks() {
                             </>
                           )}
                         </motion.div>
-                      </>
+                      </Fragment>
                     );
                   })}
                 </>

@@ -657,7 +657,7 @@ export default function Expenses() {
                         {cat.id && (
                           <button
                             onClick={() => handleDeleteCategory(cat.id)}
-                            className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 dark:hover:text-white rounded-lg transition-colors ml-2"
+                            className="p-2.5 -mr-1 text-slate-400 hover:text-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 dark:hover:text-white rounded-lg transition-colors ml-2"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>

@@ -117,6 +117,21 @@ export async function setPersistentCache(key, data) {
 }
 
 /**
+ * Clears every cached GET response from IndexedDB (used on logout so a
+ * different user on the same device never sees the previous user's data).
+ */
+export async function clearPersistentCache() {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([CACHE_STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(CACHE_STORE_NAME);
+    const request = store.clear();
+    request.onsuccess = () => resolve();
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+/**
  * Retrieves a GET response from IndexedDB.
  */
 export async function getPersistentCache(key) {

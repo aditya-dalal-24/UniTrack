@@ -31,6 +31,7 @@ public class TimetablePreviewResponse {
         private String roomNumber;
         private String color;
         private String groupInfo;
+        private String electiveGroup;
         private Boolean isBreak = false;
     }
 }

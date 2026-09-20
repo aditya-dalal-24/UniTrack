@@ -23,7 +23,6 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
-    private final TodoRepository todoRepository;
     private final SubjectRepository subjectRepository;
     private final TimetableRepository timetableRepository;
     private final MarksRepository marksRepository;
@@ -31,7 +30,7 @@ public class AdminService {
     private final ExpenseRepository expenseRepository;
     private final ExpenseCategoryRepository expenseCategoryRepository;
     private final AttendanceRepository attendanceRepository;
-    private final AssignmentRepository assignmentRepository;
+    private final TaskRepository taskRepository;
 
     @Value("${app.super-admin-email}")
     private String superAdminEmail;
@@ -177,8 +176,7 @@ public class AdminService {
         // Delete all related data in dependency order
         attendanceRepository.deleteAllByUser(user);
         timetableRepository.deleteAllByUser(user);
-        assignmentRepository.deleteAllByUser(user);
-        todoRepository.deleteAllByUser(user);
+        taskRepository.deleteAllByUser(user);
         marksRepository.deleteAllByUser(user);
         feesRepository.deleteAllByUser(user);
         expenseRepository.deleteAllByUser(user);

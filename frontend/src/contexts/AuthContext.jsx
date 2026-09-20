@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { clearAllOfflineCaches } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -90,13 +91,19 @@ export function AuthProvider({ children }) {
   /**
    * Clears all auth state and stored data.
    */
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setAuthToken(null);
     setUserData(null);
     setAvatarUrl(null);
     localStorage.removeItem("authToken");
     localStorage.removeItem("userData");
     localStorage.setItem("isAuthenticated", "false");
+    // Clear cached API responses (in-memory, IndexedDB, service worker) so a
+    // different user logging in on this device never sees this user's data.
+    // The offline mutation queue is intentionally left untouched — pending
+    // edits stay tagged to this user and only ever sync for this user.
+    // Awaited before navigating so the clear isn't cut short by the page unload.
+    await clearAllOfflineCaches();
     window.location.href = "/login"; // Force complete app recreation and clear history
   }, []);
 

@@ -1817,8 +1817,8 @@ function SwipeableLectureRow({
           </span>
         </div>
 
-        {/* Toggle buttons (visible on desktop, hidden on small touch) */}
-        <div className="grid grid-cols-2 gap-2 w-[220px] flex-shrink-0">
+        {/* Toggle buttons (visible on desktop, hidden on small touch — swipe gesture covers mobile) */}
+        <div className="hidden md:grid grid-cols-2 gap-2 w-[220px] flex-shrink-0">
           <button 
             disabled={isAnyLoading}
             onClick={onMarkPresent}

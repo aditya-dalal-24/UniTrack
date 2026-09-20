@@ -57,7 +57,7 @@ function WidgetShellInner({
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="cursor-grab active:cursor-grabbing p-1 -ml-1.5 rounded-md text-slate-300 hover:text-slate-500 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+              className="cursor-grab active:cursor-grabbing touch-none p-2 -ml-2 rounded-md text-slate-300 hover:text-slate-500 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-400 dark:hover:bg-slate-800 transition-colors"
               title="Drag to reorder"
             >
               <GripVertical className="h-4 w-4" />
