@@ -121,13 +121,17 @@ axiosInstance.interceptors.response.use(
 
     // 1. Handle Token Expiry
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userData');
-      localStorage.setItem('isAuthenticated', 'false');
-      // Awaited before navigating so the clear isn't cut short by the page unload.
-      await clearAllOfflineCaches();
-      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
-        window.location.href = '/login';
+      const isAuthEndpoint = config?.url?.includes('/auth/login') || config?.url?.includes('/auth/register');
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        localStorage.setItem('isAuthenticated', 'false');
+        sessionStorage.setItem('auth_expired_message', 'Session expired, please log in again');
+        // Awaited before navigating so the clear isn't cut short by the page unload.
+        await clearAllOfflineCaches();
+        if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
+          window.location.href = '/login?expired=true';
+        }
       }
       return Promise.reject(error);
     }
@@ -405,6 +409,8 @@ async function request(method, url, body = null, params = null) {
       
       if (serverMsg) {
         message = serverMsg;
+      } else if (error.response.status === 401) {
+        message = 'Session expired, please log in again.';
       } else if (error.response.status === 403) {
         message = 'Access denied. Please login again.';
       } else if (error.response.status === 404) {

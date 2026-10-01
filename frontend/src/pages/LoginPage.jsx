@@ -45,6 +45,21 @@ export default function LoginPage({ onLogin }) {
     return () => observer.disconnect();
   }, []);
 
+  // Check for session expiry message on mount
+  useEffect(() => {
+    const expiredMsg = sessionStorage.getItem("auth_expired_message");
+    const searchParams = new URLSearchParams(window.location.search);
+    if (expiredMsg || searchParams.get("expired") === "true") {
+      setError("Session expired, please log in again");
+      sessionStorage.removeItem("auth_expired_message");
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {
+        // Ignore in restricted environments
+      }
+    }
+  }, []);
+
   // Google Identity Services callback
   const handleGoogleResponse = useCallback(async (response) => {
     setGoogleLoading(true);
