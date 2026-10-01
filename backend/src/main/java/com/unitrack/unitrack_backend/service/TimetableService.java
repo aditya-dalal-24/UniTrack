@@ -102,7 +102,7 @@ public class TimetableService {
         TimetableSlot slot = timetableRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Timetable slot not found"));
         if (!slot.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Timetable slot not found");
         }
         slot.setDayOfWeek(request.getDayOfWeek());
         slot.setStartTime(request.getStartTime());
@@ -136,7 +136,7 @@ public class TimetableService {
         TimetableSlot slot = timetableRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Timetable slot not found"));
         if (!slot.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Timetable slot not found");
         }
         attendanceRepository.deleteByTimetableSlot(slot);
         timetableRepository.delete(slot);

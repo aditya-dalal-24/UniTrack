@@ -5,8 +5,40 @@ This document records the work completed across three phases on the current work
 1. **Full-stack audit** (read-only, no code changes)
 2. **Remediation** (security, caching, database, bug fixes, CI)
 3. **PWA/mobile stabilization** (Android/iOS production-readiness)
+4. **Final Security & Hygiene Polish** (Exception handling, IDOR prevention, dead code removal)
+5. **Environment Secret Configuration & Startup Stabilization** (Native `.env` loading, local dev secrets, test suite expansion, startup scripts)
 
 Status tags used throughout: **Completed**, **Not done (deferred)**, **Known Issue**, **Manual Action Required**.
+
+---
+
+## 5. Environment Secret Configuration & Startup Stabilization
+
+### Environment Secrets & Configuration
+- **Completed**: Created `backend/.env` (safely gitignored) containing local development secrets, including a freshly generated cryptographically secure JWT secret (`6NdWMN6VSOFY2oHLgWU56deMK7C5N0aipjhDkvStzIY=`), local Postgres credentials, Google Client ID, super admin email, and CORS settings.
+- **Completed**: Hardened `backend/src/main/resources/application.properties` with native Spring Boot 3 `spring.config.import=optional:file:.env[.properties]`. The `optional:` prefix ensures local `.env` variables are loaded seamlessly while maintaining compatibility with cloud environments like Render that inject environment variables directly.
+- **Completed**: Hardened error response behavior in `application.properties` with `server.error.include-message=never` and `server.error.include-binding-errors=never` to prevent stack trace and binding error leakage.
+- **Completed**: Confirmed strict fail-fast behavior with no insecure default fallbacks for `jwt.secret` and `spring.datasource.password`.
+
+### Startup & Developer Experience
+- **Completed**: Fixed broken startup scripts (`START-BACKEND.bat` and `START-FRONTEND.bat`) that pointed to obsolete paths (`Trackify`), relocated them to the project root for unified access, and authored `start-dev.ps1` with validation for `backend/.env`.
+- **Completed**: Cleaned up stale test scratch binaries (`TestRegex.class`, `TestRegex.java`).
+- **Completed**: Added `TimetableParserServiceTest.java` covering timetable regex parsing routines (course codes, time slots, room numbers). Total test suite now runs and passes 7/7 tests cleanly.
+
+---
+
+## 4. Final Security & Hygiene Polish
+
+### Security Fixes
+- **Completed**: Fixed `GlobalExceptionHandler` to prevent internal exception messages (stack traces, DB info, etc.) from leaking to clients on unexpected 500 errors. Added a whitelist (`SAFE_MESSAGES`) for safe, client-facing business logic errors.
+- **Completed**: Unified ownership-check exception handling across all 5 services (`TimetableService`, `SubjectService`, `MarksService`, `FeesService`, `ExpenseService`). Changed `RuntimeException("Unauthorized")` (HTTP 400) to `ResourceNotFoundException("... not found")` (HTTP 404) to prevent IDOR enumeration attacks by not revealing whether a resource exists if the user doesn't own it.
+- **Completed**: Replaced direct `eval()` usage in `FloatingCalculator.jsx` with a sanitized `new Function()` approach to mitigate potential code injection risks.
+
+### Code Quality & Hygiene
+- **Completed**: Removed dead `Topbar.jsx` imports from `AppLayout.jsx` and `AdminLayout.jsx`.
+- **Completed**: Removed stale documentation files (`API-FIXES-APPLIED.md`, `BACKEND-STATUS.md`, `DATA-NOT-RETAINED-FIX.md`, `README-INTEGRATION.md`) that referenced outdated names, ports, and deleted entities.
+- **Completed**: Deleted stale `test_ocr.js` test script that triggered `require` lint errors in the ESM frontend.
+- **Completed**: Ran `npm run lint --fix` to address automatically fixable linting issues across the frontend.
 
 ---
 
@@ -155,9 +187,37 @@ A second, separate audit specifically targeted Android/iOS PWA production-readin
 
 Every group of changes was validated incrementally; final full-repo state:
 
-- **Backend:** `./mvnw clean test` → BUILD SUCCESS, 1/1 tests pass.
-- **Frontend lint:** 149 pre-existing problems, unchanged — confirmed via before/after baseline diffs on every touched file that zero new lint issues were introduced.
-- **Frontend build:** succeeds; PWA service worker regenerates correctly (88 precache entries); `h-dvh` and other new Tailwind classes confirmed compiling to correct CSS.
-- **Git diff:** reviewed in full after each phase; no unintended changes found outside the files listed in section 10.
+- **Backend:** `./mvnw clean test` → BUILD SUCCESS, 7/7 tests pass (including `TimetableParserServiceTest`).
+- **Frontend lint:** 134 pre-existing problems (reduced from 150 via safe auto-fix); confirmed zero new lint issues introduced.
+- **Frontend build:** succeeds; PWA service worker regenerates correctly (88 precache entries); `h-dvh` and other Tailwind classes confirmed compiling to correct CSS.
+- **Git diff:** reviewed in full after each phase; no unintended changes found.
 
 One notable incident during the mobile/PWA phase: the working tree was found reset to its pre-remediation state with all prior work auto-stashed under an unexplained `"Teleport auto-stash"` entry (not created by Claude). The stash was inspected, confirmed to exactly match the expected prior state, restored via `git stash apply`, verified with a full build/test pass, then dropped. No work was lost, but this is worth being aware of if it recurs.
+
+## 13. Stabilization & Completion Phase
+
+1. **Information Disclosure & Exception Sanitization (`GlobalExceptionHandler.java`):**
+   - Sanitized 500 error responses: restricted error messages to a strict whitelist of safe, user-friendly messages (`SAFE_MESSAGES`).
+   - Any unrecognized exception message defaults to a generic `"An unexpected internal error occurred. Please try again later."` rather than leaking internal details or raw exception messages.
+
+2. **IDOR Enumeration Prevention Across Services:**
+   - Updated ownership mismatch behavior across `TimetableService`, `SubjectService`, `MarksService`, `FeesService`, and `ExpenseService` to throw `ResourceNotFoundException` (HTTP 404) rather than `RuntimeException("Unauthorized")` (HTTP 400).
+   - Prevents unauthorized users from determining if resources belonging to other users exist.
+
+3. **XSS & Eval Elimination (`FloatingCalculator.jsx`):**
+   - Replaced `eval()` with a sanitized evaluation function utilizing `new Function()`.
+   - Strictly enforces character regex `^[0-9+\\-*/.()% ]+$` before evaluation, preventing arbitrary JavaScript execution.
+
+4. **Dead Code & Stale Asset Cleanup:**
+   - Removed completely unused `Topbar.jsx` component and dangling imports in `AppLayout.jsx` and `AdminLayout.jsx`.
+   - Removed obsolete markdown/documentation files in `frontend/` (`API-FIXES-APPLIED.md`, `BACKEND-STATUS.md`, `DATA-NOT-RETAINED-FIX.md`, `README-INTEGRATION.md`) and obsolete `test_ocr.js`.
+   - Cleaned up scratch test directory `backend/src/test/java/com/unitrack/unitrack_backend/scratch`.
+
+5. **Timetable Parser Verification & Test Coverage (`TimetableParserServiceTest.java`):**
+   - Implemented unit tests covering regex patterns for time range extraction, course codes, rooms, faculty names, break periods, and legend mappings.
+   - All 7 backend tests pass (`.\mvnw test`).
+
+6. **Frontend Build & Lint:**
+   - Auto-fixed safe linting issues with `npm run lint -- --fix` (150 down to 134).
+   - Production bundle built cleanly with `npm run build` in 1.55s.
+

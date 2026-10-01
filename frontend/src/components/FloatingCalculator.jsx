@@ -17,7 +17,9 @@ const FloatingCalculator = ({ isOpen, onClose }) => {
 
   const calculate = () => {
     try {
-      const result = eval(equation + display);
+      const sanitized = (equation + display).replace(/[^0-9+\-*/.]/g, '');
+       
+      const result = new Function('return ' + sanitized)();
       setDisplay(String(result));
       setEquation('');
     } catch (e) {

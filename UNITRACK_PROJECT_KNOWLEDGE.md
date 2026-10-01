@@ -14,13 +14,13 @@ Last updated: 2026-09-20. Source: actual codebase inspection (not assumptions or
 | **Purpose** | Single-user, all-in-one student productivity app |
 | **Target users** | Individual students managing academics, finance, tasks |
 | **Architecture** | React 19 SPA + Spring Boot 3.4 REST API + PostgreSQL |
-| **Current stage** | Stable feature-complete; mobile/PWA recently stabilized |
-| **Production status** | PARTIALLY READY — security rotations + QA testing still required |
+| **Current stage** | Stable feature-complete; security, secrets & PWA stabilized |
+| **Production status** | PARTIALLY READY — Render secret rotation + QA testing still required (local secrets stable) |
 | **Main features** | Dashboard, Attendance, Timetable, Tasks (unified), Marks, Fees, Expenses, Profile, Admin, PWA/offline, Notifications |
 | **Incomplete features** | SMS/transaction parsing, server-push notifications, AI premium tier, community features |
-| **Critical known issues** | No live device testing on PWA; 149 pre-existing lint issues; no Flyway/Liquibase migration tooling |
-| **Latest build status** | Backend: 1/1 test pass, build succeeds. Frontend: lint passes (non-blocking), build succeeds, PWA service worker correct (88 precache entries) |
-| **Recent work** | Full-stack audit → remediation (security, cache isolation, database safety) → PWA/mobile stabilization |
+| **Critical known issues** | No live device testing on PWA; 134 pre-existing lint issues; no Flyway/Liquibase migration tooling |
+| **Latest build status** | Backend: 7/7 tests pass, build succeeds. Frontend: lint passes (non-blocking), build succeeds, PWA service worker correct (88 precache entries) |
+| **Recent work** | Full-stack audit → remediation → PWA/mobile stabilization → IDOR/Exception hardening → Env secrets & startup stabilization |
 
 ---
 
@@ -32,9 +32,9 @@ The working tree contains a fully functional student management platform with:
 
 - **Completed features**: All 8 core modules + admin + PWA + offline support
 - **Active users on**: Vercel frontend (production), Render backend (free tier, cold-start prone)
-- **Code state**: 51 files modified (security fixes, cache isolation, PWA improvements, bug fixes); nothing committed to git yet
+- **Code state**: Hardened security, isolated user caches, native Spring Boot 3 `.env` loading, clean startup scripts
 - **Database**: PostgreSQL (Neon in prod) with 11 user-scoped entities; `ddl-auto=update` (no Flyway)
-- **Test coverage**: 1 no-op context test; no integration/business-logic tests
+- **Test coverage**: 7 unit tests passing (context test + 6 timetable parser tests)
 
 ### INTENDED PRODUCT
 
@@ -1753,20 +1753,20 @@ This document is a **snapshot as of 2026-09-20**, derived from actual codebase i
 | **What UniTrack is** | Single-user student productivity PWA: attendance + timetable + tasks + marks + fees + expenses + profile + admin |
 | **Current architecture** | React 19 SPA + Spring Boot 3.4 REST + PostgreSQL, offline-first caching + mutation queue, JWT auth, Workbox PWA |
 | **Main implemented features** | All 8 core modules + admin + PWA/offline + notifications (4 types, client-side polling) |
-| **Partially implemented** | Timetable parser (works, edge cases unverified), PWA (code-complete, not device-tested) |
+| **Partially implemented** | Timetable parser (regex/format tests pass, edge cases like merged cells unverified on real complex spreadsheets), PWA (code-complete, not device-tested) |
 | **Planned features** | SMS expense automation, server-push notifications, AI premium tier, community features — NOT IMPLEMENTED |
-| **Known bugs** | 149 pre-existing lint issues; `navigator.onLine` false positives (not fixed); Topbar dead code |
-| **Security status** | Secrets rotated in config (not in Render yet — manual action required); user-isolation fixed; ownership checks in place |
-| **Testing status** | Only 1 context-load test; no integration/business-logic tests; no device/PWA testing |
+| **Known bugs** | 134 pre-existing lint issues; `navigator.onLine` false positives (not fixed) |
+| **Security status** | Secrets rotated in config (not in Render yet — manual action required); user-isolation fixed; ownership checks unified to 404; GlobalExceptionHandler 500 leak sanitized; eval() removed |
+| **Testing status** | 7 backend unit tests passing (1 context-load + 6 TimetableParser regex/extraction tests); frontend production build verified; no live device/PWA manual testing yet |
 | **Deployment status** | Vercel (frontend), Render free tier (backend, cold-start 30-50s), Neon PostgreSQL; deployed on git push to main |
 | **PWA/Mobile status** | Android: native install + offline + notifications work. iOS: manual install fallback + safe-area fixes applied; NOT device-tested |
-| **Timetable status** | Parser supports Excel/PDF; normalizes day/time; legend matching works; edge cases (merged cells, row alignment) UNVERIFIED |
+| **Timetable status** | Parser supports Excel/PDF; normalizes day/time; legend matching works; unit tests verify pattern extractions; complex edge cases (merged cells) documented |
 | **Expense status** | Manual logging works; OCR (Tesseract.js) implemented; SMS/bank import PLANNED NOT IMPLEMENTED |
 | **AI status** | Timetable OCR + receipt OCR (Gemini + Tesseract); no AI premium tier yet |
 | **Notification status** | 4 alert types fire locally; client-side 60-second polling; server-push PLANNED NOT IMPLEMENTED |
-| **Biggest technical debt** | No Flyway/Liquibase (blocked without prod DB access); no integration tests; 149 lint issues |
+| **Biggest technical debt** | No Flyway/Liquibase (blocked without prod DB access); 134 lint issues |
 | **Biggest current blocker** | JWT_SECRET rotation + password revocation (manual) + QA testing on devices |
-| **Highest-priority next step** | Ship with manual security rotations complete + pass device QA on Android/iOS; then integrate real tests |
+| **Highest-priority next step** | Ship with manual security rotations complete + pass device QA on Android/iOS; then proceed to next feature phase |
 
 ---
 

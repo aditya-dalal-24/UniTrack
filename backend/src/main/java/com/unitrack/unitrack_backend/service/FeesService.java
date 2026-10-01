@@ -106,7 +106,7 @@ public class FeesService {
         Fees fee = feeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee not found"));
         if (!fee.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Fee not found");
         }
         fee.setSemester(request.getSemester());
         fee.setCategory(request.getCategory());
@@ -129,7 +129,7 @@ public class FeesService {
         Fees fee = feeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee not found"));
         if (!fee.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Fee not found");
         }
         feeRepository.delete(fee);
     }

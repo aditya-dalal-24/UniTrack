@@ -78,7 +78,7 @@ public class ExpenseService {
         ExpenseCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         if (!category.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Category not found");
         }
         categoryRepository.delete(category);
     }
@@ -155,7 +155,7 @@ public class ExpenseService {
         Expense expense = expenseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
         if (!expense.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Expense not found");
         }
         expenseRepository.delete(expense);
     }

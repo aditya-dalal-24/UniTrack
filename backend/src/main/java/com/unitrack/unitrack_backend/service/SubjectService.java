@@ -90,7 +90,7 @@ public class SubjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
         
         if (!subject.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Subject not found");
         }
 
         subject.setName(request.getName());
@@ -123,7 +123,7 @@ public class SubjectService {
         Subject subject = subjectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
         if (!subject.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Subject not found");
         }
 
         // Clear FK references in timetable_slots (set subject_id = null, keep the slot)

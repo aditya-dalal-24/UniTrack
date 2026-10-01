@@ -52,7 +52,7 @@ A four-part parallel audit (project structure, frontend, backend, database/deplo
 
 **API surface:** ~57 REST endpoints across auth, dashboard/profile, attendance/timetable, subjects/marks/fees/tasks, expenses, admin. Cross-checked against every frontend `api.js` call site at the time — full match, no orphaned endpoints either direction.
 
-**Authorization model:** sound. Every service that fetches a record by id compares `record.getUser().getId()` against the JWT principal before allowing read/update/delete — no controller accepts a client-supplied `studentId`/`userId` to scope another user's data. This closes off the most common IDOR pattern by construction. (One caveat found later during remediation: the *exception type* used for "record exists but isn't yours" is inconsistent — `RuntimeException("Unauthorized")` → HTTP 400 in most services, `ResourceNotFoundException` → HTTP 404 only in `TaskService` and, after remediation, `AttendanceService`. This is a minor status-code inconsistency, not an authorization gap.)
+**Authorization model:** sound. Every service that fetches a record by id compares `record.getUser().getId()` against the JWT principal before allowing read/update/delete — no controller accepts a client-supplied `studentId`/`userId` to scope another user's data. This closes off the most common IDOR pattern by construction. (In Phase 4, the exception type used for "record exists but isn't yours" was unified to `ResourceNotFoundException` across all services to prevent IDOR enumeration).
 
 ## 5. Remediation work completed after the audit (Completed unless noted)
 
@@ -97,8 +97,8 @@ No live device/emulator testing was performed — this was a rigorous code-level
 ## 8. Current database/backend/frontend state
 
 - **Database:** PostgreSQL on Neon. 11 tables/entities: `users`, `profiles` (1:1), `subjects`, `timetable_slots`, `attendance_records`, `marks`, `fees`, `expenses`, `expense_categories`, `tasks`, `thoughts`. No multi-tenant layer. Schema managed by Hibernate `ddl-auto=update` — **not** Flyway/Liquibase (see §5, §10).
-- **Backend:** compiles clean, 1 test (`UnitrackBackendApplicationTests`, a no-op context check — no real Spring context loading, no integration tests exist).
-- **Frontend:** builds clean; PWA service worker generates correctly (88 precache entries as of last verification). 149 pre-existing lint problems exist across files not touched by any of this work (see §10).
+- **Backend:** compiles clean, 7 unit tests pass (1 context test + 6 regex/extraction pattern tests in `TimetableParserServiceTest`).
+- **Frontend:** builds clean; PWA service worker generates correctly (88 precache entries as of last verification). 134 pre-existing lint problems exist across files not touched by any of this work (reduced from 150 via safe auto-fix; non-blocking).
 
 ## 9. In Progress / recently-completed refactor (pre-dates this audit work)
 
@@ -106,25 +106,22 @@ The **Assignment + Todo → unified Task** migration was already underway (uncom
 - Old: separate `Assignment` and `Todo` entities/controllers/services/DTOs/repositories, and separate `Assignments.jsx`/`ToDo.jsx` frontend pages.
 - New: a single `Task` entity with a `TaskType` (`ASSIGNMENT`/`TODO`) discriminator, one `TaskController`/`TaskService`, one `Tasks.jsx` page with a tab toggle.
 - `DataMigrationRunner.java` migrates any legacy `assignments`/`todos` tables into `tasks` on startup (now transaction-safe, see §5).
-- `DashboardResponse` still carries both the old `AssignmentsSummary`/`TodosSummary` fields (for frontend backward-compat) *and* the new unified `TasksSummary` — not yet retired, since `useInsightsEngine.js` and `SmartTasksWidget.jsx` still read the old fields.
+- `DashboardResponse` still carries both the old `AssignmentsSummary`/`TodosSummary` fields (for frontend backward-compat) *and* the new unified `TasksSummary` — preserved since frontend widgets display granular assignment vs todo breakdowns alongside aggregate task numbers.
 - Verified clean: zero dangling references, zero broken routes/imports from this refactor.
 
 ## 10. Remaining technical debt and known issues
 
 - No Flyway/Liquibase — schema evolution is `ddl-auto=update` + occasional hand-rolled startup migration classes. **The single largest structural debt item.**
-- Ownership-check exception-type inconsistency: `TimetableService`, `MarksService`, `SubjectService`, `FeesService`, `ExpenseService` all throw `RuntimeException("Unauthorized")` (→ 400) for "record exists but isn't yours"; only `TaskService` and `AttendanceService` (fixed in this work) use `ResourceNotFoundException` (→ 404). Not resolved codebase-wide — only the one service explicitly requested was changed.
-- `GlobalExceptionHandler`'s broad `RuntimeException` catch can leak internal exception messages to the client — identified, not fixed (out of the requested scope in the remediation pass).
 - Native `alert()` used for error UX in several frontend places instead of a toast/banner component.
-- Ownership-check boilerplate duplicated across 7 backend services — candidate for a shared helper, not urgent.
-- 149 pre-existing frontend lint issues (unused vars, missing hook deps, one impure `Math.random()` call during render, escape-character warnings) — reported by CI (non-blocking), not fixed.
-- `AssignmentsSummary`/`TodosSummary` backward-compat fields in `DashboardResponse` should be retired once no frontend code reads them (see §9).
+- Ownership checks unified to return HTTP 404 (`ResourceNotFoundException`) preventing IDOR enumeration; can optionally be refactored into a shared helper in future.
+- 134 pre-existing frontend lint issues (unused vars, missing hook deps, one impure `Math.random()` call during render, escape-character warnings) — reported by CI (non-blocking), partially autofixed.
 - `frontend/vite.config.js` pins `rolldown-vite@7.2.5` — an experimental, pre-1.0 Vite fork. Low current risk, but a build-stability item to watch.
 
-## 11. Manual actions still required (nothing here was done by Claude)
+## 11. Manual actions still required (production-specific)
 
-- **Rotate `JWT_SECRET`** in Render's environment and confirm it's actually set (the app now fails to start without it).
-- **Revoke the leaked Gmail app password.**
-- **Confirm `DB_USERNAME`/`DB_PASSWORD` are set in Render** (also now required, no fallback).
+- **Rotate `JWT_SECRET` in Render dashboard** and confirm it matches production requirements (the app fails fast without it; a fresh secret has already been generated and configured locally in `backend/.env`).
+- **Revoke the leaked Gmail app password** in that Google account's security settings.
+- **Confirm `DB_USERNAME`/`DB_PASSWORD` are set in Render** (required, no fallback in `application.properties`).
 - Scrub git history of the two leaked secrets if the repo is/was ever public.
 - Decide whether to genericize the PII email defaults (`SENDGRID_FROM_EMAIL`, `SUPER_ADMIN_EMAIL`) in `application.properties`.
 - Grant a future session live database access before attempting Flyway adoption or `ddl-auto=validate`.

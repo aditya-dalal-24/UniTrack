@@ -117,7 +117,7 @@ public class MarksService {
         Marks mark = marksRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Mark not found"));
         if (!mark.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Mark not found");
         }
         mark.setSubjectName(request.getSubjectName());
         mark.setSubjectCode(request.getSubjectCode());
@@ -139,7 +139,7 @@ public class MarksService {
         Marks mark = marksRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Mark not found"));
         if (!mark.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResourceNotFoundException("Mark not found");
         }
         marksRepository.delete(mark);
     }
