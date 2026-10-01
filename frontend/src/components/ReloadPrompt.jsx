@@ -1,5 +1,5 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, X } from 'lucide-react';
 
@@ -7,27 +7,41 @@ import { RefreshCw, X } from 'lucide-react';
  * ReloadPrompt
  *
  * Shows a non-intrusive toast when a new service worker is available.
- * The user can choose to update immediately or dismiss.
- * Positioned above the mobile bottom nav bar on small screens.
+ * Checks for updates immediately on startup, on window focus, online reconnect,
+ * and periodically. Also triggers a native system notification for installed PWAs.
  */
 export default function ReloadPrompt() {
   const [dismissed, setDismissed] = useState(false);
 
   const {
-    needRefresh: [needRefresh],
+    needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    immediate: true,
     onRegisteredSW(swUrl, registration) {
       if (registration) {
-        // Check for updates every 60 minutes
-        setInterval(() => {
-          registration.update();
-        }, 60 * 60 * 1000);
+        // Immediate check on startup
+        registration.update().catch(() => {});
 
-        // Check for updates when the app comes back into focus (crucial for home screen PWA)
+        // Check for updates every 15 minutes
+        setInterval(() => {
+          registration.update().catch(() => {});
+        }, 15 * 60 * 1000);
+
+        // Check for updates when the window gains focus (crucial for standalone PWA app switcher)
+        window.addEventListener('focus', () => {
+          registration.update().catch(() => {});
+        });
+
+        // Check for updates when internet connection is restored
+        window.addEventListener('online', () => {
+          registration.update().catch(() => {});
+        });
+
+        // Check for updates when the app comes back into focus
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') {
-            registration.update();
+            registration.update().catch(() => {});
           }
         });
       }
@@ -36,6 +50,24 @@ export default function ReloadPrompt() {
       console.error('SW registration error:', error);
     },
   });
+
+  // When an update is detected, also trigger a native notification for installed PWA users
+  useEffect(() => {
+    if (needRefresh) {
+      if ('Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification('UniTrack Update Available', {
+            body: 'A new version of UniTrack is ready. Tap to update now.',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            tag: 'unitrack-pwa-update',
+            renotify: true,
+            data: { url: window.location.pathname, action: 'update' }
+          }).catch(() => {});
+        });
+      }
+    }
+  }, [needRefresh]);
 
   const handleUpdate = () => {
     updateServiceWorker(true);
@@ -55,7 +87,7 @@ export default function ReloadPrompt() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 60, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 z-[9998] p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+          className="fixed bottom-28 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 z-[10001] p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl safe-area-bottom"
         >
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-xl bg-brand/10 dark:bg-brand-500/20 flex-shrink-0">

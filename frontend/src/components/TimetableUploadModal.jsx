@@ -21,6 +21,7 @@ import {
 import { api } from '../services/api';
 import { useData } from '../contexts/DataContext';
 import { scanTimetableWithGemini } from '../services/geminiTimetableScannerService';
+import { scanTimetableImage } from '../services/timetableScannerService';
 
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
 
@@ -34,6 +35,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
   const [selectedGroup, setSelectedGroup] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
   const fileInputRef = useRef(null);
 
   // Minor course state
@@ -46,11 +48,6 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
   const [electiveSelections, setElectiveSelections] = useState({}); // { electiveGroupId: selectedSubjectName }
 
   const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  const isGeminiSupportedFile = (f) => {
-    if (!f) return false;
-    const ext = f.name.split('.').pop().toLowerCase();
-    return IMAGE_TYPES.includes(f.type) || ['png', 'jpg', 'jpeg', 'webp', 'pdf'].includes(ext) || f.type === 'application/pdf';
-  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -59,6 +56,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
       setError(null);
       setSelectedGroup("");
       setOcrProgress(0);
+      setUploadStatus("");
       setMinorStep(null);
       setHasMinor(null);
       setMinorSubjectName("");
@@ -131,29 +129,96 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
     setIsUploading(true);
     setError(null);
     setOcrProgress(0);
+    setUploadStatus("Preparing file...");
 
-    if (isGeminiSupportedFile(file)) {
-      // Route image and PDF files to Gemini AI
-      try {
-        const data = await scanTimetableWithGemini(file);
-        setPreviewData(data);
-        // Start the minor course step
-        setMinorStep('asking');
-      } catch (err) {
-        setError(err.message || "Failed to parse timetable file. Ensure it's clear and readable.");
-      }
+    const extension = file.name.split('.').pop().toLowerCase();
+    const isImage = IMAGE_TYPES.includes(file.type) || ['png', 'jpg', 'jpeg', 'webp'].includes(extension);
+    const isPdf = file.type === 'application/pdf' || extension === 'pdf';
+    const isExcel = ['xlsx', 'xls'].includes(extension) || (file.type && (file.type.includes('spreadsheet') || file.type.includes('excel')));
+
+    const hasGeminiKey = Boolean(import.meta.env.VITE_GEMINI_API_KEY);
+
+    // 1. EXCEL SPREADSHEETS -> Route directly to backend Apache POI parser
+    if (isExcel) {
+      setUploadStatus("Parsing Excel spreadsheet...");
+      const { data, error: apiErr } = await api.uploadTimetable(file);
       setIsUploading(false);
-    } else {
-      // Route Excel to backend
-      const { data, error } = await api.uploadTimetable(file);
-      setIsUploading(false);
-      if (error) {
-        setError(error);
+      if (apiErr) {
+        setError(apiErr);
       } else {
         setPreviewData(data);
-        // Start the minor course step
         setMinorStep('asking');
       }
+      return;
+    }
+
+    // 2. PDF DOCUMENTS -> Try Gemini first if key available, then fall back to backend PDF parser
+    if (isPdf) {
+      if (hasGeminiKey && navigator.onLine) {
+        try {
+          setUploadStatus("Analyzing PDF with AI...");
+          const data = await scanTimetableWithGemini(file);
+          setPreviewData(data);
+          setMinorStep('asking');
+          setIsUploading(false);
+          return;
+        } catch (geminiErr) {
+          console.warn("Gemini PDF scan failed, falling back to backend parser:", geminiErr);
+        }
+      }
+
+      setUploadStatus("Extracting timetable from PDF...");
+      const { data, error: apiErr } = await api.uploadTimetable(file);
+      setIsUploading(false);
+      if (apiErr) {
+        setError(apiErr);
+      } else {
+        setPreviewData(data);
+        setMinorStep('asking');
+      }
+      return;
+    }
+
+    // 3. IMAGES -> Try Gemini first if key available, otherwise fall back to local offline OCR (Tesseract)
+    if (isImage) {
+      if (hasGeminiKey && navigator.onLine) {
+        try {
+          setUploadStatus("Scanning timetable with AI...");
+          const data = await scanTimetableWithGemini(file);
+          setPreviewData(data);
+          setMinorStep('asking');
+          setIsUploading(false);
+          return;
+        } catch (geminiErr) {
+          console.warn("Gemini vision scan failed, falling back to local OCR:", geminiErr);
+        }
+      }
+
+      // Offline-capable Local Tesseract.js OCR engine
+      try {
+        setUploadStatus("Scanning timetable with local OCR engine...");
+        const data = await scanTimetableImage(file, (progress) => {
+          setOcrProgress(Math.round(progress));
+          setUploadStatus(`Reading timetable grid (${Math.round(progress)}%)...`);
+        });
+        setPreviewData(data);
+        setMinorStep('asking');
+      } catch (ocrErr) {
+        setError(ocrErr.message || "Failed to scan timetable image. Ensure the image has clear day names and times.");
+      }
+      setIsUploading(false);
+      return;
+    }
+
+    // Fallback for any other file type
+    setUploadStatus("Processing file...");
+    const { data, error: apiErr } = await api.uploadTimetable(file);
+    setIsUploading(false);
+    if (apiErr) {
+      setError(apiErr);
+    } else {
+      setPreviewData(data);
+      setMinorStep('asking');
     }
   };
 
@@ -844,6 +909,24 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                     </div>
                   </div>
 
+                  {isUploading && (
+                    <div className="space-y-2 py-1 px-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <span className="flex items-center gap-2">
+                          <Loader2 size={14} className="animate-spin text-brand" />
+                          {uploadStatus || 'Processing timetable...'}
+                        </span>
+                        {ocrProgress > 0 && <span>{ocrProgress}%</span>}
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                        <div 
+                          className="bg-brand h-2.5 rounded-full transition-all duration-300"
+                          style={{ width: `${ocrProgress > 0 ? ocrProgress : 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {error && (
                     <motion.div 
                       initial={{ opacity: 0, y: -10 }}
@@ -858,7 +941,8 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                   <div className="flex gap-4">
                     <button
                       onClick={onClose}
-                      className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800"
+                      disabled={isUploading}
+                      className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800 disabled:opacity-50"
                     >
                       Go Back
                     </button>
@@ -868,7 +952,7 @@ export default function TimetableUploadModal({ isOpen, onClose, onUploadSuccess 
                       className="flex-1 bg-brand text-white px-6 py-4 rounded-2xl font-black shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3"
                     >
                       {isUploading ? <Loader2 className="animate-spin" /> : <FileSearch size={22} />}
-                      {isUploading ? (isGeminiSupportedFile(file) ? 'ANALYZING WITH AI...' : 'ANALYZING FILE...') : 'EXTRACT DATA'}
+                      {isUploading ? (uploadStatus ? uploadStatus.toUpperCase() : 'ANALYZING FILE...') : 'EXTRACT DATA'}
                     </button>
                   </div>
                 </div>

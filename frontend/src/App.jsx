@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useState, useEffect, lazy, Suspense } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Calculator } from "lucide-react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
@@ -118,7 +118,20 @@ function AppRoutes() {
 function AppContent() {
   const [showCalculator, setShowCalculator] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const handleMessage = (event) => {
+        if (event.data?.type === 'NOTIFICATION_ACTION' && event.data?.url) {
+          navigate(event.data.url);
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+    }
+  }, [navigate]);
+
   const showCalculatorButton = ["/marks", "/fees", "/expenses"].includes(location.pathname);
 
   return (

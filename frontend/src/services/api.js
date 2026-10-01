@@ -283,10 +283,14 @@ async function applyPendingMutations(url, cachedData) {
           data.expenses = data.expenses.filter(e => String(e.id) !== idStr);
         }
       }
-      // STANDARD ARRAYS (Attendance, Marks, Fees, Subjects)
+      // STANDARD ARRAYS (Attendance, Marks, Fees, Subjects, Timetable)
       else if ((url.startsWith('/attendance') || url.startsWith('/marks') || url.startsWith('/fees') || url.startsWith('/subjects') || url.startsWith('/timetable')) && req.url.startsWith(url.split('?')[0])) {
         if (req.method === 'post') {
-          if (Array.isArray(data)) data.push({ ...req.body, id: req.tempId, isOffline: true });
+          if (req.url.includes('/timetable/batch') && Array.isArray(req.body)) {
+            data = req.body.map((slot, idx) => ({ ...slot, id: `${req.tempId}-${idx}`, isOffline: true }));
+          } else if (Array.isArray(data)) {
+            data.push({ ...req.body, id: req.tempId, isOffline: true });
+          }
         } else if (req.method === 'put') {
           const idStr = req.url.split('/').pop();
           if (Array.isArray(data)) {
@@ -295,7 +299,11 @@ async function applyPendingMutations(url, cachedData) {
           }
         } else if (req.method === 'delete') {
           const idStr = req.url.split('/').pop();
-          if (Array.isArray(data)) data = data.filter(t => String(t.id) !== idStr);
+          if (req.url === '/timetable' || idStr === 'timetable') {
+            data = [];
+          } else if (Array.isArray(data)) {
+            data = data.filter(t => String(t.id) !== idStr);
+          }
         }
       }
     });

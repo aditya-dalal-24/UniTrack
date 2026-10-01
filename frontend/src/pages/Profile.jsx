@@ -7,6 +7,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import PageHeader from "../components/PageHeader";
 import UserAvatar from "../components/UserAvatar";
+import useNotificationScheduler from "../hooks/useNotificationScheduler";
 
 const defaultProfileData = {
   name: "",
@@ -39,6 +40,9 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [coverUrl, setCoverUrl] = useState(null);
 
+  const { sendTestNotification, permission: notifPermission, requestPermission } = useNotificationScheduler();
+  const [testAlertStatus, setTestAlertStatus] = useState(null);
+
   const [notificationPrefs, setNotificationPrefs] = useState({
     classes: localStorage.getItem('notify_classes') !== 'false',
     tasks: localStorage.getItem('notify_tasks') !== 'false',
@@ -46,11 +50,22 @@ export default function Profile() {
     fees: localStorage.getItem('notify_fees') !== 'false',
   });
 
+  const handleTestAlert = async () => {
+    setTestAlertStatus("Sending test notification...");
+    const res = await sendTestNotification();
+    if (res?.success) {
+      setTestAlertStatus("Test alert sent! Check your device notifications.");
+    } else {
+      setTestAlertStatus(res?.message || "Failed to trigger notification.");
+    }
+    setTimeout(() => setTestAlertStatus(null), 5000);
+  };
+
   const handleTogglePref = async (key) => {
     const newValue = !notificationPrefs[key];
     if (newValue && 'Notification' in window && Notification.permission !== 'granted') {
-      const p = await Notification.requestPermission();
-      if (p !== 'granted') {
+      const p = await requestPermission();
+      if (!p) {
         alert("You must allow notifications in your browser settings to enable this feature.");
         return;
       }
@@ -280,6 +295,24 @@ export default function Profile() {
                  checked={notificationPrefs.fees} 
                  onChange={() => handleTogglePref('fees')} 
                />
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+               <div>
+                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Verify Device Notifications</p>
+                 <p className="text-[11px] text-slate-500">Test if your browser or PWA can receive native system alerts.</p>
+               </div>
+               <div className="flex items-center gap-3">
+                 {testAlertStatus && (
+                   <span className="text-xs text-brand font-medium">{testAlertStatus}</span>
+                 )}
+                 <button
+                   onClick={handleTestAlert}
+                   className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
+                 >
+                   <Bell size={14} /> Send Test Alert
+                 </button>
+               </div>
             </div>
          </div>
 

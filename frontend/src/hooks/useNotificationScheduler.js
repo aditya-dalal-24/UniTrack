@@ -35,7 +35,9 @@ export default function useNotificationScheduler() {
   };
 
   useEffect(() => {
-    if (permission !== 'granted') return;
+    // Only schedule alerts if notification permission is granted AND user is authenticated
+    const isAuthed = localStorage.getItem('authToken') && localStorage.getItem('isAuthenticated') !== 'false';
+    if (permission !== 'granted' || !isAuthed) return;
 
     const getAlertedKeys = () => {
       try { return new Set(JSON.parse(localStorage.getItem('alertedKeys') || '[]')); }
@@ -183,28 +185,62 @@ export default function useNotificationScheduler() {
     };
   }, [permission]);
 
-  const triggerNotification = (title, body, url, actions = []) => {
+  const triggerNotification = async (title, body, url = '/', actions = []) => {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready.then(registration => {
-        registration.showNotification(title, {
+    // Prefer ServiceWorker showNotification (required for background & mobile PWAs)
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && registration.showNotification) {
+          await registration.showNotification(title, {
+            body,
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            vibrate: [200, 100, 200],
+            data: { url },
+            actions,
+            tag: url,
+            renotify: false,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn("ServiceWorker showNotification failed, attempting fallback:", err);
+      }
+    }
+
+    // Window Notification fallback (desktop browser fallback)
+    try {
+      if (typeof Notification === 'function') {
+        const notification = new Notification(title, {
           body,
           icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-192x192.png',
-          vibrate: [200, 100, 200],
-          data: { url },
-          actions
+          tag: url,
         });
-      });
-    } else {
-      const notification = new Notification(title, { body, icon: '/icons/icon-192x192.png' });
-      notification.onclick = () => {
-        window.focus();
-        navigate(url);
-      };
+        notification.onclick = () => {
+          window.focus();
+          navigate(url);
+        };
+      }
+    } catch (e) {
+      console.warn("Notification constructor fallback failed:", e);
     }
   };
 
-  return { permission, requestPermission };
+  const sendTestNotification = async () => {
+    const granted = await requestPermission();
+    if (!granted) {
+      return { success: false, message: "Notification permission was not granted by your browser." };
+    }
+    await triggerNotification(
+      "UniTrack Alerts Active",
+      "PWA alerts and notifications are configured and working properly!",
+      "/schedule"
+    );
+    return { success: true };
+  };
+
+  return { permission, requestPermission, sendTestNotification };
 }
+
